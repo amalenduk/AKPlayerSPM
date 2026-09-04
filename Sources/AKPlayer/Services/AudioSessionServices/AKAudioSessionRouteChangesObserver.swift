@@ -26,16 +26,24 @@
 // Ref: https://developer.apple.com/documentation/avfaudio/avaudiosession/responding_to_audio_session_route_changes
 
 import AVFoundation
+import Combine
 
+// MARK: - AKAudioSessionRouteChangesObserverDelegate
+
+@MainActor
 public protocol AKAudioSessionRouteChangesObserverDelegate: AnyObject {
-    func audioSessionRouteChangesObserver(_ observer: AKAudioSessionRouteChangesObserverProtocol,
-                                          didChangeRouteTo currentRoute: AVAudioSessionRouteDescription,
-                                          from previousRoute: AVAudioSessionRouteDescription?,
-                                          with reason: AVAudioSession.RouteChangeReason)
-    
+    func audioSessionRouteChangesObserver(
+        _ observer: AKAudioSessionRouteChangesObserverProtocol,
+        didChangeRouteTo currentRoute: AVAudioSessionRouteDescription,
+        from previousRoute: AVAudioSessionRouteDescription?,
+        with reason: AVAudioSession.RouteChangeReason
+    )
 }
 
-public protocol AKAudioSessionRouteChangesObserverProtocol {
+// MARK: - AKAudioSessionRouteChangesObserverProtocol
+
+@MainActor
+public protocol AKAudioSessionRouteChangesObserverProtocol: AnyObject {
     var audioSession: AVAudioSession { get }
     var delegate: AKAudioSessionRouteChangesObserverDelegate? { get set }
     
@@ -45,7 +53,10 @@ public protocol AKAudioSessionRouteChangesObserverProtocol {
     func stopObserving()
 }
 
-open class AKAudioSessionRouteChangesObserver: AKAudioSessionRouteChangesObserverProtocol {
+// MARK: - AKAudioSessionRouteChangesObserver
+
+@MainActor
+public class AKAudioSessionRouteChangesObserver: AKAudioSessionRouteChangesObserverProtocol {
     
     // MARK: - Properties
     
@@ -55,62 +66,67 @@ open class AKAudioSessionRouteChangesObserver: AKAudioSessionRouteChangesObserve
     
     private var isObserving = false
     
-    // MARK: - Init
+    /// Container holding reactive Combine event subscriptions.
+    /// Marked `nonisolated(unsafe)` for thread-safe cleanup during `deinit`.
+    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    
+    // MARK: - Init & Deinit
     
     public init(audioSession: AVAudioSession) {
         self.audioSession = audioSession
     }
     
     deinit {
-        stopObserving()
+        subscriptions.removeAll()
     }
     
-    open func startObserving() {
+    // MARK: - Observation Lifecycle
+    
+    public func startObserving() {
         guard !isObserving else { return }
         
-        /* Observe audio session notifications to ensure that your app responds appropriately to route changes. */
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(handleRouteChange(_ :)),
-                                               name: AVAudioSession.routeChangeNotification,
-                                               object: audioSession)
+        NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification, object: audioSession)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                self.handleRouteChange(notification)
+            }
+            .store(in: &subscriptions)
         
         isObserving = true
     }
     
-    open func stopObserving() {
+    public func stopObserving() {
         guard isObserving else { return }
-        
-        NotificationCenter.default.removeObserver(self,
-                                                  name: AVAudioSession.routeChangeNotification,
-                                                  object: audioSession)
-        
+        subscriptions.removeAll()
         isObserving = false
     }
     
-    @objc open func handleRouteChange(_ notification: Notification) {
+    // MARK: - Handlers
+    
+    public func handleRouteChange(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
             return
         }
         let previousRoute = userInfo[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription
-        guard let delegate = delegate else { return }
         
-        delegate.audioSessionRouteChangesObserver(self,
-                                                  didChangeRouteTo: audioSession.currentRoute,
-                                                  from: previousRoute,
-                                                  with: reason)
+        delegate?.audioSessionRouteChangesObserver(
+            self,
+            didChangeRouteTo: audioSession.currentRoute,
+            from: previousRoute,
+            with: reason
+        )
     }
     
-    // MARK: - Additional Helper Functions
+    // MARK: - Helper Functions
     
-    open func isExternalDeviceConnected() -> Bool {
-        // Filter the outputs to only those with a port type of builtInSpeaker.
-        return audioSession.currentRoute.outputs.filter({$0.portType == .builtInSpeaker}).count == 0
+    public func isExternalDeviceConnected() -> Bool {
+        return !audioSession.currentRoute.outputs.contains(where: { $0.portType == .builtInSpeaker })
     }
     
-    open func hasHeadphonesConnected() -> Bool {
-        // Filter the outputs to only those with a port type of headphones.
-        return audioSession.currentRoute.outputs.filter({$0.portType == .headphones}).count > 0
+    public func hasHeadphonesConnected() -> Bool {
+        return audioSession.currentRoute.outputs.contains(where: { $0.portType == .headphones })
     }
 }

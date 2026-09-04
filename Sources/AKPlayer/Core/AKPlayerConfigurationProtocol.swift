@@ -25,7 +25,9 @@
 
 import AVFoundation
 
-public struct AKAudioSessionConfiguration {
+// MARK: - AKAudioSessionConfiguration
+
+public struct AKAudioSessionConfiguration: Sendable {
     
     // MARK: - Properties
     
@@ -39,7 +41,9 @@ public struct AKAudioSessionConfiguration {
     public init() {}
 }
 
-public protocol AKPlayerConfigurationProtocol {
+// MARK: - AKPlayerConfigurationProtocol
+
+public protocol AKPlayerConfigurationProtocol: Sendable {
     var periodicTimeInterval: AKTimeEventFrequency { get set }
     var boundaryTimeObserverMultiplier: Double { get set }
     var preferredTimeScale: CMTimeScale { get set }
@@ -65,7 +69,6 @@ public protocol AKPlayerConfigurationProtocol {
     /// Playback freezes on last frame frame when true and does not reset seek position timestamp..
     var playbackFreezesAtEnd: Bool { get set }
     
-    
     var isNowPlayingEnabled: Bool { get set }
     var idleTimerDisabledForStates: [AKPlayerState] { get set }
     
@@ -75,12 +78,16 @@ public protocol AKPlayerConfigurationProtocol {
 
 public extension AKPlayerConfigurationProtocol {
     func getPeriodicTimeInterval() -> CMTime {
-        return CMTimeMakeWithSeconds(periodicTimeInterval.value,
-                                     preferredTimescale: preferredTimeScale)
+        return CMTimeMakeWithSeconds(
+            periodicTimeInterval.value,
+            preferredTimescale: preferredTimeScale
+        )
     }
 }
 
-public enum AKTimeEventFrequency {
+// MARK: - AKTimeEventFrequency
+
+public enum AKTimeEventFrequency: Sendable {
     case everySecond
     case everyHalfSecond
     case everyQuarterSecond
@@ -88,11 +95,11 @@ public enum AKTimeEventFrequency {
     public var value: Double {
         switch self {
         case .everySecond:
-            return 1
+            return 1.0
         case .everyHalfSecond:
-            return 1/2
+            return 0.5
         case .everyQuarterSecond:
-            return 1/4
+            return 0.25
         }
     }
 }

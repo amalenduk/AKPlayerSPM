@@ -30,17 +30,29 @@
  */
 
 import AVFoundation
+import Combine
 
+// MARK: - AKAudioSessionInterruptionObserverDelegate
+
+@MainActor
 public protocol AKAudioSessionInterruptionObserverDelegate: AnyObject {
-    func audioSessionInterruptionObserver(_ observer: AKAudioSessionInterruptionObserverProtocol,
-                                          didBeginInterruptionWith reason: AVAudioSession.InterruptionReason?,
-                                          for audioSession: AVAudioSession)
-    func audioSessionInterruptionObserver(_ observer: AKAudioSessionInterruptionObserverProtocol,
-                                          didEndInterruptionWith shouldResume: Bool,
-                                          for audioSession: AVAudioSession)
+    func audioSessionInterruptionObserver(
+        _ observer: AKAudioSessionInterruptionObserverProtocol,
+        didBeginInterruptionWith reason: AVAudioSession.InterruptionReason?,
+        for audioSession: AVAudioSession
+    )
+    
+    func audioSessionInterruptionObserver(
+        _ observer: AKAudioSessionInterruptionObserverProtocol,
+        didEndInterruptionWith shouldResume: Bool,
+        for audioSession: AVAudioSession
+    )
 }
 
-public protocol AKAudioSessionInterruptionObserverProtocol {
+// MARK: - AKAudioSessionInterruptionObserverProtocol
+
+@MainActor
+public protocol AKAudioSessionInterruptionObserverProtocol: AnyObject {
     var audioSession: AVAudioSession { get }
     var isInterrupted: Bool { get }
     var delegate: AKAudioSessionInterruptionObserverDelegate? { get set }
@@ -49,6 +61,9 @@ public protocol AKAudioSessionInterruptionObserverProtocol {
     func stopObserving()
 }
 
+// MARK: - AKAudioSessionInterruptionObserver
+
+@MainActor
 open class AKAudioSessionInterruptionObserver: AKAudioSessionInterruptionObserverProtocol {
     
     // MARK: - Properties
@@ -61,70 +76,77 @@ open class AKAudioSessionInterruptionObserver: AKAudioSessionInterruptionObserve
     
     open private(set) var isInterrupted: Bool = false
     
-    // MARK: - Init
+    /// Container holding reactive Combine event subscriptions.
+    /// Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
+    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    
+    // MARK: - Init & Deinit
     
     public init(audioSession: AVAudioSession) {
         self.audioSession = audioSession
     }
     
     deinit {
-        stopObserving()
+        subscriptions.removeAll()
     }
+    
+    // MARK: - Observation Lifecycle
     
     open func startObserving() {
         guard !isObserving else { return }
         
-        /* A notification that’s posted when an audio interruption occurs. */
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(handleAudioSessionInterruption(_ :)),
-                                               name: AVAudioSession.interruptionNotification,
-                                               object: audioSession)
+        NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification, object: audioSession)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                self.handleAudioSessionInterruption(notification)
+            }
+            .store(in: &subscriptions)
         
         isObserving = true
     }
     
     open func stopObserving() {
         guard isObserving else { return }
-        
-        NotificationCenter.default.removeObserver(self,
-                                                  name: AVAudioSession.interruptionNotification,
-                                                  object: audioSession)
-        
+        subscriptions.removeAll()
         isObserving = false
     }
     
-    /* A notification that’s posted when an audio interruption occurs. */
+    // MARK: - Handlers
     
-    @objc open func handleAudioSessionInterruption(_ notification: Notification) {
+    open func handleAudioSessionInterruption(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
             return
         }
-        // Switch over the interruption type.
+        
         switch type {
         case .began:
-            // An interruption began. Update the UI as needed.
             var interruptionReason: AVAudioSession.InterruptionReason?
             if let reasonValue = userInfo[AVAudioSessionInterruptionReasonKey] as? UInt,
                let reason = AVAudioSession.InterruptionReason(rawValue: reasonValue) {
                 interruptionReason = reason
             }
             isInterrupted = true
-            guard let delegate = delegate else { return }
-            delegate.audioSessionInterruptionObserver(self,
-                                                      didBeginInterruptionWith: interruptionReason,
-                                                      for: audioSession)
+            delegate?.audioSessionInterruptionObserver(
+                self,
+                didBeginInterruptionWith: interruptionReason,
+                for: audioSession
+            )
+            
         case .ended:
-            // An interruption ended. Resume playback, if appropriate.
             guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
             isInterrupted = false
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-            guard let delegate = delegate else { return }
-            delegate.audioSessionInterruptionObserver(self,
-                                                      didEndInterruptionWith: options.contains(.shouldResume),
-                                                      for: audioSession)
-        default: break
+            delegate?.audioSessionInterruptionObserver(
+                self,
+                didEndInterruptionWith: options.contains(.shouldResume),
+                for: audioSession
+            )
+            
+        @unknown default:
+            break
         }
     }
 }

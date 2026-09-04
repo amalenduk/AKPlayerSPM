@@ -25,132 +25,190 @@
 
 import AVFoundation
 import UIKit
+import Combine
 
-public protocol AKApplicationLifeCycleEventsObserverDelegate: AnyObject {
-    func applicationLifeCycleEventsObserver(_ observer: AKApplicationLifeCycleEventsObserverProtocol,
-                                            on event: AKApplicationLifeCycleEvent)
-}
+// MARK: - AKApplicationLifeCycleEvent
 
-public enum AKApplicationLifeCycleEvent {
+/// Events emitted when the application transitions through different lifecycle phases.
+public enum AKApplicationLifeCycleEvent: Sendable {
+    /// The application is about to lose active status (e.g., phone call or control center presentation).
     case willResignActive
+    
+    /// The application has become active and is ready to accept user interactions.
     case didBecomeActive
+    
+    /// The application has entered the background state.
     case didEnterBackground
+    
+    /// The application is preparing to transition back to the foreground.
     case willEnterForeground
 }
 
-public enum AKApplicationLifeCycleState {
+// MARK: - AKApplicationLifeCycleState
+
+/// Represents the current tracked state of the application's lifecycle.
+public enum AKApplicationLifeCycleState: Sendable {
+    /// The application is in an inactive state.
     case resignActive
+    
+    /// The application is currently active in the foreground.
     case active
+    
+    /// The application is running in the background.
     case background
+    
+    /// The application is in the process of coming to the foreground.
     case foreground
     
-    var isActiveOrForeground: Bool {
-        return self == .active
-        || self == .foreground
+    /// A convenience property returning `true` if the app is currently `.active` or `.foreground`.
+    public var isActiveOrForeground: Bool {
+        return self == .active || self == .foreground
     }
     
-    var isResignActiveOrBackground: Bool {
-        return self == .resignActive
-        || self == .background
+    /// A convenience property returning `true` if the app is currently `.resignActive` or `.background`.
+    public var isResignActiveOrBackground: Bool {
+        return self == .resignActive || self == .background
     }
 }
 
-public protocol AKApplicationLifeCycleEventsObserverProtocol {
+// MARK: - AKApplicationLifeCycleEventsObserverDelegate
+
+/// Delegate interface for receiving application lifecycle event updates.
+@MainActor
+public protocol AKApplicationLifeCycleEventsObserverDelegate: AnyObject {
+    /// Notifies the delegate that an application lifecycle transition event occurred.
+    /// - Parameters:
+    ///   - observer: The observer instance monitoring system lifecycle notifications.
+    ///   - event: The specific lifecycle event that took place.
+    func applicationLifeCycleEventsObserver(
+        _ observer: AKApplicationLifeCycleEventsObserverProtocol,
+        on event: AKApplicationLifeCycleEvent
+    )
+}
+
+// MARK: - AKApplicationLifeCycleEventsObserverProtocol
+
+/// A contract for monitoring application state transitions and notifying a delegate.
+@MainActor
+public protocol AKApplicationLifeCycleEventsObserverProtocol: AnyObject {
+    /// The current state of the application lifecycle.
     var state: AKApplicationLifeCycleState { get }
+    
+    /// The delegate object receiving lifecycle event notifications.
     var delegate: AKApplicationLifeCycleEventsObserverDelegate? { get set }
     
+    /// Begins observing system lifecycle notifications via Combine.
     func startObserving()
+    
+    /// Stops observing system lifecycle notifications and cleans up active subscriptions.
     func stopObserving()
 }
 
+// MARK: - AKApplicationLifeCycleEventsObserver
+
+/// An observer class responsible for listening to `UIApplication` lifecycle notifications
+/// using Combine pipelines and forwarding state changes to its delegate on the main thread.
+@MainActor
 open class AKApplicationLifeCycleEventsObserver: AKApplicationLifeCycleEventsObserverProtocol {
     
     // MARK: - Properties
     
+    /// The delegate object receiving lifecycle event updates.
     public weak var delegate: AKApplicationLifeCycleEventsObserverDelegate?
     
+    /// Flag indicating whether system notifications are currently being observed.
     private var isObserving = false
     
+    /// The current lifecycle state of the application.
     public private(set) var state: AKApplicationLifeCycleState = .foreground
     
-    // MARK: - Init
+    /// Container holding reactive Combine event subscriptions.
+    /// Marked `nonisolated(unsafe)` for safe thread cleanup during `deinit`.
+    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
+    // MARK: - Init & Deinit
+    
+    /// Initializes a new instance of the application lifecycle events observer.
     public init() { }
     
     deinit {
-        stopObserving()
+        subscriptions.removeAll()
     }
     
+    // MARK: - Observation Lifecycle
+    
+    /// Starts observing system lifecycle notifications.
+    ///
+    /// Subscribes to `willResignActiveNotification`, `didBecomeActiveNotification`,
+    /// `didEnterBackgroundNotification`, and `willEnterForegroundNotification` on the main queue.
     open func startObserving() {
         guard !isObserving else { return }
         
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(handleApplicationWillResignActive(_:)),
-                                               name: UIApplication.willResignActiveNotification,
-                                               object: nil)
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(handleApplicationDidBecomeActive(_:)),
-                                               name: UIApplication.didBecomeActiveNotification,
-                                               object: nil)
+        NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.handleApplicationWillResignActive()
+            }
+            .store(in: &subscriptions)
         
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(handleApplicationDidEnterBackground(_ :)),
-                                               name: UIApplication.didEnterBackgroundNotification,
-                                               object: nil)
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.handleApplicationDidBecomeActive()
+            }
+            .store(in: &subscriptions)
         
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(handleApplicationWillEnterForeground(_ :)),
-                                               name: UIApplication.willEnterForegroundNotification,
-                                               object: nil)
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.handleApplicationDidEnterBackground()
+            }
+            .store(in: &subscriptions)
         
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.handleApplicationWillEnterForeground()
+            }
+            .store(in: &subscriptions)
         
         isObserving = true
     }
     
+    /// Stops observing system lifecycle notifications and cancels all active subscriptions.
     open func stopObserving() {
         guard isObserving else { return }
-        
-        NotificationCenter.default.removeObserver(self,
-                                                  name: UIApplication.willResignActiveNotification,
-                                                  object: nil)
-        NotificationCenter.default.removeObserver(self,
-                                                  name: UIApplication.didBecomeActiveNotification,
-                                                  object: nil)
-        NotificationCenter.default.removeObserver(self,
-                                                  name: UIApplication.didEnterBackgroundNotification,
-                                                  object: nil)
-        NotificationCenter.default.removeObserver(self,
-                                                  name: UIApplication.willEnterForegroundNotification,
-                                                  object: nil)
-        
+        subscriptions.removeAll()
         isObserving = false
     }
     
-    @objc open func handleApplicationWillResignActive(_ notification: Notification) {
+    // MARK: - Handlers
+    
+    /// Updates state to `.resignActive` and triggers delegate callback for `.willResignActive`.
+    open func handleApplicationWillResignActive() {
         state = .resignActive
-        guard let delegate = delegate else { return }
-        delegate.applicationLifeCycleEventsObserver(self,
-                                                    on: .willResignActive)
+        delegate?.applicationLifeCycleEventsObserver(self, on: .willResignActive)
     }
     
-    @objc open func handleApplicationDidBecomeActive(_ notification: Notification) {
+    /// Updates state to `.active` and triggers delegate callback for `.didBecomeActive`.
+    open func handleApplicationDidBecomeActive() {
         state = .active
-        guard let delegate = delegate else { return }
-        delegate.applicationLifeCycleEventsObserver(self,
-                                                    on: .didBecomeActive)
+        delegate?.applicationLifeCycleEventsObserver(self, on: .didBecomeActive)
     }
     
-    @objc open func handleApplicationDidEnterBackground(_ notification: Notification) {
+    /// Updates state to `.background` and triggers delegate callback for `.didEnterBackground`.
+    open func handleApplicationDidEnterBackground() {
         state = .background
-        guard let delegate = delegate else { return }
-        delegate.applicationLifeCycleEventsObserver(self,
-                                                    on: .didEnterBackground)
+        delegate?.applicationLifeCycleEventsObserver(self, on: .didEnterBackground)
     }
     
-    @objc open func handleApplicationWillEnterForeground(_ notification: Notification) {
+    /// Updates state to `.foreground` and triggers delegate callback for `.willEnterForeground`.
+    open func handleApplicationWillEnterForeground() {
         state = .foreground
-        guard let delegate = delegate else { return }
-        delegate.applicationLifeCycleEventsObserver(self,
-                                                    on: .willEnterForeground)
+        delegate?.applicationLifeCycleEventsObserver(self, on: .willEnterForeground)
     }
 }

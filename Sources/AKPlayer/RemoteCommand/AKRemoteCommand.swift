@@ -26,8 +26,12 @@
 import Foundation
 import MediaPlayer
 
-public typealias AKRemoteCommandHandler = (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
+// MARK: - Handlers & Types
 
+/// Closure type for handling MPRemoteCommandCenter events.
+public typealias AKRemoteCommandHandler = @MainActor @Sendable (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
+
+/// Represents remote commands exposed by MPRemoteCommandCenter.
 public enum AKRemoteCommand: Hashable, Sendable {
     
     // MARK: - Playback Commands
@@ -43,11 +47,11 @@ public enum AKRemoteCommand: Hashable, Sendable {
     case changeShuffleMode
     
     // MARK: - Seeking Commands
-    case changePlaybackRate(supportedPlaybackRates: [NSNumber])
+    case changePlaybackRate(supportedPlaybackRates: [Float])
     case seekBackward
     case seekForward
-    case skipBackward(preferredIntervals: [NSNumber])
-    case skipForward(preferredIntervals: [NSNumber])
+    case skipBackward(preferredIntervals: [TimeInterval])
+    case skipForward(preferredIntervals: [TimeInterval])
     case changePlaybackPosition
     
     // MARK: - Rating/Feedback Commands
@@ -65,147 +69,66 @@ public enum AKRemoteCommand: Hashable, Sendable {
 
 extension AKRemoteCommand {
     
-    // MARK: - Types
-    
-    public struct CommandMetadata {
-        let id: String
-        let name: String
-        let keyPath: AnyKeyPath // Type-erased keypath to MPRemoteCommand
+    /// Strongly typed metadata for accessing MPRemoteCommand properties with compile-time safety.
+    public struct CommandMetadata: Sendable {
+        public let id: String
+        public let name: String
+        public let getCommand: @Sendable @MainActor (MPRemoteCommandCenter) -> MPRemoteCommand
     }
     
-    /// Metadata for each command including MPRemoteCommandCenter keypath and config
-    var metadata: CommandMetadata {
+    /// Metadata mapping each enum case to its identifier, human-readable name, and accessor closure.
+    public var metadata: CommandMetadata {
         switch self {
         case .play:
-            return CommandMetadata(
-                id: "play",
-                name: "Play",
-                keyPath: \MPRemoteCommandCenter.playCommand
-            )
+            return CommandMetadata(id: "play", name: "Play", getCommand: { $0.playCommand })
         case .pause:
-            return CommandMetadata(
-                id: "pause",
-                name: "Pause",
-                keyPath: \MPRemoteCommandCenter.pauseCommand
-            )
+            return CommandMetadata(id: "pause", name: "Pause", getCommand: { $0.pauseCommand })
         case .stop:
-            return CommandMetadata(
-                id: "stop",
-                name: "Stop",
-                keyPath: \MPRemoteCommandCenter.stopCommand
-            )
+            return CommandMetadata(id: "stop", name: "Stop", getCommand: { $0.stopCommand })
         case .togglePlayPause:
-            return CommandMetadata(
-                id: "togglePlayPause",
-                name: "Toggle Play/Pause",
-                keyPath: \MPRemoteCommandCenter.togglePlayPauseCommand
-            )
+            return CommandMetadata(id: "togglePlayPause", name: "Toggle Play/Pause", getCommand: { $0.togglePlayPauseCommand })
         case .nextTrack:
-            return CommandMetadata(
-                id: "nextTrack",
-                name: "Next Track",
-                keyPath: \MPRemoteCommandCenter.nextTrackCommand
-            )
+            return CommandMetadata(id: "nextTrack", name: "Next Track", getCommand: { $0.nextTrackCommand })
         case .previousTrack:
-            return CommandMetadata(
-                id: "previousTrack",
-                name: "Previous Track",
-                keyPath: \MPRemoteCommandCenter.previousTrackCommand
-            )
+            return CommandMetadata(id: "previousTrack", name: "Previous Track", getCommand: { $0.previousTrackCommand })
         case .changeRepeatMode:
-            return CommandMetadata(
-                id: "changeRepeatMode",
-                name: "Change Repeat Mode",
-                keyPath: \MPRemoteCommandCenter.changeRepeatModeCommand
-            )
+            return CommandMetadata(id: "changeRepeatMode", name: "Change Repeat Mode", getCommand: { $0.changeRepeatModeCommand })
         case .changeShuffleMode:
-            return CommandMetadata(
-                id: "changeShuffleMode",
-                name: "Change Shuffle Mode",
-                keyPath: \MPRemoteCommandCenter.changeShuffleModeCommand
-            )
+            return CommandMetadata(id: "changeShuffleMode", name: "Change Shuffle Mode", getCommand: { $0.changeShuffleModeCommand })
         case .changePlaybackRate:
-            return CommandMetadata(
-                id: "changePlaybackRate",
-                name: "Change Playback Rate",
-                keyPath: \MPRemoteCommandCenter.changePlaybackRateCommand
-            )
+            return CommandMetadata(id: "changePlaybackRate", name: "Change Playback Rate", getCommand: { $0.changePlaybackRateCommand })
         case .seekBackward:
-            return CommandMetadata(
-                id: "seekBackward",
-                name: "Seek Backward",
-                keyPath: \MPRemoteCommandCenter.seekBackwardCommand
-            )
+            return CommandMetadata(id: "seekBackward", name: "Seek Backward", getCommand: { $0.seekBackwardCommand })
         case .seekForward:
-            return CommandMetadata(
-                id: "seekForward",
-                name: "Seek Forward",
-                keyPath: \MPRemoteCommandCenter.seekForwardCommand
-            )
+            return CommandMetadata(id: "seekForward", name: "Seek Forward", getCommand: { $0.seekForwardCommand })
         case .skipBackward:
-            return CommandMetadata(
-                id: "skipBackward",
-                name: "Skip Backward",
-                keyPath: \MPRemoteCommandCenter.skipBackwardCommand
-            )
+            return CommandMetadata(id: "skipBackward", name: "Skip Backward", getCommand: { $0.skipBackwardCommand })
         case .skipForward:
-            return CommandMetadata(
-                id: "skipForward",
-                name: "Skip Forward",
-                keyPath: \MPRemoteCommandCenter.skipForwardCommand
-            )
+            return CommandMetadata(id: "skipForward", name: "Skip Forward", getCommand: { $0.skipForwardCommand })
         case .changePlaybackPosition:
-            return CommandMetadata(
-                id: "changePlaybackPosition",
-                name: "Change Playback Position",
-                keyPath: \MPRemoteCommandCenter.changePlaybackPositionCommand
-            )
+            return CommandMetadata(id: "changePlaybackPosition", name: "Change Playback Position", getCommand: { $0.changePlaybackPositionCommand })
         case .rating:
-            return CommandMetadata(
-                id: "rating",
-                name: "Rating",
-                keyPath: \MPRemoteCommandCenter.ratingCommand
-            )
+            return CommandMetadata(id: "rating", name: "Rating", getCommand: { $0.ratingCommand })
         case .like:
-            return CommandMetadata(
-                id: "like",
-                name: "Like",
-                keyPath: \MPRemoteCommandCenter.likeCommand
-            )
+            return CommandMetadata(id: "like", name: "Like", getCommand: { $0.likeCommand })
         case .dislike:
-            return CommandMetadata(
-                id: "dislike",
-                name: "Dislike",
-                keyPath: \MPRemoteCommandCenter.dislikeCommand
-            )
+            return CommandMetadata(id: "dislike", name: "Dislike", getCommand: { $0.dislikeCommand })
         case .bookmark:
-            return CommandMetadata(
-                id: "bookmark",
-                name: "Bookmark",
-                keyPath: \MPRemoteCommandCenter.bookmarkCommand
-            )
+            return CommandMetadata(id: "bookmark", name: "Bookmark", getCommand: { $0.bookmarkCommand })
         case .enableLanguageOption:
-            return CommandMetadata(
-                id: "enableLanguageOption",
-                name: "Enable Language Option",
-                keyPath: \MPRemoteCommandCenter.enableLanguageOptionCommand
-            )
+            return CommandMetadata(id: "enableLanguageOption", name: "Enable Language Option", getCommand: { $0.enableLanguageOptionCommand })
         case .disableLanguageOption:
-            return CommandMetadata(
-                id: "disableLanguageOption",
-                name: "Disable Language Option",
-                keyPath: \MPRemoteCommandCenter.disableLanguageOptionCommand
-            )
+            return CommandMetadata(id: "disableLanguageOption", name: "Disable Language Option", getCommand: { $0.disableLanguageOptionCommand })
         }
     }
     
-    /// Unique identifier for this command
-    var id: String {
+    /// Unique String identifier for command indexing.
+    public var id: String {
         return metadata.id
     }
     
-    /// Human-readable name
-    var name: String {
+    /// Human-readable display name.
+    public var name: String {
         return metadata.name
     }
 }
@@ -216,20 +139,19 @@ extension AKRemoteCommand {
     
     /// Basic playback controls: Play, Pause, Stop, Toggle
     public static var playbackCommands: [AKRemoteCommand] {
-        return [.play, .pause, .stop, .togglePlayPause]
+        [.play, .pause, .stop, .togglePlayPause]
     }
     
     /// Track navigation: Next, Previous, Repeat, Shuffle
     public static var trackNavigationCommands: [AKRemoteCommand] {
-        return [.nextTrack, .previousTrack, .changeRepeatMode, .changeShuffleMode]
+        [.nextTrack, .previousTrack, .changeRepeatMode, .changeShuffleMode]
     }
     
-    /// Seeking with custom intervals
-    public static func seekingCommands(intervals: [Double] = [15.0]) -> [AKRemoteCommand] {
-        let numberIntervals = intervals.map { NSNumber(value: $0) }
-        return [
-            .skipBackward(preferredIntervals: numberIntervals),
-            .skipForward(preferredIntervals: numberIntervals),
+    /// Seeking with custom interval settings
+    public static func seekingCommands(intervals: [TimeInterval] = [15.0]) -> [AKRemoteCommand] {
+        [
+            .skipBackward(preferredIntervals: intervals),
+            .skipForward(preferredIntervals: intervals),
             .changePlaybackPosition,
             .seekBackward,
             .seekForward
@@ -238,17 +160,17 @@ extension AKRemoteCommand {
     
     /// Feedback: Like, Dislike, Bookmark, Rating
     public static var feedbackCommands: [AKRemoteCommand] {
-        return [.like, .dislike, .bookmark, .rating]
+        [.like, .dislike, .bookmark, .rating]
     }
     
-    /// Language/Subtitle options
+    /// Language & Subtitle selection options
     public static var languageCommands: [AKRemoteCommand] {
-        return [.enableLanguageOption, .disableLanguageOption]
+        [.enableLanguageOption, .disableLanguageOption]
     }
     
-    /// Recommended audio preset (Music, Podcast, Audiobook)
+    /// Standard preset for Podcasts, Music, and Audiobooks
     public static var standardAudioPreset: [AKRemoteCommand] {
-        return [
+        [
             .play, .pause, .togglePlayPause,
             .skipBackward(preferredIntervals: [15.0]),
             .skipForward(preferredIntervals: [15.0]),
@@ -257,9 +179,9 @@ extension AKRemoteCommand {
         ]
     }
     
-    /// Recommended video preset
+    /// Standard preset for Video playback
     public static var standardVideoPreset: [AKRemoteCommand] {
-        return [
+        [
             .play, .pause, .togglePlayPause,
             .seekBackward, .seekForward,
             .skipBackward(preferredIntervals: [10.0]),
@@ -268,9 +190,9 @@ extension AKRemoteCommand {
         ]
     }
     
-    /// All available commands
+    /// Array containing default representation of all available commands
     public static func all() -> [AKRemoteCommand] {
-        return [
+        [
             .play, .pause, .stop, .togglePlayPause,
             .nextTrack, .previousTrack,
             .changeRepeatMode, .changeShuffleMode,
@@ -282,17 +204,5 @@ extension AKRemoteCommand {
             .rating, .like, .dislike, .bookmark,
             .enableLanguageOption, .disableLanguageOption
         ]
-    }
-}
-
-// MARK: - Hashable Conformance
-
-extension AKRemoteCommand {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-    
-    public static func == (lhs: AKRemoteCommand, rhs: AKRemoteCommand) -> Bool {
-        return lhs.id == rhs.id
     }
 }

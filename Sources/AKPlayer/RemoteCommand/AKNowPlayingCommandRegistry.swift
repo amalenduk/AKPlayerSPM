@@ -26,46 +26,54 @@
 import Foundation
 import MediaPlayer
 
-/// Thread-safe registry for managing remote commands and their configurations.
-/// Provides centralized command state management and validation.
-public final class AKNowPlayingCommandRegistry {
+/// Thread-safe actor registry for managing remote commands and their configurations.
+/// Uses Swift Concurrency (actor isolation) to ensure data synchronization without manual locks.
+public actor AKNowPlayingCommandRegistry {
     
     // MARK: - Properties
     
-    private let lock = NSRecursiveLock()
+    /// Map storing internal configurations indexed by command string key.
     private var commandConfigs: [String: CommandConfig] = [:]
+    
+    /// Map storing runtime execution and active state indexed by command string key.
     private var commandStates: [String: CommandState] = [:]
+    
+    /// Direct mapping of `AKRemoteCommand` targets to custom action closures.
     private var customHandlers: [AKRemoteCommand: AKRemoteCommandHandler] = [:]
     
     // MARK: - Types
     
-    private struct CommandConfig {
+    /// Internal structure encapsulating command configuration options.
+    private struct CommandConfig: Sendable {
         let command: AKRemoteCommand
         var isEnabled: Bool
         var canBeDisabled: Bool
         var customHandler: AKRemoteCommandHandler?
     }
     
-    private struct CommandState {
+    /// Internal structure tracking runtime activity and execution metrics.
+    private struct CommandState: Sendable {
         let commandKey: String
         var isActive: Bool
         var lastExecutedDate: Date?
         var executionCount: Int
     }
     
-    // MARK: - Initialization & Deinitialization
+    // MARK: - Initialization
     
+    /// Creates a new isolated actor instance of `AKNowPlayingCommandRegistry`.
     public init() {}
     
     // MARK: - Registration
     
     /// Registers a command with optional configuration.
+    /// - Parameters:
+    ///   - command: The target remote command to register.
+    ///   - isEnabled: Indicates if the command should start in an enabled state. Default is `true`.
+    ///   - canBeDisabled: Indicates whether this command can be dynamically disabled later. Default is `true`.
     public func register(_ command: AKRemoteCommand,
                          isEnabled: Bool = true,
                          canBeDisabled: Bool = true) {
-        lock.lock()
-        defer { lock.unlock() }
-        
         let key = command.hashKey
         commandConfigs[key] = CommandConfig(
             command: command,
@@ -81,37 +89,43 @@ public final class AKNowPlayingCommandRegistry {
         )
     }
     
-    /// Registers multiple commands at once.
+    /// Registers multiple commands at once with uniform parameters.
+    /// - Parameters:
+    ///   - commands: Array of commands to register.
+    ///   - isEnabled: Initial state applied to all commands. Default is `true`.
+    ///   - canBeDisabled: Flag determining whether commands can be disabled. Default is `true`.
     public func register(commands: [AKRemoteCommand],
                          isEnabled: Bool = true,
                          canBeDisabled: Bool = true) {
-        commands.forEach { register($0, isEnabled: isEnabled, canBeDisabled: canBeDisabled) }
+        for command in commands {
+            register(command, isEnabled: isEnabled, canBeDisabled: canBeDisabled)
+        }
     }
     
-    /// Unregisters a command.
+    /// Unregisters a single command and removes its associated configurations and handlers.
+    /// - Parameter command: The target remote command to remove.
     public func unregister(_ command: AKRemoteCommand) {
-        lock.lock()
-        defer { lock.unlock() }
-        
         let key = command.hashKey
         commandConfigs.removeValue(forKey: key)
         commandStates.removeValue(forKey: key)
         customHandlers.removeValue(forKey: command)
     }
     
-    /// Unregisters multiple commands.
+    /// Unregisters multiple commands at once.
+    /// - Parameter commands: Array of commands to unregister.
     public func unregister(commands: [AKRemoteCommand]) {
-        commands.forEach { unregister($0) }
+        for command in commands {
+            unregister(command)
+        }
     }
     
     // MARK: - Command State Management
     
-    /// Enables a registered command.
+    /// Enables a registered remote command.
+    /// - Parameter command: Target command to enable.
+    /// - Returns: `true` if state was mutated, or `false` if command is unregistered or non-mutable.
     @discardableResult
     public func enable(_ command: AKRemoteCommand) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        
         let key = command.hashKey
         guard var config = commandConfigs[key], config.canBeDisabled else { return false }
         
@@ -126,12 +140,11 @@ public final class AKNowPlayingCommandRegistry {
         return true
     }
     
-    /// Disables a registered command.
+    /// Disables a registered remote command.
+    /// - Parameter command: Target command to disable.
+    /// - Returns: `true` if state was mutated, or `false` if command is unregistered or protected (`canBeDisabled == false`).
     @discardableResult
     public func disable(_ command: AKRemoteCommand) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        
         let key = command.hashKey
         guard var config = commandConfigs[key], config.canBeDisabled else { return false }
         
@@ -146,40 +159,37 @@ public final class AKNowPlayingCommandRegistry {
         return true
     }
     
-    /// Checks if a command is currently enabled.
+    /// Checks if a command is currently registered and enabled.
+    /// - Parameter command: Target remote command to query.
+    /// - Returns: `true` if enabled; otherwise `false`.
     public func isEnabled(_ command: AKRemoteCommand) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        
         let key = command.hashKey
         return commandConfigs[key]?.isEnabled ?? false
     }
     
-    /// Checks if a command can be disabled.
+    /// Checks if a command allows dynamic enable/disable state mutations.
+    /// - Parameter command: Target remote command to query.
+    /// - Returns: `true` if command state can be toggled; otherwise `false`.
     public func canBeDisabled(_ command: AKRemoteCommand) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        
         let key = command.hashKey
         return commandConfigs[key]?.canBeDisabled ?? false
     }
     
-    /// Checks if a command is registered.
+    /// Checks if a command is registered in the registry.
+    /// - Parameter command: Target command to check.
+    /// - Returns: `true` if registered; otherwise `false`.
     public func isRegistered(_ command: AKRemoteCommand) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        
         return commandConfigs[command.hashKey] != nil
     }
     
     // MARK: - Custom Handlers
     
-    /// Sets a custom handler for a command.
+    /// Attaches a custom `@Sendable` action handler to a registered command.
+    /// - Parameters:
+    ///   - command: The remote command to attach the handler to.
+    ///   - handler: Thread-safe closure invoked when the remote command event triggers.
     public func setCustomHandler(_ command: AKRemoteCommand,
                                  handler: @escaping AKRemoteCommandHandler) {
-        lock.lock()
-        defer { lock.unlock() }
-        
         guard isRegistered(command) else { return }
         
         let key = command.hashKey
@@ -191,11 +201,9 @@ public final class AKNowPlayingCommandRegistry {
         }
     }
     
-    /// Removes custom handler for a command.
+    /// Removes the custom handler assigned to a command.
+    /// - Parameter command: Target command whose handler should be removed.
     public func removeCustomHandler(_ command: AKRemoteCommand) {
-        lock.lock()
-        defer { lock.unlock() }
-        
         customHandlers.removeValue(forKey: command)
         
         let key = command.hashKey
@@ -205,39 +213,32 @@ public final class AKNowPlayingCommandRegistry {
         }
     }
     
-    /// Gets custom handler for a command if exists.
+    /// Retrieves the assigned custom handler for a command if available.
+    /// - Parameter command: Target command to query.
+    /// - Returns: The registered closure handler, or `nil` if none exists.
     public func customHandler(for command: AKRemoteCommand) -> AKRemoteCommandHandler? {
-        lock.lock()
-        defer { lock.unlock() }
-        
         return customHandlers[command]
     }
     
     // MARK: - Query Operations
     
-    /// Gets all registered commands.
+    /// Retrieves all currently registered remote commands.
+    /// - Returns: An array of `AKRemoteCommand` objects held in the registry.
     public func allRegisteredCommands() -> [AKRemoteCommand] {
-        lock.lock()
-        defer { lock.unlock() }
-        
         return Array(commandConfigs.values.map { $0.command })
     }
     
-    /// Gets all enabled commands.
+    /// Retrieves all currently enabled remote commands.
+    /// - Returns: Filtered array containing only enabled `AKRemoteCommand` targets.
     public func enabledCommands() -> [AKRemoteCommand] {
-        lock.lock()
-        defer { lock.unlock() }
-        
         return commandConfigs.values
             .filter { $0.isEnabled }
             .map { $0.command }
     }
     
-    /// Gets all disabled commands.
+    /// Retrieves all currently disabled remote commands.
+    /// - Returns: Filtered array containing only disabled `AKRemoteCommand` targets.
     public func disabledCommands() -> [AKRemoteCommand] {
-        lock.lock()
-        defer { lock.unlock() }
-        
         return commandConfigs.values
             .filter { !$0.isEnabled }
             .map { $0.command }
@@ -245,11 +246,9 @@ public final class AKNowPlayingCommandRegistry {
     
     // MARK: - Execution Tracking
     
-    /// Records command execution for analytics/debugging.
+    /// Records command execution timestamp and increments the run count for analytics.
+    /// - Parameter command: The remote command being executed.
     public func recordExecution(for command: AKRemoteCommand) {
-        lock.lock()
-        defer { lock.unlock() }
-        
         let key = command.hashKey
         if var state = commandStates[key] {
             state.lastExecutedDate = Date()
@@ -258,21 +257,18 @@ public final class AKNowPlayingCommandRegistry {
         }
     }
     
-    /// Gets execution info for a command.
+    /// Retrieves execution statistics for a given command.
+    /// - Parameter command: Target remote command to query.
+    /// - Returns: Tuple containing execution count and last executed date, or `nil` if unregistered.
     public func executionInfo(for command: AKRemoteCommand) -> (count: Int, lastExecuted: Date?)? {
-        lock.lock()
-        defer { lock.unlock() }
-        
         guard let state = commandStates[command.hashKey] else { return nil }
         return (count: state.executionCount, lastExecuted: state.lastExecutedDate)
     }
     
     // MARK: - Cleanup
     
+    /// Resets the registry, purging all stored configs, active states, and custom handlers.
     public func clear() {
-        lock.lock()
-        defer { lock.unlock() }
-        
         commandConfigs.removeAll()
         commandStates.removeAll()
         customHandlers.removeAll()
@@ -282,6 +278,7 @@ public final class AKNowPlayingCommandRegistry {
 // MARK: - Extensions
 
 extension AKRemoteCommand {
+    /// String identifier derived from the command representation.
     var hashKey: String {
         return String(describing: self)
     }

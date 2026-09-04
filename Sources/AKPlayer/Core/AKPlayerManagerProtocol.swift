@@ -27,33 +27,61 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 
+// MARK: - AKPlayerManagerDelegate
+
+/// Delegate protocol to receive state, media, rate, time, and error events from an `AKPlayerManagerProtocol`.
+@MainActor
 public protocol AKPlayerManagerDelegate: AnyObject {
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didChangeStateTo state: AKPlayerState)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didChangeMediaTo media: AKPlayable)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didChangePlaybackRateTo newRate: AKPlaybackRate,
-                       from oldRate: AKPlaybackRate)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didChangeCurrentTimeTo currentTime: CMTime,
-                       for media: AKPlayable)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didInvokeBoundaryTimeObserverAt time: CMTime,
-                       for media: AKPlayable)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didReachEndAt time: CMTime,
-                       for media: AKPlayable)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didChangeVolumeTo volume: Float)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didChangeMutedStatusTo isMuted: Bool)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason)
-    func playerManager(_ playerManager: AKPlayerManagerProtocol,
-                       didFailWith error: AKPlayerError)
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didChangeStateTo state: AKPlayerState
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didChangeMediaTo media: any AKPlayable
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didChangePlaybackRateTo newRate: AKPlaybackRate,
+        from oldRate: AKPlaybackRate
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didChangeCurrentTimeTo currentTime: CMTime,
+        for media: any AKPlayable
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didInvokeBoundaryTimeObserverAt time: CMTime,
+        for media: any AKPlayable
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didReachEndAt time: CMTime,
+        for media: any AKPlayable
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didChangeVolumeTo volume: Float
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didChangeMutedStatusTo isMuted: Bool
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason
+    )
+    func playerManager(
+        _ playerManager: AKPlayerManagerProtocol,
+        didFailWith error: AKPlayerError
+    )
 }
 
+// MARK: - AKPlayerManagerProtocol
+
+/// Primary management protocol exposing high-level player control and now-playing integration.
+@MainActor
 public protocol AKPlayerManagerProtocol: AKPlayerProtocol, AKPlayerActionsProtocol, AKNowPlayingSessionProvider {
     var playerController: AKPlayerControllerProtocol { get }
     var configuration: AKPlayerConfigurationProtocol { get }
@@ -68,19 +96,34 @@ public protocol AKPlayerManagerProtocol: AKPlayerProtocol, AKPlayerActionsProtoc
     func getNowPlayableDynamicMetadata() -> AKNowPlayableDynamicMetadataProtocol?
 }
 
-public struct AKPlayerStateSnapshot {
-    var shouldResume: Bool
-    var applicationState: AKApplicationLifeCycleState
-    var playbackInterruptionReason: AKPlaybackInterruptionReason
+// MARK: - AKPlayerStateSnapshot
+
+/// Thread-safe snapshot capturing player state before lifecycle interruptions or audio session events.
+public struct AKPlayerStateSnapshot: Sendable {
+    public var shouldResume: Bool
+    public var applicationState: AKApplicationLifeCycleState
+    public var playbackInterruptionReason: AKPlaybackInterruptionReason
+    
+    public init(
+        shouldResume: Bool,
+        applicationState: AKApplicationLifeCycleState,
+        playbackInterruptionReason: AKPlaybackInterruptionReason
+    ) {
+        self.shouldResume = shouldResume
+        self.applicationState = applicationState
+        self.playbackInterruptionReason = playbackInterruptionReason
+    }
 }
 
-public enum AKPlaybackInterruptionReason: uint {
+// MARK: - AKPlaybackInterruptionReason
+
+/// Enumeration representing reasons for playback interruption.
+public enum AKPlaybackInterruptionReason: UInt, Sendable {
     case audioSessionInterruption
     case applicationResignActive
     case applicationEnteredBackground
     
-    var isLifeCycleEvent: Bool {
-        return self == .applicationEnteredBackground
-        || self == .applicationResignActive
+    public var isLifeCycleEvent: Bool {
+        return self == .applicationEnteredBackground || self == .applicationResignActive
     }
 }

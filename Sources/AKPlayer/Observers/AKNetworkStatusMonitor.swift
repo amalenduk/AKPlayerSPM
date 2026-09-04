@@ -27,7 +27,10 @@ import Foundation
 import Network
 import Combine
 
-public protocol AKNetworkStatusMonitorProtocol {
+// MARK: - AKNetworkStatusMonitorProtocol
+
+@MainActor
+public protocol AKNetworkStatusMonitorProtocol: AnyObject {
     var currentPath: NWPath? { get }
     var currentNetworkStatus: NWPath.Status { get }
     var isConnected: Bool { get }
@@ -37,11 +40,17 @@ public protocol AKNetworkStatusMonitorProtocol {
     func stopObserving()
 }
 
+// MARK: - AKNetworkStatusMonitor
+
+@MainActor
 open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
     
     // MARK: - Properties
     
-    private var networkPathMonitor: NWPathMonitor?
+    /// Opaque reference to system path monitor.
+    /// Marked `nonisolated(unsafe)` to permit cancellation during `deinit`.
+    private nonisolated(unsafe) var networkPathMonitor: NWPathMonitor?
+    
     private var isObserving = false
     private let monitorQueue = DispatchQueue(label: "com.akplayer.networkmonitor", qos: .utility)
     
@@ -68,12 +77,13 @@ open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
             .eraseToAnyPublisher()
     }
     
-    // MARK: - Init
+    // MARK: - Init & Deinit
     
     public init() {}
     
     deinit {
-        stopObserving()
+        networkPathMonitor?.cancel()
+        networkPathMonitor = nil
     }
     
     // MARK: - Control Methods
@@ -84,8 +94,11 @@ open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
         let monitor = NWPathMonitor()
         
         monitor.pathUpdateHandler = { [weak self] path in
-            self?.latestPath = path
-            self?.networkStatusSubject.send(path.status)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.latestPath = path
+                self.networkStatusSubject.send(path.status)
+            }
         }
         
         self.networkPathMonitor = monitor

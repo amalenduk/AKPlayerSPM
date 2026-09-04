@@ -26,172 +26,224 @@
 import Foundation
 import MediaPlayer
 
-/// Builder pattern for configuring Now Playing session with predefined command sets.
-public class AKNowPlayingCommandConfiguration {
+/// Thread-safe builder for configuring Now Playing remote command sessions.
+/// Designed as a value type (`struct`) conforming to `Sendable` using an immutable copy-on-write builder pattern.
+public struct AKNowPlayingCommandConfiguration: Sendable {
     
     // MARK: - Properties
     
+    /// Unique set of remote commands added to this configuration.
     private var commands: Set<AKRemoteCommand> = []
+    
+    /// Map tracking enablement state for registered commands indexed by command key.
     private var commandEnablementMap: [String: Bool] = [:]
+    
+    /// Dictionary mapping explicit remote commands to their custom handlers.
     private var customHandlers: [AKRemoteCommand: AKRemoteCommandHandler] = [:]
     
-    // MARK: - Initialization & Deinitialization
+    // MARK: - Initialization
     
+    /// Creates a new instance of `AKNowPlayingCommandConfiguration`.
     public init() {}
     
     // MARK: - Builder Methods
     
     /// Adds a single command to the configuration.
+    /// - Parameter command: The remote command to add.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func add(_ command: AKRemoteCommand) -> Self {
-        commands.insert(command)
-        commandEnablementMap[command.hashKey] = true
-        return self
+        var copy = self
+        copy.commands.insert(command)
+        copy.commandEnablementMap[command.hashKey] = true
+        return copy
     }
     
     /// Adds multiple commands to the configuration.
+    /// - Parameter commands: Array of commands to add.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func add(commands: [AKRemoteCommand]) -> Self {
-        commands.forEach { add($0) }
-        return self
+        var copy = self
+        for command in commands {
+            copy = copy.add(command)
+        }
+        return copy
     }
     
-    /// Removes a command from configuration.
+    /// Removes a command from the configuration.
+    /// - Parameter command: Target command to remove.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func remove(_ command: AKRemoteCommand) -> Self {
-        commands.remove(command)
-        commandEnablementMap.removeValue(forKey: command.hashKey)
-        return self
+        var copy = self
+        copy.commands.remove(command)
+        copy.commandEnablementMap.removeValue(forKey: command.hashKey)
+        copy.customHandlers.removeValue(forKey: command)
+        return copy
     }
     
-    /// Removes multiple commands from configuration.
+    /// Removes multiple commands from the configuration.
+    /// - Parameter commands: Array of target commands to remove.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func remove(commands: [AKRemoteCommand]) -> Self {
-        commands.forEach { remove($0) }
-        return self
+        var copy = self
+        for command in commands {
+            copy = copy.remove(command)
+        }
+        return copy
     }
     
-    /// Applies standard audio/podcast preset (iOS 17.0+).
+    /// Applies the standard audio/podcast command preset.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useAudioPreset() -> Self {
-        add(commands: AKRemoteCommand.standardAudioPreset)
-        return self
+        return add(commands: AKRemoteCommand.standardAudioPreset)
     }
     
-    /// Applies standard video preset (iOS 17.0+).
+    /// Applies the standard video command preset.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useVideoPreset() -> Self {
-        add(commands: AKRemoteCommand.standardVideoPreset)
-        return self
+        return add(commands: AKRemoteCommand.standardVideoPreset)
     }
     
-    /// Applies playback commands only.
+    /// Applies essential playback commands (play, pause, toggle, stop).
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func usePlaybackCommands() -> Self {
-        add(commands: AKRemoteCommand.playbackCommands)
-        return self
+        return add(commands: AKRemoteCommand.playbackCommands)
     }
     
-    /// Applies track navigation commands.
+    /// Applies track navigation commands (next track, previous track).
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useTrackNavigationCommands() -> Self {
-        add(commands: AKRemoteCommand.trackNavigationCommands)
-        return self
+        return add(commands: AKRemoteCommand.trackNavigationCommands)
     }
     
-    /// Applies seeking commands with custom intervals.
+    /// Applies seeking commands with custom time skip intervals.
+    /// - Parameter intervals: Time intervals in seconds for skip forward/backward commands.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useSeekingCommands(intervals: [Double] = [15.0]) -> Self {
-        add(commands: AKRemoteCommand.seekingCommands(intervals: intervals))
-        return self
+        return add(commands: AKRemoteCommand.seekingCommands(intervals: intervals))
     }
     
-    /// Applies feedback/rating commands.
+    /// Applies feedback and rating commands (like, dislike, bookmark).
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useFeedbackCommands() -> Self {
-        add(commands: AKRemoteCommand.feedbackCommands)
-        return self
+        return add(commands: AKRemoteCommand.feedbackCommands)
     }
     
-    /// Applies language/subtitle selection commands.
+    /// Applies language and audio/subtitle selection commands.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useLanguageCommands() -> Self {
-        add(commands: AKRemoteCommand.languageCommands)
-        return self
+        return add(commands: AKRemoteCommand.languageCommands)
     }
     
-    /// Enables a specific command.
+    /// Enables a specific command in this configuration.
+    /// - Parameter command: Target command to enable.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func enable(_ command: AKRemoteCommand) -> Self {
-        commandEnablementMap[command.hashKey] = true
-        return self
+        var copy = self
+        copy.commandEnablementMap[command.hashKey] = true
+        return copy
     }
     
-    /// Enables multiple commands.
+    /// Enables multiple commands in this configuration.
+    /// - Parameter commands: Array of commands to enable.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func enable(commands: [AKRemoteCommand]) -> Self {
-        commands.forEach { enable($0) }
-        return self
+        var copy = self
+        for command in commands {
+            copy = copy.enable(command)
+        }
+        return copy
     }
     
-    /// Disables a specific command.
+    /// Disables a specific command in this configuration.
+    /// - Parameter command: Target command to disable.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func disable(_ command: AKRemoteCommand) -> Self {
-        commandEnablementMap[command.hashKey] = false
-        return self
+        var copy = self
+        copy.commandEnablementMap[command.hashKey] = false
+        return copy
     }
     
-    /// Disables multiple commands.
+    /// Disables multiple commands in this configuration.
+    /// - Parameter commands: Array of commands to disable.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func disable(commands: [AKRemoteCommand]) -> Self {
-        commands.forEach { disable($0) }
-        return self
+        var copy = self
+        for command in commands {
+            copy = copy.disable(command)
+        }
+        return copy
     }
     
-    /// Sets a custom handler for a command.
+    /// Registers a custom `@Sendable` handler closure for a command.
+    /// - Parameters:
+    ///   - command: The target remote command to assign the handler to.
+    ///   - handler: Concurrency-safe event handler closure.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func setHandler(for command: AKRemoteCommand,
                            handler: @escaping AKRemoteCommandHandler) -> Self {
-        customHandlers[command] = handler
-        if !commands.contains(command) {
-            commands.insert(command)
-            commandEnablementMap[command.hashKey] = true
+        var copy = self
+        copy.customHandlers[command] = handler
+        if !copy.commands.contains(command) {
+            copy.commands.insert(command)
+            copy.commandEnablementMap[command.hashKey] = true
         }
-        return self
+        return copy
     }
     
-    /// Clears all configured commands and handlers.
+    /// Clears all stored commands, enablement flags, and custom handlers.
+    /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func clear() -> Self {
-        commands.removeAll()
-        commandEnablementMap.removeAll()
-        customHandlers.removeAll()
-        return self
+        var copy = self
+        copy.commands.removeAll()
+        copy.commandEnablementMap.removeAll()
+        copy.customHandlers.removeAll()
+        return copy
     }
     
     // MARK: - Query Methods
     
-    /// Gets all configured commands.
-    public func getCommands() -> [AKRemoteCommand] {
+    /// Returns an array of all registered commands in this configuration.
+    public var allCommands: [AKRemoteCommand] {
         return Array(commands)
     }
     
-    /// Gets enabled commands.
-    public func getEnabledCommands() -> [AKRemoteCommand] {
+    /// Returns an array containing only currently enabled commands.
+    public var enabledCommands: [AKRemoteCommand] {
         return commands.filter { commandEnablementMap[$0.hashKey] ?? false }
     }
     
-    /// Gets disabled commands.
-    public func getDisabledCommands() -> [AKRemoteCommand] {
+    /// Returns an array containing only currently disabled commands.
+    public var disabledCommands: [AKRemoteCommand] {
         return commands.filter { !(commandEnablementMap[$0.hashKey] ?? false) }
     }
     
-    /// Gets custom handler for command if exists.
-    public func getHandler(for command: AKRemoteCommand) -> AKRemoteCommandHandler? {
+    /// Retrieves the registered custom handler for a given command.
+    /// - Parameter command: Target command to inspect.
+    /// - Returns: The registered `@Sendable` handler, or `nil` if none exists.
+    public func handler(for command: AKRemoteCommand) -> AKRemoteCommandHandler? {
         return customHandlers[command]
     }
     
-    /// Checks if command is enabled in this configuration.
+    /// Checks whether a command is set as enabled in this configuration.
+    /// - Parameter command: Target command to inspect.
+    /// - Returns: `true` if configured and enabled; otherwise `false`.
     public func isEnabled(_ command: AKRemoteCommand) -> Bool {
         return commandEnablementMap[command.hashKey] ?? false
     }
@@ -201,30 +253,50 @@ public class AKNowPlayingCommandConfiguration {
 
 extension AKNowPlayingCommandConfiguration {
     
-    /// Creates a preset configuration for music/podcast streaming (iOS 17.0+).
+    /// Factory creating a pre-configured audio preset instance.
     public static func audio() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration().useAudioPreset()
+        let config = AKNowPlayingCommandConfiguration()
+        return config.useAudioPreset()
     }
     
-    /// Creates a preset configuration for video playback (iOS 17.0+).
+    /// Factory creating a pre-configured video preset instance.
     public static func video() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration().useVideoPreset()
+        let config = AKNowPlayingCommandConfiguration()
+        return config.useVideoPreset()
     }
     
-    /// Creates a minimal configuration with only basic playback controls.
+    /// Factory creating a minimal configuration with primary playback controls (.play, .pause, .togglePlayPause).
     public static func minimal() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration()
-            .add(commands: [.play, .pause, .togglePlayPause])
+        let config = AKNowPlayingCommandConfiguration()
+        return config.add(commands: [.play, .pause, .togglePlayPause])
     }
     
-    /// Creates a comprehensive configuration with all available commands.
+    /// Factory creating a complete configuration with all available commands added.
     public static func full() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration()
-            .add(commands: AKRemoteCommand.all())
+        let config = AKNowPlayingCommandConfiguration()
+        return config.add(commands: AKRemoteCommand.all())
     }
     
-    /// Creates a custom configuration starting from scratch.
+    /// Factory creating an empty configuration starting from scratch.
     public static func custom() -> AKNowPlayingCommandConfiguration {
         return AKNowPlayingCommandConfiguration()
+    }
+}
+
+// MARK: - Actor Integration Extensions
+
+extension AKNowPlayingCommandRegistry {
+    
+    /// Applies a complete `AKNowPlayingCommandConfiguration` snapshot to this registry actor.
+    /// - Parameter configuration: The configuration object to apply.
+    public func apply(configuration: AKNowPlayingCommandConfiguration) async {
+        for command in configuration.allCommands {
+            let isEnabled = configuration.isEnabled(command)
+            register(command, isEnabled: isEnabled)
+            
+            if let handler = configuration.handler(for: command) {
+                setCustomHandler(command, handler: handler)
+            }
+        }
     }
 }

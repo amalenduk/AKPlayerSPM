@@ -41,6 +41,7 @@ extension AKPlayer {
 // MARK: - Protocol for Manager
 
 /// Protocol to be added to AKPlayerManager for Now Playing session integration.
+@MainActor
 public protocol AKNowPlayingSessionProvider: AnyObject {
     var nowPlayingSession: AKNowPlayingSession? { get }
 }
@@ -62,17 +63,19 @@ public struct AKNowPlayingCommandPresets {
     
     /// Preset: Podcast with 15-second skip back, 30-second skip forward
     public static func podcast() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration.audio()
-            .add(.skipBackward(preferredIntervals: [15.0]))
-            .add(.skipForward(preferredIntervals: [30.0]))
-            .disable(.changeShuffleMode)
+        var config = AKNowPlayingCommandConfiguration.audio()
+        _ = config.add(.skipBackward(preferredIntervals: [15.0]))
+        _ = config.add(.skipForward(preferredIntervals: [30.0]))
+        _ = config.disable(.changeShuffleMode)
+        return config
     }
     
     /// Preset: Audiobook with bookmarking
     public static func audiobook() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration.audio()
-            .add(.bookmark)
-            .disable(.changeShuffleMode)
+        var config = AKNowPlayingCommandConfiguration.audio()
+        _ = config.add(.bookmark)
+        _ = config.disable(.changeShuffleMode)
+        return config
     }
     
     /// Preset: Standard video playback
@@ -82,9 +85,10 @@ public struct AKNowPlayingCommandPresets {
     
     /// Preset: Live stream (no seeking)
     public static func livestream() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration.audio()
-            .disable(.seekBackward)
-            .disable(.seekForward)
-            .disable(.changePlaybackPosition)
+        var config = AKNowPlayingCommandConfiguration.audio()
+        _ = config.disable(.seekBackward)
+        _ = config.disable(.seekForward)
+        _ = config.disable(.changePlaybackPosition)
+        return config
     }
 }

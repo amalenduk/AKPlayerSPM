@@ -90,17 +90,17 @@ public class AKPausedState: AKBaseState {
             return
         }
         
+        let initialSeek: AKSeek? = playerItemDidPlayToEndTime ? AKSeek(
+            target: .time(.zero),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) : nil
+        
         let controller = AKBufferingState(
             playerController: playerController,
-            autoPlay: true
+            autoPlay: true,
+            targetSeek: initialSeek
         )
-        if playerItemDidPlayToEndTime {
-            controller.seek(
-                to: .zero,
-                toleranceBefore: .zero,
-                toleranceAfter: .zero
-            )
-        }
         change(controller)
     }
     
@@ -129,18 +129,18 @@ public class AKPausedState: AKBaseState {
             return
         }
         
+        let initialSeek: AKSeek? = playerItemDidPlayToEndTime ? AKSeek(
+            target: .time(.zero),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) : nil
+        
         let controller = AKBufferingState(
             playerController: playerController,
             autoPlay: true,
-            rate: rate
+            rate: rate,
+            targetSeek: initialSeek
         )
-        if playerItemDidPlayToEndTime {
-            controller.seek(
-                to: .zero,
-                toleranceBefore: .zero,
-                toleranceAfter: .zero
-            )
-        }
         change(controller)
     }
     

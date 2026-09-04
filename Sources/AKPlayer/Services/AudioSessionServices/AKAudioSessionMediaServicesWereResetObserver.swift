@@ -26,13 +26,22 @@
 // Ref: https://developer.apple.com/documentation/avfaudio/avaudiosession/1616540-mediaserviceswereresetnotificati
 
 import AVFoundation
+import Combine
 
+// MARK: - AKAudioSessionMediaServicesResetObserverDelegate
+
+@MainActor
 public protocol AKAudioSessionMediaServicesResetObserverDelegate: AnyObject {
-    func audioSessionMediaServicesResetObserver(_ observer: AKAudioSessionMediaServicesWereResetObserverProtocol,
-                                                mediaServicesWereResetFor audioSession: AVAudioSession)
+    func audioSessionMediaServicesResetObserver(
+        _ observer: AKAudioSessionMediaServicesWereResetObserverProtocol,
+        mediaServicesWereResetFor audioSession: AVAudioSession
+    )
 }
 
-public protocol AKAudioSessionMediaServicesWereResetObserverProtocol {
+// MARK: - AKAudioSessionMediaServicesWereResetObserverProtocol
+
+@MainActor
+public protocol AKAudioSessionMediaServicesWereResetObserverProtocol: AnyObject {
     var audioSession: AVAudioSession { get }
     var delegate: AKAudioSessionMediaServicesResetObserverDelegate? { get set }
     
@@ -40,6 +49,9 @@ public protocol AKAudioSessionMediaServicesWereResetObserverProtocol {
     func stopObserving()
 }
 
+// MARK: - AKAudioSessionMediaServicesWereResetObserver
+
+@MainActor
 open class AKAudioSessionMediaServicesWereResetObserver: AKAudioSessionMediaServicesWereResetObserverProtocol {
     
     // MARK: - Properties
@@ -50,40 +62,48 @@ open class AKAudioSessionMediaServicesWereResetObserver: AKAudioSessionMediaServ
     
     private var isObserving = false
     
-    // MARK: - Init
+    /// Container holding reactive Combine event subscriptions.
+    /// Marked `nonisolated(unsafe)` for safe thread cleanup during `deinit`.
+    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    
+    // MARK: - Init & Deinit
     
     public init(audioSession: AVAudioSession) {
         self.audioSession = audioSession
     }
     
     deinit {
-        stopObserving()
+        subscriptions.removeAll()
     }
+    
+    // MARK: - Observation Lifecycle
     
     open func startObserving() {
         guard !isObserving else { return }
         
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(handleMediaServicesWereReset(_ :)),
-                                               name: AVAudioSession.mediaServicesWereResetNotification,
-                                               object: nil)
+        NotificationCenter.default.publisher(for: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                self.handleMediaServicesWereReset(notification)
+            }
+            .store(in: &subscriptions)
         
         isObserving = true
     }
     
     open func stopObserving() {
         guard isObserving else { return }
-        
-        NotificationCenter.default.removeObserver(self,
-                                                  name: AVAudioSession.mediaServicesWereResetNotification,
-                                                  object: nil)
-        
+        subscriptions.removeAll()
         isObserving = false
     }
     
-    @objc open func handleMediaServicesWereReset(_ notification: Notification) {
-        guard let delegate = delegate else { return }
-        delegate.audioSessionMediaServicesResetObserver(self,
-                                                        mediaServicesWereResetFor: audioSession)
+    // MARK: - Handlers
+    
+    open func handleMediaServicesWereReset(_ notification: Notification) {
+        delegate?.audioSessionMediaServicesResetObserver(
+            self,
+            mediaServicesWereResetFor: audioSession
+        )
     }
 }

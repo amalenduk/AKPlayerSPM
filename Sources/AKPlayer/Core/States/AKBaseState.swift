@@ -371,8 +371,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             return (
                 allowed: result,
                 reason: result
-                    ? nil
-                    : (count > 0 ? .canNotStepForward : .canNotStepBackward)
+                ? nil
+                : (count > 0 ? .canNotStepForward : .canNotStepBackward)
             )
             
         default:

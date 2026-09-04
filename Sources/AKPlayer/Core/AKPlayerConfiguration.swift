@@ -25,7 +25,7 @@
 
 import AVFoundation
 
-public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol {
+public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol, Sendable {
     
     // MARK: - Properties
     
@@ -43,9 +43,9 @@ public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol {
     
     public var isNowPlayingEnabled: Bool = true
     
-    public var idleTimerDisabledForStates: [AKPlayerState] = [AKPlayerState.buffering,
-                                                              AKPlayerState.playing]
-    public var textStyleRules: [AVTextStyleRule]? = nil
+    public var idleTimerDisabledForStates: [AKPlayerState] = [.buffering, .playing]
+    
+    public nonisolated(unsafe) var textStyleRules: [AVTextStyleRule]? = nil
     
     public var playbackPausesWhenResigningActive: Bool = false
     
@@ -64,7 +64,7 @@ public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol {
     public var rewindRate: AKPlaybackRate = .slowest
     
     /// Default Configuration
-    public static var `default` = AKPlayerConfiguration()
+    public static let `default` = AKPlayerConfiguration()
     
     // MARK: - Init
     
