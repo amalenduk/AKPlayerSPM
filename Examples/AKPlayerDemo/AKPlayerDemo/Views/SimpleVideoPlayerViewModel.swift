@@ -11,6 +11,7 @@ import AVFoundation
 import Combine
 import Foundation
 
+@MainActor
 public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     public let aVplayer = AVPlayer()
     
@@ -44,7 +45,7 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     // Updated track selection groups backed by AKTrackSelectionService
     @Published public var selectionGroups: [SelectionGroup] = []
     
-    private var timeObserverToken: Any?
+    private nonisolated(unsafe) var timeObserverToken: Any?
     private var cancellables = Set<AnyCancellable>()
     private var clearUnavailableWorkItem: DispatchWorkItem?
     
@@ -136,10 +137,16 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     public func setVolume(_ v: Float) { player.volume = v; volume = v }
     public func toggleMute() { player.isMuted = !player.isMuted; isMuted = player.isMuted }
     public func seek(to seconds: Double) {
-        player.seek(to: seconds)
+        Task {
+            await player.seek(to: .seconds(seconds))
+        }
     }
     public func step(by count: Int) { player.step(by: count) }
-    public func seekOffset(_ offset: Double) { player.seek(toOffset: offset) }
+    public func seekOffset(_ offset: Double) {
+        Task {
+            await player.seek(to: .offset(offset))
+        }
+    }
     public func setRate(_ rate: AKPlaybackRate) { player.play(at: .custom(rate.rate)) }
     
     public func loadAndObserveCurrentTime() {
@@ -158,26 +165,26 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     }
     
     deinit {
-        if let token = timeObserverToken { player.player.removeTimeObserver(token) }
+        //if let token = timeObserverToken { player.player.removeTimeObserver(token) }
     }
 }
 
 extension SimpleVideoPlayerViewModel: AKPlayerDelegate {
-    public func akPlayer(_ player: AKPlayer, didChangeStateTo state: AKPlayerState) {
+    nonisolated public func akPlayer(_ player: AKPlayer, didChangeStateTo state: AKPlayerState) {
         DispatchQueue.main.async {
             self.stateDescription = state.description
             self.isLoading = (state == .waitingForNetwork || state == .buffering || state == .loading)
         }
     }
-    public func akPlayer(_ player: AKPlayer, didChangeCurrentTimeTo currentTime: CMTime, for media: AKPlayable) {
+    nonisolated public func akPlayer(_ player: AKPlayer, didChangeCurrentTimeTo currentTime: CMTime, for media: AKPlayable) {
         DispatchQueue.main.async { self.currentTime = currentTime.seconds }
     }
-    public func akPlayer(_ player: AKPlayer, didChangePlaybackRateTo newRate: AKPlaybackRate, from oldRate: AKPlaybackRate) {
+    nonisolated public func akPlayer(_ player: AKPlayer, didChangePlaybackRateTo newRate: AKPlaybackRate, from oldRate: AKPlaybackRate) {
         DispatchQueue.main.async { self.playbackRate = newRate }
     }
-    public func akPlayer(_ player: AKPlayer, didInvokeBoundaryTimeObserverAt time: CMTime, for media: AKPlayable) {}
-    public func akPlayer(_ player: AKPlayer, didReachEndAt time: CMTime, for media: AKPlayable) {}
-    public func akPlayer(_ player: AKPlayer, didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason) {
+    nonisolated public func akPlayer(_ player: AKPlayer, didInvokeBoundaryTimeObserverAt time: CMTime, for media: any AKPlayable) {}
+    nonisolated public func akPlayer(_ player: AKPlayer, didReachEndAt time: CMTime, for media: any AKPlayable) {}
+    nonisolated public func akPlayer(_ player: AKPlayer, didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason) {
         DispatchQueue.main.async {
             self.clearUnavailableWorkItem?.cancel()
             self.unavailableMessage = reason.description
@@ -188,9 +195,9 @@ extension SimpleVideoPlayerViewModel: AKPlayerDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: work)
         }
     }
-    public func akPlayer(_ player: AKPlayer, didFailWith error: AKPlayerError) {}
-    public func akPlayer(_ player: AKPlayer, didChangeVolumeTo volume: Float) {}
-    public func akPlayer(_ player: AKPlayer, didChangeMutedStatusTo isMuted: Bool) {}
+    nonisolated public func akPlayer(_ player: AKPlayer, didFailWith error: AKPlayerError) {}
+    nonisolated public func akPlayer(_ player: AKPlayer, didChangeVolumeTo volume: Float) {}
+    nonisolated public func akPlayer(_ player: AKPlayer, didChangeMutedStatusTo isMuted: Bool) {}
 }
 
 extension SimpleVideoPlayerViewModel {

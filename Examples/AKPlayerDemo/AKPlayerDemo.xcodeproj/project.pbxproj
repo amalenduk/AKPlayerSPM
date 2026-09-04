@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0494F04130489DD100CBF0B3 /* AKPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = 0494F04030489DD100CBF0B3 /* AKPlayer */; };
+		04E6D9E6304B1A93009B6503 /* AKPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = 04E6D9E5304B1A93009B6503 /* AKPlayer */; };
+		04E6D9E9304B1AAC009B6503 /* AKPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = 04E6D9E8304B1AAC009B6503 /* AKPlayer */; };
+		04E6D9EB304B1AE4009B6503 /* AKPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = 04E6D9EA304B1AE4009B6503 /* AKPlayer */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,7 +58,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0494F04130489DD100CBF0B3 /* AKPlayer in Frameworks */,
+				04E6D9EB304B1AE4009B6503 /* AKPlayer in Frameworks */,
+				04E6D9E9304B1AAC009B6503 /* AKPlayer in Frameworks */,
+				04E6D9E6304B1A93009B6503 /* AKPlayer in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,7 +121,9 @@
 			);
 			name = AKPlayerDemo;
 			packageProductDependencies = (
-				0494F04030489DD100CBF0B3 /* AKPlayer */,
+				04E6D9E5304B1A93009B6503 /* AKPlayer */,
+				04E6D9E8304B1AAC009B6503 /* AKPlayer */,
+				04E6D9EA304B1AE4009B6503 /* AKPlayer */,
 			);
 			productName = AKPlayerDemo;
 			productReference = 04E8CB4530488DAC0067ACC6 /* AKPlayerDemo.app */;
@@ -202,7 +208,7 @@
 			mainGroup = 04E8CB3C30488DAC0067ACC6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0494F03F30489DD100CBF0B3 /* XCLocalSwiftPackageReference "../../../AKPlayer" */,
+				04E6D9EC304B1B1F009B6503 /* XCRemoteSwiftPackageReference "AKPlayerSPM" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 04E8CB4630488DAC0067ACC6 /* Products */;
@@ -570,15 +576,27 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		0494F03F30489DD100CBF0B3 /* XCLocalSwiftPackageReference "../../../AKPlayer" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../../AKPlayer;
+/* Begin XCRemoteSwiftPackageReference section */
+		04E6D9EC304B1B1F009B6503 /* XCRemoteSwiftPackageReference "AKPlayerSPM" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/amalenduk/AKPlayerSPM";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		0494F04030489DD100CBF0B3 /* AKPlayer */ = {
+		04E6D9E5304B1A93009B6503 /* AKPlayer */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AKPlayer;
+		};
+		04E6D9E8304B1AAC009B6503 /* AKPlayer */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AKPlayer;
+		};
+		04E6D9EA304B1AE4009B6503 /* AKPlayer */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AKPlayer;
 		};

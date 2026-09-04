@@ -1,0 +1,15 @@
+{
+  "originHash" : "f57036318043c84c53b77d8eeb16962788acb0f72611ad2e36087786ba6f49f6",
+  "pins" : [
+    {
+      "identity" : "akplayerspm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/amalenduk/AKPlayerSPM",
+      "state" : {
+        "branch" : "main",
+        "revision" : "fd5176a2eb7a79f2f1207f3f62fce0ddbe7a8bfb"
+      }
+    }
+  ],
+  "version" : 3
+}
