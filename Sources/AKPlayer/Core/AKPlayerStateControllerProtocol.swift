@@ -23,16 +23,36 @@
 //  SOFTWARE.
 //
 
-import AVFoundation
+import Foundation
 
+// MARK: - AKPlayerStateControllerProtocol
+
+/// A protocol defining the core interface for player state machine controllers.
+///
+/// Implementations of this protocol represent specific player states (e.g., buffering, playing, paused)
+/// and handle state-specific behaviors, action validations, and state transitions within the state pattern.
+@MainActor
 public protocol AKPlayerStateControllerProtocol: AKPlayerActionsProtocol {
-    var playerController: AKPlayerControllerProtocol { get }
+    
+    /// The underlying player controller driving playback and asset management.
+    var playerController: any AKPlayerControllerProtocol { get }
+    
+    /// The current operational state classification represented by this controller instance.
     var state: AKPlayerState { get }
+    
+    /// Indicates whether media playback should automatically begin upon asset load completion.
     var autoPlay: Bool { get }
     
+    /// Evaluates current state conditions and performs necessary state transition or status evaluation logic.
     func processStateChange()
 }
 
-extension AKPlayerStateControllerProtocol {
-    public var autoPlay: Bool { false }
+// MARK: - Default Implementations
+
+public extension AKPlayerStateControllerProtocol {
+    
+    /// Default implementation returning `false` for automatic playback behavior.
+    var autoPlay: Bool {
+        false
+    }
 }

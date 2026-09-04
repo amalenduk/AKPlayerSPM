@@ -24,26 +24,33 @@
 //
 
 import Foundation
-import MediaPlayer
+@preconcurrency import MediaPlayer
+
+// MARK: - AKNowPlayableMetadata
 
 public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol {
     
     // MARK: - Properties
     
-    public var staticMetadata: AKNowPlayableStaticMetadataProtocol?
-    public var dynamicMetadata: AKNowPlayableDynamicMetadataProtocol?
+    public var staticMetadata: (any AKNowPlayableStaticMetadataProtocol)?
+    public var dynamicMetadata: (any AKNowPlayableDynamicMetadataProtocol)?
     
     // MARK: - Init
     
-    public init(staticMetadata: AKNowPlayableStaticMetadataProtocol?,
-                dynamicMetadata: AKNowPlayableDynamicMetadataProtocol?
+    public init(
+        staticMetadata: (any AKNowPlayableStaticMetadataProtocol)? = nil,
+        dynamicMetadata: (any AKNowPlayableDynamicMetadataProtocol)? = nil
     ) {
         self.staticMetadata = staticMetadata
         self.dynamicMetadata = dynamicMetadata
     }
 }
 
+// MARK: - AKNowPlayableStaticMetadata
+
 public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol {
+    
+    // MARK: - Properties
     
     public var assetURL: URL
     public var mediaType: MPNowPlayingInfoMediaType
@@ -56,22 +63,23 @@ public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol {
     public var collectionIdentifier: String?
     public var externalContentIdentifier: String?
     public var externalUserProfileIdentifier: String?
-    public var adTimeRanges: MPAdTimeRange?
+    public var adTimeRanges: [MPAdTimeRange]?
     
     // MARK: - Init
     
-    public init(assetURL: URL,
-                mediaType: MPNowPlayingInfoMediaType,
-                isLiveStream: Bool,
-                title: String,
-                artist: String? = nil,
-                artwork: Artwork? = nil,
-                albumArtist: String? = nil,
-                albumTitle: String? = nil,
-                collectionIdentifier: String? = nil,
-                externalContentIdentifier: String? = nil,
-                externalUserProfileIdentifier: String? = nil,
-                adTimeRanges: MPAdTimeRange? = nil
+    public init(
+        assetURL: URL,
+        mediaType: MPNowPlayingInfoMediaType,
+        isLiveStream: Bool,
+        title: String,
+        artist: String? = nil,
+        artwork: Artwork? = nil,
+        albumArtist: String? = nil,
+        albumTitle: String? = nil,
+        collectionIdentifier: String? = nil,
+        externalContentIdentifier: String? = nil,
+        externalUserProfileIdentifier: String? = nil,
+        adTimeRanges: [MPAdTimeRange]? = nil
     ) {
         self.assetURL = assetURL
         self.mediaType = mediaType
@@ -88,7 +96,12 @@ public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol {
     }
 }
 
+// MARK: - AKNowPlayableDynamicMetadata
+
 public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol {
+    
+    // MARK: - Properties
+    
     public var rate: Double
     public var defaultRate: Double
     public var position: Double?
@@ -98,26 +111,30 @@ public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol
     public var chapterCount: Int?
     public var chapterNumber: Int?
     public var creditsStartTime: Double?
-    public var currentPlaybackDate: NSDate?
+    public var currentPlaybackDate: Date?
     public var playbackProgress: Float?
     public var playbackQueueCount: Int?
     public var playbackQueueIndex: Int?
     public var serviceIdentifier: String?
     
-    init(rate: Double,
-         defaultRate: Double,
-         position: Double? = nil,
-         duration: Float? = nil,
-         currentLanguageOptions: [MPNowPlayingInfoLanguageOption]? = nil,
-         availableLanguageOptionGroups: [MPNowPlayingInfoLanguageOptionGroup]? = nil,
-         chapterCount: Int? = nil,
-         chapterNumber: Int? = nil,
-         creditsStartTime: Double? = nil,
-         currentPlaybackDate: NSDate? = nil,
-         playbackProgress: Float? = nil,
-         playbackQueueCount: Int? = nil,
-         playbackQueueIndex: Int? = nil,
-         serviceIdentifier: String? = nil) {
+    // MARK: - Init
+    
+    public init(
+        rate: Double,
+        defaultRate: Double,
+        position: Double? = nil,
+        duration: Float? = nil,
+        currentLanguageOptions: [MPNowPlayingInfoLanguageOption]? = nil,
+        availableLanguageOptionGroups: [MPNowPlayingInfoLanguageOptionGroup]? = nil,
+        chapterCount: Int? = nil,
+        chapterNumber: Int? = nil,
+        creditsStartTime: Double? = nil,
+        currentPlaybackDate: Date? = nil,
+        playbackProgress: Float? = nil,
+        playbackQueueCount: Int? = nil,
+        playbackQueueIndex: Int? = nil,
+        serviceIdentifier: String? = nil
+    ) {
         self.rate = rate
         self.defaultRate = defaultRate
         self.position = position
@@ -134,6 +151,3 @@ public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol
         self.serviceIdentifier = serviceIdentifier
     }
 }
-
-
-

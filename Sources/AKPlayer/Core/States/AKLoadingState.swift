@@ -26,26 +26,51 @@
 import AVFoundation
 import Combine
 
+// MARK: - AKLoadingState
+
+/// Concrete state representing a state where media is currently being initialized, loaded, and prepared for active playback.
+@MainActor
 public class AKLoadingState: AKBaseState {
     
     // MARK: - Properties
     
-    private let media: AKPlayable
+    /// The media item being loaded into the player pipeline.
+    private let media: any AKPlayable
+    
+    /// Indicates whether playback should automatically start once loading completes.
     public private(set) var autoPlay: Bool
-    private let position: CMTime?
+    
+    /// An optional initial position to seek to upon entering loaded state.
+    private let position: AKSeekTarget?
+    
+    /// An optional playback rate target to set upon loading complete.
     private var rate: AKPlaybackRate?
     
+    /// Tracks if initialization operations were explicitly aborted or cancelled.
     private var isCancelled: Bool = false
+    
+    /// Asynchronous validation task reference used for loading asset playability.
     private var task: Task<Void, Never>?
-    private var subscriptions = Set<AnyCancellable>()
     
-    // MARK: - Init
+    /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
+    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
-    public init(playerController: AKPlayerControllerProtocol,
-                media: AKPlayable,
-                autoPlay: Bool = false,
-                position: CMTime? = nil,
-                rate: AKPlaybackRate? = nil) {
+    // MARK: - Init & Deinit
+    
+    /// Initializes a loading state instance with specified options.
+    /// - Parameters:
+    ///   - playerController: The underlying player controller driving execution.
+    ///   - media: The target media item to load.
+    ///   - autoPlay: Whether auto-start is requested post-loading.
+    ///   - position: Optional initial seek target.
+    ///   - rate: Optional initial playback speed multiplier.
+    public init(
+        playerController: any AKPlayerControllerProtocol,
+        media: any AKPlayable,
+        autoPlay: Bool = false,
+        position: AKSeekTarget? = nil,
+        rate: AKPlaybackRate? = nil
+    ) {
         self.media = media
         self.autoPlay = autoPlay
         self.position = position
@@ -58,40 +83,56 @@ public class AKLoadingState: AKBaseState {
         task?.cancel()
     }
     
+    // MARK: - Lifecycle Hooks
+    
+    /// Entry point for state setup. Cleans up prior item observers, emits initial media change events, and monitors media load state transitions.
     public override func processStateChange() {
         resetPlayer()
-        playerController.delegate?.playerController(playerController,
-                                                    didChangeMediaTo: media)
+        playerController.delegate?.playerController(
+            playerController,
+            didChangeMediaTo: media
+        )
         
         media.statePublisher
             .prepend(media.state)
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] state in
-                hanldeChangeInMedia(state)
-            }.store(in: &subscriptions)
+            .sink { [weak self] state in
+                guard let self else { return }
+                self.hanldeChangeInMedia(state)
+            }
+            .store(in: &subscriptions)
     }
     
     // MARK: - Commands
     
+    /// Registers playback request while media is still loading. Sets `autoPlay` flag to true.
     public override func play() {
         autoPlay = true
     }
     
+    /// Intercepts specific speed adjustments requested during loading state and fires unavailable action delegate notifications.
+    /// - Parameter rate: The target speed requested.
     public override func play(at rate: AKPlaybackRate) {
-        playerController.delegate?.playerController(playerController,
-                                                    didEncounterUnavailableAction: .waitTillMediaLoaded)
+        playerController.delegate?.playerController(
+            playerController,
+            didEncounterUnavailableAction: .waitTillMediaLoaded
+        )
     }
     
+    /// Cancels queued autoplay request while media is loading.
     public override func pause() {
         autoPlay = false
     }
     
+    /// Toggles autoplay behavior based on current state.
     public override func togglePlayPause() {
         autoPlay ? pause() : play()
     }
     
-    // MARK: - Additional Helper Functions
+    // MARK: - Helper Functions
     
+    /// Handles progressive steps across media preparation stages.
+    /// - Parameter state: Current asset loading lifecycle phase.
     private func hanldeChangeInMedia(_ state: AKPlayableState) {
         switch state {
         case .idle:
@@ -100,8 +141,8 @@ public class AKLoadingState: AKBaseState {
             task = Task { [weak self] in
                 guard let self else { return }
                 await validateAssetPlayability()
-                if isCancelled { return }
-                createPlayerItemFromAsset()
+                if self.isCancelled { return }
+                self.createPlayerItemFromAsset()
             }
         case .playerItemLoaded:
             playerItemLoaded()
@@ -116,25 +157,28 @@ public class AKLoadingState: AKBaseState {
         }
     }
     
+    /// Requests underlying media instance to construct its underlying AVAsset.
     private func createAsset() {
         media.createAsset()
     }
     
+    /// Validates asset integrity and playability metrics asynchronously.
     private func validateAssetPlayability() async {
         do {
             try await media.validateAssetPlayability()
         } catch let playerError as AKPlayerError {
             failedToPrepareForPlayback(with: playerError)
         } catch {
-            // Will not call
             failedToPrepareForPlayback(with: .playerCanNoLongerPlay(error: error))
         }
     }
     
+    /// Requests media wrapper to generate AVPlayerItem out of validated asset.
     private func createPlayerItemFromAsset() {
         media.createPlayerItemFromAsset()
     }
     
+    /// Prepares player item and links it with AVPlayer pipeline once loaded.
     private func playerItemLoaded() {
         /*
          You should call this method before associating the player item with the player to make
@@ -146,27 +190,34 @@ public class AKLoadingState: AKBaseState {
         }
     }
     
+    /// Evaluates AVPlayer ready status and transitions state to `AKLoadedState` upon success.
     private func becameReadyToPlay() {
-        playerController.player.publisher(for: \.status,
-                                          options: [.initial, .new])
-        .receive(on: DispatchQueue.main)
-        .sink { [unowned self] status in
-            switch status {
-            case .readyToPlay:
-                let controller = AKLoadedState(playerController: playerController,
-                                               autoPlay: autoPlay,
-                                               position: position)
-                change(controller)
-            case .failed:
-                let controller = AKFailedState(playerController: playerController,
-                                               error: .playerCanNoLongerPlay(error: playerController.player.error))
-                change(controller)
-            default: break
+        playerController.player.publisher(for: \.status, options: [.initial, .new])
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] status in
+                guard let self else { return }
+                switch status {
+                case .readyToPlay:
+                    let controller = AKLoadedState(
+                        playerController: self.playerController,
+                        autoPlay: self.autoPlay,
+                        position: self.position
+                    )
+                    self.change(controller)
+                case .failed:
+                    let controller = AKFailedState(
+                        playerController: self.playerController,
+                        error: .playerCanNoLongerPlay(error: self.playerController.player.error)
+                    )
+                    self.change(controller)
+                default:
+                    break
+                }
             }
-        }.store(in: &subscriptions)
+            .store(in: &subscriptions)
     }
     
-    
+    /// Aborts tasks and asset loading operations.
     private func abortAssetInitialization() {
         task?.cancel()
         isCancelled = true
@@ -174,10 +225,12 @@ public class AKLoadingState: AKBaseState {
         media.abortAssetInitialization()
     }
     
+    /// Stops observing readiness status of active player item.
     private func stopPlayerItemObservers() {
         media.stopPlayerItemReadinessObserver()
     }
     
+    /// Resets active player item and pauses current playback.
     private func resetPlayer() {
         if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
@@ -191,23 +244,30 @@ public class AKLoadingState: AKBaseState {
         playerController.player.replaceCurrentItem(with: nil)
     }
     
-    // MARK: - Error Handling - Preparing Assets for Playback Failed
+    // MARK: - Error Handling
     
+    /// Transitions state engine into `AKFailedState` when media initialization fails.
+    /// - Parameter error: Specific player error description encounter.
     private func failedToPrepareForPlayback(with error: AKPlayerError) {
         guard !isCancelled else { return }
         let controller = AKFailedState(playerController: playerController, error: error)
         change(controller)
     }
     
-    override func beforeLoad(media: any AKPlayable, autoPlay: Bool, position: CMTime?) {
+    // MARK: - Transition Overrides
+    
+    /// Aborts current load routines prior to processing a new media load command.
+    public override func beforeLoad(media: any AKPlayable, autoPlay: Bool, position: AKSeekTarget?) {
         abortAssetInitialization()
     }
     
-    override func beforeStop() {
+    /// Cancels asset loads and strips observers prior to stopping the player controller.
+    public override func beforeStop() {
         abortAssetInitialization()
         stopPlayerItemObservers()
     }
     
+    /// Checks availability for specified target actions during loading phase.
     public override func availability(for action: AKPlayerAction)
     -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
         switch action {
@@ -218,7 +278,8 @@ public class AKLoadingState: AKBaseState {
         }
     }
     
-    override func beforeStateChange() {
+    /// Cleans active Combine observers prior to completing state exit.
+    public override func beforeStateChange() {
         subscriptions.removeAll()
     }
 }

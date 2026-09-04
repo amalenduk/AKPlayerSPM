@@ -26,15 +26,22 @@
 import AVFoundation
 import Combine
 
+// MARK: - AKStoppedState
+
+/// Concrete state representing a state where media playback is stopped and item resources are torn down.
+@MainActor
 public class AKStoppedState: AKBaseState {
     
     // MARK: - Properties
     
-    private var subscriptions: Set<AnyCancellable> = Set<AnyCancellable>()
+    /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
+    private nonisolated(unsafe) var subscriptions: Set<AnyCancellable> = Set<AnyCancellable>()
     
-    // MARK: - Init
+    // MARK: - Init & Deinit
     
-    public init(playerController: AKPlayerControllerProtocol) {
+    /// Initializes a stopped state instance.
+    /// - Parameter playerController: The underlying player controller driving execution.
+    public init(playerController: any AKPlayerControllerProtocol) {
         super.init(playerController: playerController, state: .stopped)
     }
     
@@ -42,6 +49,9 @@ public class AKStoppedState: AKBaseState {
         subscriptions.removeAll()
     }
     
+    // MARK: - Lifecycle Hooks
+    
+    /// Entry point for stopped state processing. Halts playback, cancels pending seeks, and replaces current item with nil.
     public override func processStateChange() {
         startObservingPlayerStatus()
         
@@ -55,28 +65,36 @@ public class AKStoppedState: AKBaseState {
     
     // MARK: - Additional Helper Functions
     
+    /// Observes status changes on AVPlayer while in stopped state.
     private func startObservingPlayerStatus() {
         playerController.player.publisher(for: \.status)
             .prepend(playerController.player.status)
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] status in
-                guard status == .failed else { return }
-                let controller = AKFailedState(playerController: playerController,
-                                               error: .playerCanNoLongerPlay(error: playerController.player.error))
-                change(controller)
-            }.store(in: &subscriptions)
+            .sink { [weak self] status in
+                guard let self, status == .failed else { return }
+                let controller = AKFailedState(
+                    playerController: self.playerController,
+                    error: .playerCanNoLongerPlay(error: self.playerController.player.error)
+                )
+                self.change(controller)
+            }
+            .store(in: &subscriptions)
     }
     
+    // MARK: - Availability Overrides
+    
+    /// Checks action availability in stopped state. Requires media to be loaded before performing most operations.
     public override func availability(for action: AKPlayerAction)
     -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
         switch action {
-        case .play, .pause, .stop, .seek,. fastForward, .rewind, .step:
+        case .play, .pause, .stop, .seek, .fastForward, .rewind, .step:
             return (false, .loadMediaFirst)
         default:
             return super.availability(for: action)
         }
     }
     
+    /// Cleans active Combine observers prior to state transition.
     public override func beforeStateChange() {
         subscriptions.removeAll()
     }

@@ -32,51 +32,82 @@
 
 import AVFoundation
 
+// MARK: - AKPlayerItemInitServiceProtocol
+
+/// Protocol defining media asset initialization, playability validation, and AVPlayerItem construction routines.
+@MainActor
 public protocol AKPlayerItemInitServiceProtocol: AnyObject {
-    var media: AKPlayable { get }
+    
+    /// The target playable media item backing this initialization pipeline.
+    var media: any AKPlayable { get }
+    
+    /// The loaded URL asset backing the current initialization process.
     var asset: AVURLAsset? { get }
+    
+    /// The instantiated player item created from the validated asset.
     var playerItem: AVPlayerItem? { get }
     
-    // MARK: - Fine-Grained Setup Steps (Advanced Use)
+    // MARK: - Fine-Grained Setup Steps
     
+    /// Instantiates the underlying `AVURLAsset` for the assigned media.
+    /// - Returns: The newly initialized `AVURLAsset`.
     @discardableResult
     func createAsset() -> AVURLAsset
     
+    /// Asynchronously validates key asset properties (`isPlayable`, `hasProtectedContent`).
+    /// - Throws: `AKPlayerError` if validation fails, or `CancellationError` if cancelled.
     func validateAssetPlayability() async throws
     
+    /// Constructs an `AVPlayerItem` from the initialized `AVURLAsset`.
+    /// - Returns: The configured `AVPlayerItem`.
     @discardableResult
     func createPlayerItemFromAsset() -> AVPlayerItem
     
     // MARK: - Unified Conveniences
     
+    /// Executes the full initialization pipeline: creates asset, validates playability, and constructs player item.
+    /// - Returns: A fully prepared `AVPlayerItem`.
+    /// - Throws: An `AKPlayerError` or `CancellationError` if any pipeline stage fails.
     @discardableResult
     func preparePlayerItem() async throws -> AVPlayerItem
     
+    /// Aborts active asset property loading and cancels pending asynchronous tasks.
     func abortAssetInitialization()
 }
 
+// MARK: - AKPlayerItemInitService
+
+/// Service responsible for asynchronous AVAsset loading, playability checks, and AVPlayerItem instantiation.
+@MainActor
 public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     
     // MARK: - Properties
     
-    public let media: AKPlayable
+    /// The target playable media item backing this initialization pipeline.
+    public let media: any AKPlayable
     
+    /// The loaded URL asset backing the current initialization process.
     public private(set) var asset: AVURLAsset?
+    
+    /// The instantiated player item created from the validated asset.
     public private(set) var playerItem: AVPlayerItem?
     
-    // MARK: - Init & Deinit
+    // MARK: - Initialization & Deinitialization
     
-    public init(with media: AKPlayable) {
+    /// Initializes an asset initialization service instance for a specific media item.
+    /// - Parameter media: The target playable media context.
+    public init(with media: any AKPlayable) {
         self.media = media
     }
     
     deinit {
-        // Cleanup resources if deallocated while loading
         asset?.cancelLoading()
     }
     
-    // MARK: - Public Methods
+    // MARK: - Public Pipeline Methods
     
+    /// Instantiates the underlying `AVURLAsset` for the assigned media.
+    /// - Returns: The newly initialized `AVURLAsset`.
     @discardableResult
     public func createAsset() -> AVURLAsset {
         let asset = AVURLAsset(url: media.url, options: media.assetInitializationOptions)
@@ -84,9 +115,15 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
         return asset
     }
     
+    /// Asynchronously validates key asset properties (`isPlayable`, `hasProtectedContent`).
+    /// - Throws: `AKPlayerError` if validation fails, or `CancellationError` if cancelled.
     public func validateAssetPlayability() async throws {
-        guard let asset = asset else {
-            let error = NSError(domain: "AKPlayer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Asset must be created before validation."])
+        guard let asset else {
+            let error = NSError(
+                domain: "AKPlayer",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Asset must be created before validation."]
+            )
             throw AKPlayerError.assetLoadingFailed(reason: .propertyKeyLoadingFailed(error: error))
         }
         
@@ -102,13 +139,13 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
                 throw AKPlayerError.assetLoadingFailed(reason: .protectedContent)
             }
         } catch is CancellationError {
-            // Re-throw pure CancellationError so structured task cancellation flows cleanly
             throw CancellationError()
         } catch let error as URLError where error.code == .cancelled {
-            // Map low-level network operation cancellations to standard CancellationError
             throw CancellationError()
         } catch let error as URLError where error.code == .notConnectedToInternet {
             throw AKPlayerError.assetLoadingFailed(reason: .notConnectedToInternet(error: error))
+        } catch let error as AKPlayerError {
+            throw error
         } catch {
             if Task.isCancelled {
                 throw CancellationError()
@@ -117,9 +154,11 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
         }
     }
     
+    /// Constructs an `AVPlayerItem` from the initialized `AVURLAsset`.
+    /// - Returns: The configured `AVPlayerItem`.
     @discardableResult
     public func createPlayerItemFromAsset() -> AVPlayerItem {
-        guard let asset = asset else {
+        guard let asset else {
             fatalError("Asset must be created before calling createPlayerItemFromAsset().")
         }
         
@@ -136,6 +175,9 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     
     // MARK: - Unified Convenience API
     
+    /// Executes the full initialization pipeline: creates asset, validates playability, and constructs player item.
+    /// - Returns: A fully prepared `AVPlayerItem`.
+    /// - Throws: An `AKPlayerError` or `CancellationError` if any pipeline stage fails.
     @discardableResult
     public func preparePlayerItem() async throws -> AVPlayerItem {
         createAsset()
@@ -143,6 +185,7 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
         return createPlayerItemFromAsset()
     }
     
+    /// Aborts active asset property loading and cancels pending asynchronous tasks.
     public func abortAssetInitialization() {
         asset?.cancelLoading()
     }

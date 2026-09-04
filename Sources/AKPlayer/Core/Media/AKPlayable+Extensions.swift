@@ -28,12 +28,16 @@ import AVFoundation
 import MediaPlayer
 import Combine
 
-private var managerKey: Void?
+private nonisolated(unsafe) var managerKey: UInt8 = 0
 
+// MARK: - Manager & Observation Extensions
+
+@MainActor
 public extension AKPlayable {
     
-    var manager: AKMediaManagerProtocol {
-        if let existingManager = objc_getAssociatedObject(self, &managerKey) as? AKMediaManagerProtocol {
+    /// The backing media manager instance associated with this playable item.
+    var manager: any AKMediaManagerProtocol {
+        if let existingManager = objc_getAssociatedObject(self, &managerKey) as? (any AKMediaManagerProtocol) {
             return existingManager
         }
         let newManager = AKMediaManager(media: self)
@@ -41,106 +45,135 @@ public extension AKPlayable {
         return newManager
     }
     
+    /// Publisher emitting updates when the media state transitions.
     var statePublisher: AnyPublisher<AKPlayableState, Never> {
-        return manager.statePublisher
+        manager.statePublisher
     }
     
+    /// Observes key-path updates on the underlying `AVPlayerItem` on the Main Actor.
     @discardableResult
     func observe<Value>(
         _ keyPath: KeyPath<AVPlayerItem, Value>,
         options: NSKeyValueObservingOptions = [.initial, .new],
-        action: @escaping (AKMediaManagerProtocol, Value) -> Void
-    ) -> AnyCancellable? {
-        // Ensure AKPlayable has access to its mediaManager or playerItem
-        guard let mediaManager = manager as? AKMediaManager,
-              let item = mediaManager.playerItem else { return nil }
+        action: @escaping @Sendable @MainActor (any AKMediaManagerProtocol, Value) -> Void
+    ) -> AnyCancellable? where Value: Sendable {
+        guard let item = manager.playerItem else { return nil }
         
         return item.publisher(for: keyPath, options: options)
-            .sink { [weak mediaManager] value in
-                Task { @MainActor [weak mediaManager] in
-                    guard let mediaManager = mediaManager else { return }
-                    action(mediaManager, value)
-                }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak manager] value in
+                guard let manager else { return }
+                action(manager, value)
             }
     }
 }
 
-// MARK: - Direct Delegation via Manager
+// MARK: - Direct Delegation via Manager (Properties)
 
+@MainActor
 public extension AKPlayable {
     
+    /// The instantiated player item constructed from the asset.
     var playerItem: AVPlayerItem? {
-        get { return manager.playerItem }
+        manager.playerItem
     }
     
+    /// The current state of the playable media item.
     var state: AKPlayableState {
-        get { return manager.state }
+        manager.state
     }
     
+    /// The current player error, if media loading or playback failed.
     var error: AKPlayerError? {
-        get { return manager.error }
+        manager.error
     }
 }
 
+// MARK: - Direct Delegation via Manager (Operations)
+
+@MainActor
 public extension AKPlayable {
     
+    /// Instantiates the underlying `AVURLAsset` for the assigned media.
     func createAsset() {
         manager.createAsset()
     }
     
+    /// Asynchronously validates key asset properties.
     func validateAssetPlayability() async throws {
         try await manager.validateAssetPlayability()
     }
     
+    /// Constructs an `AVPlayerItem` from the initialized `AVURLAsset`.
     func createPlayerItemFromAsset() {
         manager.createPlayerItemFromAsset()
     }
     
+    /// Aborts active asset property loading and cancels pending asynchronous tasks.
     func abortAssetInitialization() {
         manager.abortAssetInitialization()
     }
     
+    /// Starts observing the player item's `status` key path.
     func startPlayerItemReadinessObserver() {
         manager.startPlayerItemReadinessObserver()
     }
     
+    /// Stops active observation of the player item's `status` key path.
     func stopPlayerItemReadinessObserver() {
         manager.stopPlayerItemReadinessObserver()
     }
 }
 
+// MARK: - Direct Delegation via Manager (Preflight Command Checks)
+
+@MainActor
 public extension AKPlayable {
     
+    /// Evaluates if the player item can step forward or backward by a given frame count.
     func canStep(by count: Int) -> Bool {
-        return manager.canStep(by: count)
+        manager.canStep(by: count)
     }
     
+    /// Evaluates whether the player item supports playback at a specified rate.
     func canPlay(at rate: AKPlaybackRate) -> Bool {
-        return manager.canPlay(at: rate)
+        manager.canPlay(at: rate)
     }
     
-    func canSeek(to time: CMTime) -> Bool {
-        return manager.canSeek(to: time)
+    /// Evaluates whether seeking to a target seek target position is permitted.
+    func canSeek(to target: AKSeekTarget) -> Bool {
+        manager.canSeek(to: target)
     }
 }
 
+// MARK: - Direct Delegation via Manager (Services & Observers)
+
+@MainActor
 public extension AKPlayable {
     
-    var trackSelection: AKTrackSelectionServiceProtocol {
-        return manager.trackSelectionService
+    /// Subtitle and audio track selection management service.
+    var trackSelection: any AKTrackSelectionServiceProtocol {
+        manager.trackSelectionService
     }
     
-    var seekingThroughMedia: AKSeekingThroughMediaServiceProtocol {
-        return manager.seekingThroughMediaService
+    /// Seek feasibility checks and execution service.
+    var seekingThroughMedia: any AKSeekingThroughMediaServiceProtocol {
+        manager.seekingThroughMediaService
     }
     
-    var playerItemNotifications: AKPlayerItemNotificationsObserver {
-        return manager.playerItemNotificationsObserver
+    /// Notification observer for player item playback lifecycle events.
+    ///
+    /// Available once `createPlayerItemFromAsset()` initializes the `playerItem`.
+    var playerItemNotifications: AKPlayerItemNotificationsObserver? {
+        manager.playerItemNotificationsObserver
     }
 }
+
+// MARK: - Comparable Helpers
 
 extension Comparable {
+    /// Clamps the value within a specified closed boundary range.
     func clamped(to range: ClosedRange<Self>) -> Self {
-        return min(max(self, range.lowerBound), range.upperBound)
+        min(max(self, range.lowerBound), range.upperBound)
     }
 }

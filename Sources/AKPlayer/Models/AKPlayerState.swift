@@ -25,17 +25,28 @@
 
 import Foundation
 
-public enum AKPlayerState: String, CustomStringConvertible {
+/// Represents the current operational state of the media player.
+public enum AKPlayerState: String, CustomStringConvertible, Sendable, Equatable {
+    /// Initial state when no media is loaded.
     case idle
+    /// Media asset is currently being loaded.
     case loading
+    /// Media asset is loaded and ready for playback.
     case loaded
+    /// Playback is temporarily stalled due to buffering.
     case buffering
+    /// Playback is actively paused.
     case paused
+    /// Media is actively playing.
     case playing
+    /// Playback is stopped.
     case stopped
+    /// Playback is paused waiting for network connectivity to restore.
     case waitingForNetwork
+    /// Player encountered a unrecoverable error.
     case failed
     
+    /// A human-readable description of the player state.
     public var description: String {
         switch self {
         case .waitingForNetwork:
@@ -45,66 +56,62 @@ public enum AKPlayerState: String, CustomStringConvertible {
         }
     }
     
-    var isIdle: Bool {
+    /// Indicates whether the player is currently idle.
+    public var isIdle: Bool {
         return self == .idle
     }
     
-    var isLoading: Bool {
+    /// Indicates whether the player is currently loading media.
+    public var isLoading: Bool {
         return self == .loading
     }
     
-    var isLoaded: Bool {
+    /// Indicates whether the media asset is loaded and ready.
+    public var isLoaded: Bool {
         return self == .loaded
     }
     
-    var isBuffering: Bool {
+    /// Indicates whether the player is buffering content.
+    public var isBuffering: Bool {
         return self == .buffering
     }
     
-    var isPlaying: Bool {
+    /// Indicates whether media is currently playing.
+    public var isPlaying: Bool {
         return self == .playing
     }
     
-    var isPaused: Bool {
+    /// Indicates whether playback is paused.
+    public var isPaused: Bool {
         return self == .paused
     }
     
-    var isStopped: Bool {
+    /// Indicates whether playback has stopped.
+    public var isStopped: Bool {
         return self == .stopped
     }
     
-    var isWaitingForNetwork: Bool {
+    /// Indicates whether the player is waiting for network connectivity.
+    public var isWaitingForNetwork: Bool {
         return self == .waitingForNetwork
     }
     
-    var isFailed: Bool {
+    /// Indicates whether the player is in a failed state.
+    public var isFailed: Bool {
         return self == .failed
     }
     
-    func isAny(of states: [AKPlayerState]) -> Bool {
-        return states.contains(where: {$0 == self})
+    /// Checks if the current state matches any of the provided states.
+    /// - Parameter states: An array of target states.
+    /// - Returns: `true` if the current state matches any state in the list.
+    public func isAny(of states: [AKPlayerState]) -> Bool {
+        return states.contains(self)
     }
     
-    func isNotAny(of states: [AKPlayerState]) -> Bool {
-        return !states.contains(where: {$0 == self})
-    }
-}
-
-extension AKPlayerState: Equatable {}
-
-public func == (lhs: AKPlayerState, rhs: AKPlayerState) -> Bool {
-    switch (lhs, rhs) {
-    case (.idle, .idle),
-        (.loading, .loading),
-        (.loaded, .loaded),
-        (.buffering, .buffering),
-        (.playing, .playing),
-        (.paused, .paused),
-        (.stopped, .stopped),
-        (.waitingForNetwork, .waitingForNetwork),
-        (.failed, .failed) :
-        return true
-    default:
-        return false
+    /// Checks if the current state does not match any of the provided states.
+    /// - Parameter states: An array of target states.
+    /// - Returns: `true` if the current state does not match any state in the list.
+    public func isNotAny(of states: [AKPlayerState]) -> Bool {
+        return !states.contains(self)
     }
 }

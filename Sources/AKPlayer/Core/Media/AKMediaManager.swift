@@ -23,82 +23,98 @@
 //  SOFTWARE.
 //
 
+import Foundation
 import AVFoundation
 import Combine
 
-open class AKMediaManager: NSObject, AKMediaManagerProtocol {
+// MARK: - AKMediaManager
+
+/// Concrete implementation responsible for managing media item asset creation, status observation, and preflight capability checks.
+@MainActor
+public class AKMediaManager: NSObject, AKMediaManagerProtocol {
     
     // MARK: - Properties
     
-    public private(set) weak var media: AKPlayable?
+    /// The weak reference to the backing playable media item.
+    public private(set) weak var media: (any AKPlayable)?
     
+    /// The loaded URL asset generated from the media item.
     public var asset: AVURLAsset? {
         return playerItemInitService.asset
     }
     
+    /// The instantiated player item constructed from the asset.
     public var playerItem: AVPlayerItem? {
         return playerItemInitService.playerItem
     }
     
+    /// The current player error, if media loading or playback failed.
     public var error: AKPlayerError?
     
-    public private(set) var state: AKPlayableState = .idle {
-        didSet {
-            stateSubject.send(state)
-        }
+    /// The current state of the playable media item.
+    public private(set) var state: AKPlayableState {
+        get { stateSubject.value }
+        set { stateSubject.send(newValue) }
     }
     
+    /// Publisher emitting state updates starting with the current state upon subscription.
     public var statePublisher: AnyPublisher<AKPlayableState, Never> {
-        return stateSubject.eraseToAnyPublisher()
+        stateSubject.eraseToAnyPublisher()
     }
     
-    private let stateSubject = PassthroughSubject<AKPlayableState, Never>()
+    private let stateSubject = CurrentValueSubject<AKPlayableState, Never>(.idle)
     
-    private var playerItemInitService: AKPlayerItemInitServiceProtocol
+    private  var playerItemInitService: any AKPlayerItemInitServiceProtocol
     
-    private var _seekingThroughMediaService: AKSeekingThroughMediaServiceProtocol!
-    private var _trackSelectionService: AKTrackSelectionServiceProtocol!
-    private var _playerItemNotificationsObserver: AKPlayerItemNotificationsObserver!
+    // Private backing storage initialized post-super.init
+    private var _seekingThroughMediaService: (any AKSeekingThroughMediaServiceProtocol)!
+    private var _trackSelectionService: (any AKTrackSelectionServiceProtocol)!
     
-    public var seekingThroughMediaService: AKSeekingThroughMediaServiceProtocol {
+    /// Service responsible for managing seek feasibility checks and execution.
+    public var seekingThroughMediaService: any AKSeekingThroughMediaServiceProtocol {
         _seekingThroughMediaService
     }
-    public var trackSelectionService: AKTrackSelectionServiceProtocol {
+    
+    /// Service responsible for subtitle and audio track selection management.
+    public var trackSelectionService: any AKTrackSelectionServiceProtocol {
         _trackSelectionService
     }
-    public var playerItemNotificationsObserver: AKPlayerItemNotificationsObserver {
-        _playerItemNotificationsObserver
-    }
+    
+    /// Notification observer for player item playback lifecycle events.
+    ///
+    /// Available once `createPlayerItemFromAsset()` initializes the `playerItem`.
+    public private(set) var playerItemNotificationsObserver: AKPlayerItemNotificationsObserver?
     
     // Distinct subscription sets so lifecycle calls don't clear each other
-    private var readinessSubscriptions = Set<AnyCancellable>()
-    private var assetKeySubscriptions = Set<AnyCancellable>()
+    private nonisolated(unsafe) var readinessSubscriptions = Set<AnyCancellable>()
+    private nonisolated(unsafe) var assetKeySubscriptions = Set<AnyCancellable>()
     
     // MARK: - Init & Deinit
     
-    public init(media: AKPlayable) {
+    /// Initializes a new media manager instance for the specified media item.
+    /// - Parameter media: The target playable media item.
+    public init(media: any AKPlayable) {
         self.media = media
         self.playerItemInitService = AKPlayerItemInitService(with: media)
+        
         super.init()
         
-        self._seekingThroughMediaService = AKSeekingThroughMediaService { [weak self] in
-            return self?.playerItem
-        }
-        self._trackSelectionService = AKTrackSelectionService { [weak self] in
-            return self?.playerItem
-        }
-        self._playerItemNotificationsObserver = AKPlayerItemNotificationsObserver { [weak self] in
-            return self?.playerItem
-        }
+        // Direct initialization of child services
+        self._seekingThroughMediaService = AKSeekingThroughMediaService(mediaManager: self)
+        self._trackSelectionService = AKTrackSelectionService(mediaManager: self)
+        
+        self.playerItemNotificationsObserver = nil
     }
     
     deinit {
         stopPlayerItemReadinessObserver()
         stopPlayerItemAssetKeysObserver()
-        print("Deinit called from AKMediaManager 👌🏼")
     }
     
-    open func createAsset() {
+    // MARK: - Asset Lifecycle Operations
+    
+    /// Instantiates the underlying `AVURLAsset` for the assigned media.
+    public func createAsset() {
         assert(state.isIdle || state.isFailed,
                "This function can only be called if the media is idle or has encountered an error.")
         self.error = nil
@@ -106,69 +122,93 @@ open class AKMediaManager: NSObject, AKMediaManagerProtocol {
         state = .assetLoaded
     }
     
-    open func validateAssetPlayability() async throws {
+    /// Asynchronously validates key asset properties (e.g., playability and DRM restrictions).
+    public func validateAssetPlayability() async throws {
         assert(state.isAssetLoaded,
                "This function requires the asset to be loaded first.")
         try await playerItemInitService.validateAssetPlayability()
     }
     
-    open func createPlayerItemFromAsset() {
+    /// Constructs an `AVPlayerItem` from the initialized `AVURLAsset` and instantiates the notification observer.
+    public func createPlayerItemFromAsset() {
         assert(state.isAssetLoaded,
                "This function requires the asset to be loaded first.")
         self.error = nil
         playerItemInitService.createPlayerItemFromAsset()
         
+        // Stop any existing notifications observer instance
+        playerItemNotificationsObserver?.stopObserving()
+        playerItemNotificationsObserver = nil
+        
+        // Instantiate notification observer targeting the newly created player item
+        if let newItem = playerItem {
+            playerItemNotificationsObserver = AKPlayerItemNotificationsObserver(playerItem: newItem)
+        }
+        
         Task {
-            await _trackSelectionService.resetSession()
+            await trackSelectionService.resetSession()
         }
         state = .playerItemLoaded
     }
     
-    open func abortAssetInitialization() {
+    /// Aborts active asset property loading and cancels pending asynchronous tasks.
+    public func abortAssetInitialization() {
         playerItemInitService.abortAssetInitialization()
     }
     
-    open func startPlayerItemReadinessObserver() {
+    // MARK: - Observation Controls
+    
+    /// Starts observing the player item's `status` key path for readiness or failure.
+    public func startPlayerItemReadinessObserver() {
         assert(state.isPlayerItemLoaded || state.isReadyToPlay,
                "Cannot start readiness observer before player item is loaded.")
         
         guard let playerItem else { return }
         stopPlayerItemReadinessObserver()
         
-        playerItem.publisher(for: \.status,
-                             options: [.initial,
-                                       .new])
-        .receive(on: DispatchQueue.main)
-        .sink { [unowned self] status in
-            switch status {
-            case .readyToPlay:
-                state = .readyToPlay
-            case .failed:
-                self.error = .playerItemLoadingFailed(reason: .statusLoadingFailed(error: playerItem.error!))
-                state = .failed
-            default: break
+        playerItem.publisher(for: \.status, options: [.initial, .new])
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] status in
+                guard let self else { return }
+                switch status {
+                case .readyToPlay:
+                    self.state = .readyToPlay
+                case .failed:
+                    let underlyingError = playerItem.error ?? NSError(domain: "AKPlayer", code: -1, userInfo: nil)
+                    self.error = .playerItemLoadingFailed(reason: .statusLoadingFailed(error: underlyingError))
+                    self.state = .failed
+                default: break
+                }
             }
-        }
-        .store(in: &readinessSubscriptions)
+            .store(in: &readinessSubscriptions)
     }
     
-    open func stopPlayerItemReadinessObserver() {
+    /// Stops active observation of the player item's `status` key path.
+    public nonisolated func stopPlayerItemReadinessObserver() {
         readinessSubscriptions.removeAll()
     }
     
-    open func stopPlayerItemAssetKeysObserver() {
+    /// Stops active observation of asset keys.
+    public nonisolated func stopPlayerItemAssetKeysObserver() {
         assetKeySubscriptions.removeAll()
     }
     
-    open func canStep(by count: Int) -> Bool {
-        guard state.isPlayerItemLoaded || state.isReadyToPlay else { return false }
-        var isForward: Bool { return count.signum() == 1 }
-        return isForward ? playerItem!.canStepForward : playerItem!.canStepBackward
+    // MARK: - Preflight Capability Checks
+    
+    /// Evaluates if the player item can step forward or backward by a given frame count.
+    /// - Parameter count: The frame offset count.
+    /// - Returns: `true` if stepping by the specified count is supported.
+    public func canStep(by count: Int) -> Bool {
+        guard state.isPlayerItemLoaded || state.isReadyToPlay, let playerItem else { return false }
+        let isForward = count.signum() == 1
+        return isForward ? playerItem.canStepForward : playerItem.canStepBackward
     }
     
-    open func canPlay(at rate: AKPlaybackRate) -> Bool {
-        guard state.isPlayerItemLoaded || state.isReadyToPlay else { return false }
-        guard let playerItem else { return false }
+    /// Evaluates whether the player item supports playback at a specified rate.
+    /// - Parameter rate: The target playback rate multiplier.
+    /// - Returns: `true` if playback at the specified rate is supported.
+    public func canPlay(at rate: AKPlaybackRate) -> Bool {
+        guard state.isPlayerItemLoaded || state.isReadyToPlay, let playerItem else { return false }
         
         switch rate.rate {
         case 0.0...:
@@ -198,13 +238,18 @@ open class AKMediaManager: NSObject, AKMediaManagerProtocol {
         }
     }
     
-    open func canSeek(to time: CMTime) -> Bool {
+    /// Evaluates whether seeking to a target seek target position is permitted.
+    /// - Parameter target: The target `AKSeekTarget` position.
+    /// - Returns: `true` if the seek command is supported.
+    public func canSeek(to target: AKSeekTarget) -> Bool {
         guard state.isPlayerItemLoaded || state.isReadyToPlay else { return false }
-        return seekingThroughMediaService.canSeek(to: time)
+        return seekingThroughMediaService.canSeek(to: target)
     }
     
-    open func canSeek(to time: CMTime) -> (flag: Bool,
-                                           reason: AKPlayerUnavailableCommandReason?) {
+    /// Evaluates whether seeking to a target seek target is permitted and returns an unavailability reason if disallowed.
+    /// - Parameter target: The target `AKSeekTarget` position.
+    /// - Returns: A tuple containing a boolean flag indicating permission and an optional unavailability reason.
+    public func canSeek(to target: AKSeekTarget) -> (flag: Bool, reason: AKPlayerUnavailableCommandReason?) {
         guard state.isPlayerItemLoaded || state.isReadyToPlay else {
             if state.isIdle || state.isFailed {
                 return (false, .loadMediaFirst)
@@ -212,6 +257,6 @@ open class AKMediaManager: NSObject, AKMediaManagerProtocol {
                 return (false, .waitTillMediaLoaded)
             }
         }
-        return seekingThroughMediaService.canSeek(to: time)
+        return seekingThroughMediaService.canSeek(to: target)
     }
 }

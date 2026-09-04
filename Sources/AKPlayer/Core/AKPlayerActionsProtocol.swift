@@ -24,33 +24,98 @@
 //
 
 import Foundation
-import AVFoundation
+import CoreMedia
 
+/// Defines player control actions including loading media, playback control, and seeking.
+@MainActor
 public protocol AKPlayerActionsProtocol {
-    func load(media: AKPlayable)
-    func load(media: AKPlayable, autoPlay: Bool)
-    func load(media: AKPlayable, autoPlay: Bool, at position: CMTime)
-    func load(media: AKPlayable, autoPlay: Bool, at position: Double)
-    // Controlling Playback
+    
+    // MARK: - Loading Media
+    
+    /// Loads a playable item with optional auto-play and starting position.
+    ///
+    /// - Parameters:
+    ///   - media: The media item conforming to `AKPlayable`.
+    ///   - autoPlay: If `true`, playback starts automatically once loaded. Defaults to `false`.
+    ///   - position: An optional starting seek target position upon loading.
+    func load(
+        media: any AKPlayable,
+        autoPlay: Bool,
+        at position: AKSeekTarget?
+    )
+    
+    // MARK: - Controlling Playback
+    
+    /// Starts or resumes media playback.
     func play()
+    
+    /// Plays media at a specified rate.
+    /// - Parameter rate: The target playback rate.
     func play(at rate: AKPlaybackRate)
+    
+    /// Pauses media playback.
     func pause()
+    
+    /// Toggles between play and pause states based on current playback status.
     func togglePlayPause()
+    
+    /// Stops media playback and resets player state.
     func stop()
-    // Seeking Through Media
-    func seek(to time: CMTime, toleranceBefore: CMTime, toleranceAfter: CMTime, completionHandler: @escaping (Bool) -> Void)
-    func seek(to time: CMTime, toleranceBefore: CMTime, toleranceAfter: CMTime)
-    func seek(to time: CMTime, completionHandler: @escaping (Bool) -> Void)
-    func seek(to time: CMTime)
-    func seek(to time: Double, completionHandler: @escaping (Bool) -> Void)
-    func seek(to time: Double)
-    func seek(toOffset offset: Double)
-    func seek(toOffset offset: Double, completionHandler: @escaping (Bool) -> Void)
-    func seek(toPercentage percentage: Double, completionHandler: @escaping (Bool) -> Void)
-    func seek(toPercentage percentage: Double)
+    
+    // MARK: - Seeking Through Media
+    
+    /// Seeks to a designated target position asynchronously.
+    ///
+    /// - Parameter target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
+    /// - Returns: `true` if the seek operation completed successfully without being superseded.
+    @discardableResult
+    func seek(to target: AKSeekTarget) async -> Bool
+    
+    /// Seeks to a designated target position asynchronously with custom tolerance bounds.
+    ///
+    /// - Parameters:
+    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
+    ///   - toleranceBefore: The allowable tolerance before the target time.
+    ///   - toleranceAfter: The allowable tolerance after the target time.
+    /// - Returns: `true` if the seek operation completed successfully without being superseded.
+    @discardableResult
+    func seek(
+        to target: AKSeekTarget,
+        toleranceBefore: CMTime,
+        toleranceAfter: CMTime
+    ) async -> Bool
+    
+    // MARK: - Media Navigation
+    
+    /// Steps forward or backward by a specific frame count.
+    /// - Parameter count: The number of frames to step (positive for forward, negative for backward).
     func step(by count: Int)
+    
+    /// Fast forwards playback at default rate.
     func fastForward()
+    
+    /// Fast forwards playback at a specified rate.
+    /// - Parameter rate: The speed rate for fast forwarding.
     func fastForward(at rate: AKPlaybackRate)
+    
+    /// Rewinds playback at default rate.
     func rewind()
+    
+    /// Rewinds playback at a specified rate.
+    /// - Parameter rate: The speed rate for rewinding.
     func rewind(at rate: AKPlaybackRate)
+}
+
+// MARK: - Default Parameters Extension
+
+public extension AKPlayerActionsProtocol {
+    /// Convenience default implementation for loading media without autoPlay or position parameters.
+    func load(media: any AKPlayable) {
+        load(media: media, autoPlay: false, at: nil)
+    }
+    
+    /// Convenience default implementation for loading media without position parameters.
+    func load(media: any AKPlayable, autoPlay: Bool) {
+        load(media: media, autoPlay: autoPlay, at: nil)
+    }
 }

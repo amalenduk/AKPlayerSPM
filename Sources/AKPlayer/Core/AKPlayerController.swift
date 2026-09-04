@@ -27,67 +27,83 @@ import Foundation
 import AVFoundation
 import Combine
 
-open class AKPlayerController: AKPlayerControllerProtocol {
+// MARK: - AKPlayerController
+
+@MainActor
+public class AKPlayerController: AKPlayerControllerProtocol {
     
     // MARK: - Properties
     
-    open private(set) var player: AVPlayer
+    public private(set) var player: AVPlayer
     
-    open var state: AKPlayerState { return controller.state }
+    public var state: AKPlayerState {
+        return controller.state
+    }
     
-    open var defaultRate: AKPlaybackRate {
+    public var defaultRate: AKPlaybackRate {
         get { return AKPlaybackRate(rate: player.defaultRate) }
         set { player.defaultRate = newValue.rate }
     }
     
-    open var rate: AKPlaybackRate {
+    public var rate: AKPlaybackRate {
         get { return AKPlaybackRate(rate: player.rate) }
         set {
-            if newValue.rate == 0 { pause() }
-            else { play(at: newValue) }
+            if newValue.rate == 0 {
+                pause()
+            } else {
+                play(at: newValue)
+            }
         }
     }
     
-    open private(set) var currentMedia: AKPlayable?
+    public private(set) var currentMedia: (any AKPlayable)?
     
-    open var currentItem: AVPlayerItem? { return player.currentItem }
+    public var currentItem: AVPlayerItem? {
+        return player.currentItem
+    }
     
-    open var currentItemDuration: CMTime { return currentItem?.duration ?? .indefinite }
+    public var currentItemDuration: CMTime {
+        return currentItem?.duration ?? .indefinite
+    }
     
-    open var currentTime: CMTime { player.currentTime() }
+    public var currentTime: CMTime {
+        player.currentTime()
+    }
     
-    open var remainingTime: CMTime? {
+    public var remainingTime: CMTime? {
         guard currentItemDuration.isValid else { return nil }
         return CMTimeSubtract(currentItemDuration, currentTime)
     }
     
-    open var autoPlay: Bool {
+    public var autoPlay: Bool {
         return controller.autoPlay
     }
     
-    open var isSeeking: Bool {
+    public var isSeeking: Bool {
         return playerSeekingThroughMediaService.isSeeking
     }
     
-    open var lastRequestedSeekPosition: AKSeekPosition? {
-        return playerSeekingThroughMediaService.lastRequestedSeekPosition
+    public var lastRequestedSeekPosition: AKSeekTarget? {
+        return playerSeekingThroughMediaService.lastRequestedSeekTarget
     }
     
-    open var volume: Float {
+    public var volume: Float {
         get { return player.volume }
         set { player.volume = newValue }
     }
     
-    open var isMuted: Bool {
+    public var isMuted: Bool {
         get { return player.isMuted }
         set { player.isMuted = newValue }
     }
     
-    open var error: AKPlayerError? { return (controller as? AKFailedState)?.error }
+    public var error: AKPlayerError? {
+        return (controller as? AKFailedState)?.error
+    }
     
     public private(set) var configuration: AKPlayerConfigurationProtocol
     
-    open private(set) var controller: AKPlayerStateControllerProtocol {
+    public private(set) var controller: AKPlayerStateControllerProtocol {
         get { return _controller ?? AKIdleState(playerController: self) }
         set {
             _controller = newValue
@@ -99,7 +115,7 @@ open class AKPlayerController: AKPlayerControllerProtocol {
     
     private var _controller: AKPlayerStateControllerProtocol?
     
-    open weak var delegate: AKPlayerControllerDelegate?
+    public weak var delegate: AKPlayerControllerDelegate?
     
     public var playerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServiceProtocol
     
@@ -109,220 +125,106 @@ open class AKPlayerController: AKPlayerControllerProtocol {
     
     private var playerRateObserver: AKPlayerRateObserverProtocol
     
-    private var subscriptions : Set<AnyCancellable> = Set<AnyCancellable>()
+    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
-    // MARK: - Init
+    // MARK: - Init & Deinit
     
-    public init(player: AVPlayer,
-                configuration: AKPlayerConfigurationProtocol) {
+    public init(player: AVPlayer, configuration: AKPlayerConfigurationProtocol) {
         self.player = player
         self.configuration = configuration
         
-        playerRateObserver = AKPlayerRateObserver(with: player)
-        playerPlaybackTimeObserver = AKPlayerPlaybackTimeObserver(with: player)
-        playerSeekingThroughMediaService = AKPlayerSeekingThroughMediaService(with: player)
-        networkStatusMonitor = AKNetworkStatusMonitor()
+        self.playerRateObserver = AKPlayerRateObserver(with: player)
+        self.playerPlaybackTimeObserver = AKPlayerPlaybackTimeObserver(with: player)
+        self.playerSeekingThroughMediaService = AKPlayerSeekingThroughMediaService(with: player)
+        self.networkStatusMonitor = AKNetworkStatusMonitor()
     }
     
     deinit {
         print("AKPlayerController: Deinit called from the AKPlayerController ✌🏼")
-        stopPlayerObservers()
-        networkStatusMonitor.stopObserving()
+        subscriptions.removeAll()
     }
     
-    open func addBoundaryTimeObserver(for times: [CMTime]) {
+    public func addBoundaryTimeObserver(for times: [CMTime]) {
         playerPlaybackTimeObserver.startObservingBoundaryTime(for: times)
     }
     
-    open func removeBoundaryTimeObserver() {
-        playerPlaybackTimeObserver.stopObservingPeriodicTime()
+    public func removeBoundaryTimeObserver() {
+        playerPlaybackTimeObserver.stopObservingBoundaryTime()
     }
     
     // MARK: - Commands
     
-    open func load(media: AKPlayable) {
-        if !state.isAny(of: [.idle,
-                             .paused,
-                             .stopped,
-                             .failed]) {
+    public func load(media: any AKPlayable, autoPlay: Bool, at position: AKSeekTarget?) {
+        if !state.isAny(of: [.idle, .paused, .stopped, .failed]) {
             pause()
         }
         currentMedia = media
-        controller.load(media: media)
+        controller.load(media: media, autoPlay: autoPlay, at: position)
     }
     
-    open func load(media: AKPlayable,
-                   autoPlay: Bool) {
-        if !state.isAny(of: [.idle,
-                             .paused,
-                             .stopped,
-                             .failed]) {
-            pause()
-        }
-        currentMedia = media
-        controller.load(media: media,
-                        autoPlay: autoPlay)
-    }
-    
-    open func load(media: AKPlayable,
-                   autoPlay: Bool,
-                   at position: CMTime) {
-        if !state.isAny(of: [.idle,
-                             .paused,
-                             .stopped,
-                             .failed]) {
-            pause()
-        }
-        currentMedia = media
-        controller.load(media: media,
-                        autoPlay: autoPlay,
-                        at: position)
-    }
-    
-    open func load(media: AKPlayable,
-                   autoPlay: Bool,
-                   at position: Double) {
-        if !state.isAny(of: [.idle,
-                             .paused,
-                             .stopped,
-                             .failed]) {
-            pause()
-        }
-        currentMedia = media
-        controller.load(media: media,
-                        autoPlay: autoPlay,
-                        at: position)
-    }
-    
-    open func play() {
+    public func play() {
         controller.play()
     }
     
-    open func play(at rate: AKPlaybackRate) {
+    public func play(at rate: AKPlaybackRate) {
         controller.play(at: rate)
     }
     
-    open func pause() {
+    public func pause() {
         controller.pause()
     }
     
-    open func togglePlayPause() {
+    public func togglePlayPause() {
         controller.togglePlayPause()
     }
     
-    open func stop() {
+    public func stop() {
         controller.stop()
     }
     
-    open func seek(to time: CMTime,
-                   toleranceBefore: CMTime,
-                   toleranceAfter: CMTime,
-                   completionHandler: @escaping (Bool) -> Void) {
-        controller.seek(to: time,
-                        toleranceBefore: toleranceBefore,
-                        toleranceAfter: toleranceAfter,
-                        completionHandler: completionHandler)
+    public func seek(to target: AKSeekTarget) async -> Bool {
+        await controller.seek(to: target)
     }
     
-    open func seek(to time: CMTime,
-                   toleranceBefore: CMTime,
-                   toleranceAfter: CMTime) {
-        controller.seek(to: time,
-                        toleranceBefore: toleranceBefore,
-                        toleranceAfter: toleranceAfter)
+    public func seek(to target: AKSeekTarget, toleranceBefore: CMTime, toleranceAfter: CMTime) async -> Bool {
+        await controller.seek(to: target, toleranceBefore: toleranceBefore, toleranceAfter: toleranceAfter)
     }
     
-    open func seek(to time: CMTime,
-                   completionHandler: @escaping (Bool) -> Void) {
-        controller.seek(to: time,
-                        completionHandler: completionHandler)
-    }
-    
-    open func seek(to time: CMTime) {
-        controller.seek(to: time)
-    }
-    
-    open func seek(to time: Double,
-                   completionHandler: @escaping (Bool) -> Void) {
-        controller.seek(to: time,
-                        completionHandler: completionHandler)
-    }
-    
-    open func seek(to time: Double) {
-        controller.seek(to: time)
-    }
-    
-    open func seek(toOffset offset: Double) {
-        controller.seek(toOffset: offset)
-    }
-    
-    open func seek(toOffset offset: Double,
-                   completionHandler: @escaping (Bool) -> Void) {
-        controller.seek(toOffset: offset,
-                        completionHandler: completionHandler)
-    }
-    
-    open func seek(toPercentage percentage: Double,
-                   completionHandler: @escaping (Bool) -> Void) {
-        controller.seek(toPercentage: percentage,
-                        completionHandler: completionHandler)
-    }
-    
-    open func seek(toPercentage percentage: Double) {
-        controller.seek(toPercentage: percentage)
-    }
-    
-    open func step(by count: Int) {
+    public func step(by count: Int) {
         controller.step(by: count)
     }
     
-    open func fastForward() {
+    public func fastForward() {
         controller.fastForward()
     }
     
-    open func fastForward(at rate: AKPlaybackRate) {
+    public func fastForward(at rate: AKPlaybackRate) {
         controller.fastForward(at: rate)
     }
     
-    open func rewind() {
+    public func rewind() {
         controller.rewind()
     }
     
-    open func rewind(at rate: AKPlaybackRate) {
+    public func rewind(at rate: AKPlaybackRate) {
         controller.rewind(at: rate)
     }
     
-    // MARK: - Additional Helper Functions
+    // MARK: - Helper Functions
     
-    open func prepare() throws {
+    public func prepare() throws {
         controller = AKIdleState(playerController: self)
         networkStatusMonitor.startObserving()
         startPlayerObservers()
     }
     
-    open func change(_ controller: AKPlayerStateControllerProtocol) {
+    public func change(_ controller: AKPlayerStateControllerProtocol) {
         self.controller = controller
     }
     
-    open func processStateChange() {
+    public func processStateChange() {
         switch state {
-        case .idle:
-            break
-        case .loading:
-            break
-        case .loaded:
-            break
-        case .buffering:
-            break
-        case .paused:
-            break
-        case .playing:
-            break
-        case .stopped:
-            break
-        case .waitingForNetwork:
-            break
-        case .failed:
+        case .idle, .loading, .loaded, .buffering, .paused, .playing, .stopped, .waitingForNetwork, .failed:
             break
         }
     }
@@ -333,44 +235,41 @@ open class AKPlayerController: AKPlayerControllerProtocol {
         
         playerRateObserver.rateChangePublisher
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] change in
-                delegate?.playerController(self,
-                                           didChangePlaybackRateTo: change.currentRate,
-                                           from: change.previousRate)
+            .sink { [weak self] change in
+                guard let self else { return }
+                self.delegate?.playerController(self, didChangePlaybackRateTo: change.currentRate, from: change.previousRate)
             }
             .store(in: &subscriptions)
         
         player.publisher(for: \.volume)
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] volume in
-                delegate?.playerController(self,
-                                           didChangeVolumeTo: volume)
+            .sink { [weak self] volume in
+                guard let self else { return }
+                self.delegate?.playerController(self, didChangeVolumeTo: volume)
             }
             .store(in: &subscriptions)
         
         player.publisher(for: \.isMuted)
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] isMuted in
-                delegate?.playerController(self,
-                                           didChangeMutedStatusTo: isMuted)
+            .sink { [weak self] isMuted in
+                guard let self else { return }
+                self.delegate?.playerController(self, didChangeMutedStatusTo: isMuted)
             }
             .store(in: &subscriptions)
         
         playerPlaybackTimeObserver.periodicTimePublisher
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] time in
-                delegate?.playerController(self,
-                                           didChangeCurrentTimeTo: time,
-                                           for: currentMedia!)
+            .sink { [weak self] time in
+                guard let self, let currentMedia = self.currentMedia else { return }
+                self.delegate?.playerController(self, didChangeCurrentTimeTo: time, for: currentMedia)
             }
             .store(in: &subscriptions)
         
         playerPlaybackTimeObserver.boundaryTimePublisher
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] time in
-                delegate?.playerController(self,
-                                           didInvokeBoundaryTimeObserverAt: time,
-                                           for: currentMedia!)
+            .sink { [weak self] time in
+                guard let self, let currentMedia = self.currentMedia else { return }
+                self.delegate?.playerController(self, didInvokeBoundaryTimeObserverAt: time, for: currentMedia)
             }
             .store(in: &subscriptions)
     }
@@ -381,49 +280,38 @@ open class AKPlayerController: AKPlayerControllerProtocol {
         playerPlaybackTimeObserver.stopObservingBoundaryTime()
     }
     
-    private func unaivalableCommand(reason: AKPlayerUnavailableCommandReason) {
+    private func unavailableCommand(reason: AKPlayerUnavailableCommandReason) {
         delegate?.playerController(self, didEncounterUnavailableAction: reason)
     }
 }
 
+// MARK: - Direct Action Implementations
+
 extension AKPlayerController {
+    
     public func performPlay() {
-        // Directly control AVPlayer and update controller internals.
-        // IMPORTANT: do NOT call `self.play()` (public) here — that would re-enter state routing.
-        DispatchQueue.main.async { // ensure AVPlayer/UI updates happen on main as needed
-            self.player.play()
-        }
+        player.play()
     }
     
     public func performPlay(at rate: AKPlaybackRate) {
-        DispatchQueue.main.async {
-            self.player.rate = rate.rate
-        }
+        player.rate = rate.rate
     }
     
     public func performPause() {
-        DispatchQueue.main.async {
-            self.player.pause()
-        }
+        player.pause()
     }
     
     public func performStop() {
-        DispatchQueue.main.async {
-            self.player.pause()
-            self.player.seek(to: .zero)
-            self.playerSeekingThroughMediaService.cancelAll()
-        }
+        player.pause()
+        player.seek(to: .zero)
+        playerSeekingThroughMediaService.cancelAll()
     }
     
     public func performSeek(to targetSeek: AKSeek) {
-        DispatchQueue.main.async {
-            self.playerSeekingThroughMediaService.seek(to: targetSeek)
-        }
+        playerSeekingThroughMediaService.seek(to: targetSeek)
     }
     
     public func performStep(by count: Int) {
-        DispatchQueue.main.async {
-            self.player.currentItem?.step(byCount: count)
-        }
+        player.currentItem?.step(byCount: count)
     }
 }

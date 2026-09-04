@@ -25,6 +25,6 @@
 
 import AVFoundation
 
-protocol AKMediaItem {
+public protocol AKMediaItem {
     var item: AVPlayerItem? { get }
 }

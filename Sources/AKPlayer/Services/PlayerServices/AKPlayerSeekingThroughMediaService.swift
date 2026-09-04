@@ -23,38 +23,57 @@
 //  SOFTWARE.
 //
 
-import AVKit
+import AVFoundation
+import Foundation
 
+// MARK: - AKPlayerSeekingThroughMediaServiceProtocol
+
+/// A protocol defining the service interface for managing sequential media seeking operations.
+@MainActor
 public protocol AKPlayerSeekingThroughMediaServiceProtocol: AnyObject {
+    
+    /// The underlying `AVPlayer` executing media playback and underlying seek operations.
     var player: AVPlayer { get }
-    var pendingSeeks: OrderedSet<AKSeek> { get }
-    var lastRequestedSeekPosition: AKSeekPosition? { get }
+    
+    /// An ordered collection of pending seek requests queued for execution.
+    var pendingSeeks: [AKSeek] { get }
+    
+    /// The target position of the most recent seek request, if one is pending or active.
+    var lastRequestedSeekTarget: AKSeekTarget? { get }
+    
+    /// Indicates whether a seek operation is currently active or queued.
     var isSeeking: Bool { get }
     
+    /// Queues or executes a seek operation for the given request target.
     func seek(to seek: AKSeek)
+    
+    /// Cancels all pending and currently active seek operations, notifying callbacks of cancellation.
     func cancelAll()
 }
 
-open class AKPlayerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServiceProtocol {
+// MARK: - AKPlayerSeekingThroughMediaService
+
+/// A service class managing queued media seek operations for an `AVPlayer`.
+@MainActor
+public class AKPlayerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServiceProtocol {
     
     // MARK: - Properties
     
     public let player: AVPlayer
-    
-    public private(set) var pendingSeeks = OrderedSet<AKSeek>()
+    public private(set) var pendingSeeks = [AKSeek]()
     
     private var activeSeek: AKSeek?
-    private var requestedSeekPosition: AKSeekPosition?
+    private var requestedSeekTarget: AKSeekTarget?
     
-    open var lastRequestedSeekPosition: AKSeekPosition? {
-        requestedSeekPosition
+    public var lastRequestedSeekTarget: AKSeekTarget? {
+        requestedSeekTarget
     }
     
-    open var isSeeking: Bool {
+    public var isSeeking: Bool {
         activeSeek != nil || !pendingSeeks.isEmpty
     }
     
-    // MARK: - Init
+    // MARK: - Initialization
     
     public init(with player: AVPlayer) {
         self.player = player
@@ -62,25 +81,25 @@ open class AKPlayerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServic
     
     // MARK: - Public API
     
-    open func seek(to seek: AKSeek) {
+    public func seek(to seek: AKSeek) {
         guard player.currentItem != nil else {
-            requestedSeekPosition = nil
+            requestedSeekTarget = nil
             seek.completionHandler?(false)
             return
         }
         
-        requestedSeekPosition = seek.position
+        requestedSeekTarget = seek.target
         
-        // Always store the newest requested seek
-        pendingSeeks.insert(seek)
+        if !pendingSeeks.contains(seek) {
+            pendingSeeks.append(seek)
+        }
         
-        // If no seek is actively being processed by AVPlayer, start immediately
         if activeSeek == nil {
             performNextSeek()
         }
     }
-
-    open func cancelAll() {
+    
+    public func cancelAll() {
         activeSeek?.completionHandler?(false)
         activeSeek = nil
         
@@ -88,70 +107,82 @@ open class AKPlayerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServic
             pendingSeeks.removeFirst()
             seek.completionHandler?(false)
         }
-        requestedSeekPosition = nil
+        
+        requestedSeekTarget = nil
     }
     
     // MARK: - Private Pipeline
     
     private func performNextSeek() {
-        // Grab the LATEST requested seek (skip all intermediate seeks)
         guard let latestSeek = pendingSeeks.last else {
             activeSeek = nil
-            requestedSeekPosition = nil
+            requestedSeekTarget = nil
             return
         }
         
-        // Cancel and notify all skipped intermediate seeks with `false`
+        // Cancel intermediate skipped seeks
         while let seekToCancel = pendingSeeks.first, seekToCancel != latestSeek {
             pendingSeeks.removeFirst()
             seekToCancel.completionHandler?(false)
         }
         
-        // Mark the current active seek and remove from pending queue
         activeSeek = latestSeek
-        pendingSeeks.remove(latestSeek)
+        if let index = pendingSeeks.firstIndex(of: latestSeek) {
+            pendingSeeks.remove(at: index)
+        }
         
-        // Dispatch to AVPlayer
         enqueue(seek: latestSeek)
     }
     
     private func enqueue(seek: AKSeek) {
-        let completion: (Bool) -> Void = { [weak self] finished in
-            // Ensure thread safety on main thread
-            if Thread.isMainThread {
+        let completion: @Sendable (Bool) -> Void = { [weak self] finished in
+            Task { @MainActor in
                 self?.handleSeekCompletion(for: seek, finished: finished)
-            } else {
-                DispatchQueue.main.async {
-                    self?.handleSeekCompletion(for: seek, finished: finished)
-                }
             }
         }
         
-        switch seek.position {
-        case .time(let cmTime):
-            player.seek(to: cmTime,
-                        toleranceBefore: seek.toleranceBefore,
-                        toleranceAfter: seek.toleranceAfter,
-                        completionHandler: completion)
-        case .date(let date):
-            player.seek(to: date, completionHandler: completion)
+        // Handle wall-clock date targets (HLS Live streams)
+        if case .date(let targetDate) = seek.target {
+            player.seek(to: targetDate, completionHandler: completion)
+            return
         }
+        
+        guard let currentItem = player.currentItem else {
+            completion(false)
+            return
+        }
+        
+        let timescale = currentItem.duration.timescale > 0 ? currentItem.duration.timescale : 600
+        
+        // Resolve target to CMTime using AKSeekTarget resolve
+        guard let targetCMTime = seek.target.resolve(
+            currentTime: player.currentTime(),
+            duration: currentItem.duration,
+            preferredTimescale: timescale,
+            clampToDuration: true
+        ) else {
+            completion(false)
+            return
+        }
+        
+        player.seek(
+            to: targetCMTime,
+            toleranceBefore: seek.toleranceBefore,
+            toleranceAfter: seek.toleranceAfter,
+            completionHandler: completion
+        )
     }
     
     private func handleSeekCompletion(for completedSeek: AKSeek, finished: Bool) {
-        // Only process if this completion corresponds to our active seek
         guard activeSeek == completedSeek else { return }
         
-        // Notify completion for the seek that just finished
         completedSeek.completionHandler?(finished)
         activeSeek = nil
         
         if !pendingSeeks.isEmpty {
-            // New seeks arrived while AVPlayer was busy; execute the newest one
             performNextSeek()
         } else {
-            // Queue is completely clean
-            requestedSeekPosition = nil
+            requestedSeekTarget = nil
         }
     }
 }

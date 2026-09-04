@@ -25,67 +25,67 @@
 
 import AVFoundation
 
-open class AKPlayer: NSObject, AKPlayerProtocol {
+public class AKPlayer: NSObject, AKPlayerProtocol {
     
     // MARK: - Properties
     
-    open var currentMedia: AKPlayable? {
+    public var currentMedia: AKPlayable? {
         return manager.currentMedia
     }
     
-    open var currentItem: AVPlayerItem? {
+    public var currentItem: AVPlayerItem? {
         return manager.currentItem
     }
     
-    open var currentTime: CMTime {
+    public var currentTime: CMTime {
         return manager.currentTime
     }
     
-    open var currentItemDuration: CMTime {
+    public var currentItemDuration: CMTime {
         return manager.currentItemDuration
     }
     
-    open var remainingTime: CMTime? {
-        return player.currentTime()
+    public var remainingTime: CMTime? {
+        return manager.remainingTime
     }
     
-    open var autoPlay: Bool {
+    public var autoPlay: Bool {
         return manager.autoPlay
     }
     
-    open var isSeeking: Bool {
+    public var isSeeking: Bool {
         return manager.isSeeking
     }
     
-    open var lastRequestedSeekPosition: AKSeekPosition? {
+    public var lastRequestedSeekPosition: AKSeekPosition? {
         return manager.lastRequestedSeekPosition
     }
     
-    open var state: AKPlayerState {
+    public var state: AKPlayerState {
         return manager.state
     }
     
-    open var defaultRate: AKPlaybackRate {
+    public var defaultRate: AKPlaybackRate {
         get { return manager.defaultRate }
         set { manager.defaultRate = newValue }
     }
     
-    open var rate: AKPlaybackRate {
+    public var rate: AKPlaybackRate {
         get { return manager.rate }
         set { manager.rate = newValue }
     }
     
-    open var volume: Float {
+    public var volume: Float {
         get { return manager.volume }
         set { manager.volume = newValue }
     }
     
-    open var isMuted: Bool {
+    public var isMuted: Bool {
         get { return manager.isMuted }
         set { manager.isMuted = newValue }
     }
     
-    open var error: AKPlayerError? {
+    public var error: AKPlayerError? {
         return manager.error
     }
     
@@ -99,7 +99,7 @@ open class AKPlayer: NSObject, AKPlayerProtocol {
         return manager.nowPlayingSession
     }
     
-    open weak var delegate: AKPlayerDelegate?
+    public weak var delegate: AKPlayerDelegate?
     
     // MARK: - Init
     
@@ -115,141 +115,141 @@ open class AKPlayer: NSObject, AKPlayerProtocol {
     
     deinit { }
     
-    open func prepare() throws {
+    public func prepare() throws {
         try manager.prepare()
     }
     
-    open func addBoundaryTimeObserver(for times: [CMTime]) {
+    public func addBoundaryTimeObserver(for times: [CMTime]) {
         manager.addBoundaryTimeObserver(for: times)
     }
     
-    open func removeBoundaryTimeObserver() {
+    public func removeBoundaryTimeObserver() {
         manager.removeBoundaryTimeObserver()
     }
     
     // MARK: - Commands
     
-    open func load(media: AKPlayable) {
+    public func load(media: AKPlayable) {
         manager.load(media: media)
     }
     
-    open func load(media: AKPlayable,
-                   autoPlay: Bool) {
+    public func load(media: AKPlayable,
+                     autoPlay: Bool) {
         manager.load(media: media,
                      autoPlay: autoPlay)
     }
     
-    open func load(media: AKPlayable,
-                   autoPlay: Bool,
-                   at position: CMTime) {
+    public func load(media: AKPlayable,
+                     autoPlay: Bool,
+                     at position: CMTime) {
         manager.load(media: media,
                      autoPlay: autoPlay,
                      at: position)
     }
     
-    open func load(media: AKPlayable,
-                   autoPlay: Bool,
-                   at position: Double) {
+    public func load(media: AKPlayable,
+                     autoPlay: Bool,
+                     at position: Double) {
         manager.load(media: media,
                      autoPlay: autoPlay,
                      at: position)
     }
     
-    open func play() {
+    public func play() {
         manager.play()
     }
     
-    open func play(at rate: AKPlaybackRate) {
+    public func play(at rate: AKPlaybackRate) {
         manager.play(at: rate)
     }
     
-    open func pause() {
+    public func pause() {
         manager.pause()
     }
     
-    open func togglePlayPause() {
+    public func togglePlayPause() {
         manager.togglePlayPause()
     }
     
-    open func stop() {
+    public func stop() {
         manager.stop()
     }
     
-    open func seek(to time: CMTime,
-                   toleranceBefore: CMTime,
-                   toleranceAfter: CMTime,
-                   completionHandler: @escaping (Bool) -> Void) {
+    public func seek(to time: CMTime,
+                     toleranceBefore: CMTime,
+                     toleranceAfter: CMTime,
+                     completionHandler: @escaping (Bool) -> Void) {
         manager.seek(to: time,
                      toleranceBefore: toleranceBefore,
                      toleranceAfter: toleranceAfter,
                      completionHandler: completionHandler)
     }
     
-    open func seek(to time: CMTime,
-                   toleranceBefore: CMTime,
-                   toleranceAfter: CMTime) {
+    public func seek(to time: CMTime,
+                     toleranceBefore: CMTime,
+                     toleranceAfter: CMTime) {
         manager.seek(to: time,
                      toleranceBefore: toleranceBefore,
                      toleranceAfter: toleranceAfter)
     }
     
-    open func seek(to time: CMTime,
-                   completionHandler: @escaping (Bool) -> Void) {
+    public func seek(to time: CMTime,
+                     completionHandler: @escaping (Bool) -> Void) {
         manager.seek(to: time,
                      completionHandler: completionHandler)
     }
     
-    open func seek(to time: CMTime) {
+    public func seek(to time: CMTime) {
         manager.seek(to: time)
     }
     
-    open func seek(to time: Double,
-                   completionHandler: @escaping (Bool) -> Void) {
+    public func seek(to time: Double,
+                     completionHandler: @escaping (Bool) -> Void) {
         manager.seek(to: time,
                      completionHandler: completionHandler)
     }
     
-    open func seek(to time: Double) {
+    public func seek(to time: Double) {
         manager.seek(to: time)
     }
     
-    open func seek(toOffset offset: Double) {
+    public func seek(toOffset offset: Double) {
         manager.seek(toOffset: offset)
     }
     
-    open func seek(toOffset offset: Double,
-                   completionHandler: @escaping (Bool) -> Void) {
+    public func seek(toOffset offset: Double,
+                     completionHandler: @escaping (Bool) -> Void) {
         manager.seek(toOffset: offset,
                      completionHandler: completionHandler)
     }
     
-    open func seek(toPercentage percentage: Double,
-                   completionHandler: @escaping (Bool) -> Void) {
+    public func seek(toPercentage percentage: Double,
+                     completionHandler: @escaping (Bool) -> Void) {
         manager.seek(toPercentage: percentage,
                      completionHandler: completionHandler)
     }
     
-    open func seek(toPercentage percentage: Double) {
+    public func seek(toPercentage percentage: Double) {
         manager.seek(toPercentage: percentage)
     }
     
-    open func step(by count: Int) {
+    public func step(by count: Int) {
         manager.step(by: count)
     }
     
-    open func fastForward() {
+    public func fastForward() {
         manager.fastForward()
     }
     
-    open func fastForward(at rate: AKPlaybackRate) {
+    public func fastForward(at rate: AKPlaybackRate) {
         manager.fastForward(at: rate)
     }
     
-    open func rewind() {
+    public func rewind() {
         manager.rewind()
     }
     
-    open func rewind(at rate: AKPlaybackRate) {
+    public func rewind(at rate: AKPlaybackRate) {
         manager.rewind(at: rate)
     }
 }
