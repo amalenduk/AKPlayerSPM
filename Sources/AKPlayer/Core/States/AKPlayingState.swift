@@ -81,10 +81,7 @@ public class AKPlayingState: AKBaseState {
     public override func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
               currentMedia.canPlay(at: rate) else {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .canNotPlayAtSpecifiedRate
-            )
+            playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
         

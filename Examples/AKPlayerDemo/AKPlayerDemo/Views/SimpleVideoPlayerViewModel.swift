@@ -72,6 +72,7 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     
     public func load(media: AKMedia, autoPlay: Bool) {
         self.lastLoadedMedia = media
+        media.delegate = self
         player.load(media: media, autoPlay: autoPlay)
     }
     
@@ -176,6 +177,10 @@ extension SimpleVideoPlayerViewModel: AKPlayerDelegate {
         DispatchQueue.main.async {
             self.stateDescription = state.description
             self.isLoading = (state == .waitingForNetwork || state == .buffering || state == .loading)
+            
+            if case .loaded = state {
+                self.player.currentMedia?.startPlayerItemAssetKeysObserver()
+            }
         }
     }
     nonisolated public func akPlayer(_ player: AKPlayer, didChangeCurrentTimeTo currentTime: CMTime, for media: any AKPlayable) {
@@ -200,4 +205,31 @@ extension SimpleVideoPlayerViewModel: AKPlayerDelegate {
     nonisolated public func akPlayer(_ player: AKPlayer, didFailWith error: AKPlayerError) {}
     nonisolated public func akPlayer(_ player: AKPlayer, didChangeVolumeTo volume: Float) {}
     nonisolated public func akPlayer(_ player: AKPlayer, didChangeMutedStatusTo isMuted: Bool) {}
+}
+
+extension SimpleVideoPlayerViewModel: AKMediaDelegate {
+    
+    public func akMedia(_ media: any AKPlayable, didChangeState state: AKPlayableState) {
+        switch state {
+            
+        case .idle:
+            break
+        case .assetLoaded:
+            break
+        case .playerItemLoaded:
+            media.startPlayerItemAssetKeysObserver()
+        case .readyToPlay:
+            break
+        case .failed:
+            break
+        }
+    }
+    
+    public func akMedia(_ media: any AKPlayable, didChangeItemDurationTo itemDuration: CMTime) {
+        DispatchQueue.main.async {
+            if itemDuration.isNumeric && itemDuration.seconds.isFinite {
+                self.duration = itemDuration.seconds
+            }
+        }
+    }
 }

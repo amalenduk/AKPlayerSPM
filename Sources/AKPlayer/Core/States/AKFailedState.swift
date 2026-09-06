@@ -58,7 +58,7 @@ public class AKFailedState: AKBaseState {
     
     /// Notifies the delegate that the player has encountered an error and transitioned into the failed state.
     public override func processStateChange() {
-        playerController.delegate?.playerController(playerController, didFailWith: error)
+        playerController.emit(.didFail(with: error))
     }
     
     // MARK: - Preflight Checks

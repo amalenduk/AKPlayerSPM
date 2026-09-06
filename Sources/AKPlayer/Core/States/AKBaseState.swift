@@ -109,7 +109,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             },
             blocked: { [weak self] reason in
                 guard let self else { return }
-                playerController.delegate?.playerController(playerController, didEncounterUnavailableAction: reason)
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
@@ -133,7 +133,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             },
             blocked: { [weak self] reason in
                 guard let self else { return }
-                playerController.delegate?.playerController(playerController, didEncounterUnavailableAction: reason)
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
@@ -152,7 +152,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             },
             blocked: { [weak self] reason in
                 guard let self else { return }
-                playerController.delegate?.playerController(playerController, didEncounterUnavailableAction: reason)
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
@@ -181,7 +181,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             },
             blocked: { [weak self] reason in
                 guard let self else { return }
-                playerController.delegate?.playerController(playerController, didEncounterUnavailableAction: reason)
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
@@ -238,7 +238,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             },
             blocked: { [weak self] reason in
                 guard let self else { return }
-                playerController.delegate?.playerController(playerController, didEncounterUnavailableAction: reason)
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: false
         )
@@ -275,11 +275,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             blocked: { [weak self] reason in
                 completionHandler(false)
                 
-                guard let s = self else { return }
-                s.playerController.delegate?.playerController(
-                    s.playerController,
-                    didEncounterUnavailableAction: reason
-                )
+                guard let self else { return }
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
@@ -323,11 +320,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             blocked: { [weak self] reason in
                 completionHandler(false)
                 
-                guard let s = self else { return }
-                s.playerController.delegate?.playerController(
-                    s.playerController,
-                    didEncounterUnavailableAction: reason
-                )
+                guard let self else { return }
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
@@ -348,7 +342,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             },
             blocked: { [weak self] reason in
                 guard let self else { return }
-                playerController.delegate?.playerController(playerController, didEncounterUnavailableAction: reason)
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )

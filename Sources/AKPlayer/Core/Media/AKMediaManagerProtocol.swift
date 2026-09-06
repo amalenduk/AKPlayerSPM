@@ -52,6 +52,11 @@ public protocol AKMediaManagerProtocol: AnyObject, NSObjectProtocol {
     /// Publisher emitting updates when the media state transitions.
     var statePublisher: AnyPublisher<AKPlayableState, Never> { get }
     
+    /// Asynchronous stream of media item events for Swift Concurrency.
+    var events: AsyncStream<AKMediaEvent> { get }
+    
+    var delegate: AKMediaDelegate? { get set }
+    
     /// Service responsible for managing seek feasibility checks and execution.
     var seekingThroughMediaService: any AKSeekingThroughMediaServiceProtocol { get }
     
@@ -81,8 +86,12 @@ public protocol AKMediaManagerProtocol: AnyObject, NSObjectProtocol {
     /// Starts observing the player item's `status` key path for readiness or failure.
     func startPlayerItemReadinessObserver()
     
+    func startPlayerItemAssetKeysObserver()
+    
     /// Stops active observation of the player item's `status` key path.
     func stopPlayerItemReadinessObserver()
+    
+    func stopPlayerItemAssetKeysObserver()
     
     // MARK: - Preflight Capability Checks
     
@@ -105,4 +114,7 @@ public protocol AKMediaManagerProtocol: AnyObject, NSObjectProtocol {
     /// - Parameter time: The target CMTime position.
     /// - Returns: A tuple containing a boolean flag indicating permission and an optional unavailability reason.
     func canSeek(to time: AKSeekTarget) -> (flag: Bool, reason: AKPlayerUnavailableCommandReason?)
+    
+    /// Emits a media event to active listeners.
+    func emit(_ event: AKMediaEvent)
 }

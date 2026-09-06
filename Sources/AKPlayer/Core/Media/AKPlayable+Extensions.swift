@@ -92,6 +92,11 @@ public extension AKPlayable {
     var error: AKPlayerError? {
         manager.error
     }
+    
+    var delegate: AKMediaDelegate? {
+        get { manager.delegate }
+        set { manager.delegate = newValue }
+    }
 }
 
 // MARK: - Direct Delegation via Manager (Operations)
@@ -125,9 +130,17 @@ public extension AKPlayable {
         manager.startPlayerItemReadinessObserver()
     }
     
+    func startPlayerItemAssetKeysObserver() {
+        manager.startPlayerItemAssetKeysObserver()
+    }
+    
     /// Stops active observation of the player item's `status` key path.
     func stopPlayerItemReadinessObserver() {
         manager.stopPlayerItemReadinessObserver()
+    }
+    
+    func stopPlayerItemAssetKeysObserver() {
+        manager.stopPlayerItemAssetKeysObserver()
     }
 }
 

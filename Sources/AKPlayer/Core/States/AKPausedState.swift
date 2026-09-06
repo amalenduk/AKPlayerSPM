@@ -68,11 +68,7 @@ public class AKPausedState: AKBaseState {
         }
         
         if playerItemDidPlayToEndTime, let currentMedia = playerController.currentMedia {
-            playerController.delegate?.playerController(
-                playerController,
-                didReachEndAt: playerController.currentTime,
-                for: currentMedia
-            )
+            playerController.emit(.didReachEnd(at: playerController.currentTime))
         }
     }
     
@@ -120,10 +116,7 @@ public class AKPausedState: AKBaseState {
         }
         
         guard currentMedia.canPlay(at: rate) else {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .canNotPlayAtSpecifiedRate
-            )
+            playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
         

@@ -114,6 +114,11 @@ open class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
         return playerController.error
     }
     
+    /// Asynchronous stream of player events for Swift Concurrency.
+    public var events: AsyncStream<AKPlayerEvent> {
+        return playerController.events
+    }
+    
     /// Controller managing underlying AVPlayer actions and state machine transitions.
     public let playerController: AKPlayerControllerProtocol
     
@@ -122,11 +127,13 @@ open class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
         return playerController.configuration
     }
     
-    /// Delegate receiver for listening to state changes and errors.
-    public weak var delegate: AKPlayerManagerDelegate?
-    
     /// Snapshot storing playback and app states during interruptions for resumption logic.
     public private(set) var playerStateSnapshot: AKPlayerStateSnapshot?
+    
+    private let eventBroadcaster = AKEventBroadcaster<AKPlayerEvent>()
+    
+    /// Task managing the asynchronous event stream from the player controller.
+    private var controllerEventsTask: Task<Void, Never>?
     
     /// Tracks connection status of external audio devices (e.g., Bluetooth, headphones).
     private var isExternalAudioPlaybackDeviceConnected: Bool = false
@@ -169,16 +176,19 @@ open class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
         audioSessionMediaServicesWereResetObserver = AKAudioSessionMediaServicesWereResetObserver(audioSession: audioSessionService.audioSession)
         applicationLifeCycleEventsObserver = AKApplicationLifeCycleEventsObserver()
         
-        playerController.delegate = self
         audioSessionInterruptionObserver.delegate = self
         audioSessionRouteChangesObserver.delegate = self
         audioSessionMediaServicesWereResetObserver.delegate = self
         applicationLifeCycleEventsObserver.delegate = self
         
+        startObservingPlayerEvents()
         setupNowPlayingSession()
     }
     
     deinit {
+        controllerEventsTask?.cancel()
+        controllerEventsTask = nil
+        eventBroadcaster.finish()
         print("AKPlayerManager: Deinit called from the AKPlayerManager ✌🏼")
     }
     
@@ -605,7 +615,7 @@ open class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
             return completion(true)
         } catch let error {
             if let playerError = error as? AKPlayerError {
-                delegate?.playerManager(self, didFailWith: playerError)
+                emit(.didFail(with: playerError))
             }
         }
         return completion(false)
@@ -635,7 +645,7 @@ open class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
     
     /// Notifies the delegate when an action is unavailable due to lifecycle or state restrictions.
     private func actionNotPermitted() {
-        delegate?.playerManager(self, didEncounterUnavailableAction: .actionNotPermitted)
+        emit(.commandUnavailable(reason: .actionNotPermitted))
     }
     
     /// Wraps playback operations to check audio session activation and snapshot clearance before execution.
@@ -655,6 +665,36 @@ open class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
             action()
         }
         clearPlayerStateSnapshot()
+    }
+    
+    /// Single entry point for dispatching all player events across the framework.
+    /// Broadcasts the event to the delegate and forwards it to event listeners (AsyncStream / Combine).
+    /// - Parameter event: The player event that occurred.
+    private func emit(_ event: AKPlayerEvent) {
+        eventBroadcaster.send(event)
+    }
+    
+    private func startObservingPlayerEvents() {
+        controllerEventsTask?.cancel()
+        
+        controllerEventsTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            
+            for await event in self.playerController.events {
+                // Guard against processing events after cancellation
+                guard !Task.isCancelled else { break }
+                
+                self.handleControllerEvent(event)
+            }
+        }
+    }
+    
+    private func handleControllerEvent(_ event: AKPlayerEvent) {
+        if case .timeDidChange = event { } else {
+            setNowPlayingInfo()
+        }
+        
+        eventBroadcaster.send(event)
     }
 }
 
@@ -801,97 +841,5 @@ extension AKPlayerManager: AKApplicationLifeCycleEventsObserverDelegate {
             
             play()
         }
-    }
-}
-
-// MARK: - AKPlayerControllerDelegate
-
-extension AKPlayerManager: AKPlayerControllerDelegate {
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didChangeStateTo state: AKPlayerState) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didChangeStateTo: state)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didChangeMediaTo media: AKPlayable) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didChangeMediaTo: media)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didChangePlaybackRateTo newRate: AKPlaybackRate,
-                                 from oldRate: AKPlaybackRate) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didChangePlaybackRateTo: newRate, from: oldRate)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didChangeCurrentTimeTo currentTime: CMTime,
-                                 for media: AKPlayable) {
-        // setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didChangeCurrentTimeTo: currentTime,
-                                for: media)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didInvokeBoundaryTimeObserverAt time: CMTime,
-                                 for media: AKPlayable) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didInvokeBoundaryTimeObserverAt: time,
-                                for: currentMedia!)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didReachEndAt time: CMTime,
-                                 for media: AKPlayable) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didReachEndAt: time,
-                                for: media)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didChangeVolumeTo volume: Float) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didChangeVolumeTo: volume)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didChangeMutedStatusTo isMuted: Bool) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didChangeMutedStatusTo: isMuted)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didEncounterUnavailableAction: reason)
-    }
-    
-    @MainActor
-    public func playerController(_ playerController: AKPlayerControllerProtocol,
-                                 didFailWith error: AKPlayerError) {
-        setNowPlayingInfo()
-        delegate?.playerManager(self,
-                                didFailWith: error)
     }
 }

@@ -112,6 +112,11 @@ public class AKPlayer: NSObject, AKPlayerProtocol {
         return manager.player
     }
     
+    /// Asynchronous stream of player events for Swift Concurrency.
+    public var events: AsyncStream<AKPlayerEvent> {
+        return manager.events
+    }
+    
     /// The player manager instance handling core state machine lifecycle and engine operations.
     public var manager: AKPlayerManagerProtocol
     
@@ -122,6 +127,9 @@ public class AKPlayer: NSObject, AKPlayerProtocol {
     
     /// The delegate object receiving high-level player state transitions, playback events, and error notifications.
     public weak var delegate: AKPlayerDelegate?
+    
+    /// Task managing the asynchronous event stream from the player controller.
+    private var controllerEventsTask: Task<Void, Never>?
     
     // MARK: - Initialization & Teardown
     
@@ -141,10 +149,14 @@ public class AKPlayer: NSObject, AKPlayerProtocol {
             audioSessionService: audioSessionService
         )
         super.init()
-        self.manager.delegate = self
+        
+        startObservingPlayerEvents()
     }
     
-    deinit { }
+    deinit {
+        controllerEventsTask?.cancel()
+        controllerEventsTask = nil
+    }
     
     // MARK: - Setup
     
@@ -276,127 +288,53 @@ public class AKPlayer: NSObject, AKPlayerProtocol {
     public func rewind(at rate: AKPlaybackRate) {
         manager.rewind(at: rate)
     }
-}
-
-// MARK: - AKPlayerManagerDelegate
-
-extension AKPlayer: AKPlayerManagerDelegate {
     
-    /// Delegates state change events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - state: The new concrete player state.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeStateTo state: AKPlayerState
-    ) {
-        delegate?.akPlayer(self, didChangeStateTo: state)
+    private func startObservingPlayerEvents() {
+        controllerEventsTask?.cancel()
+        
+        controllerEventsTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            
+            for await event in self.manager.events {
+                // Guard against processing events after cancellation
+                guard !Task.isCancelled else { break }
+                
+                self.handleControllerEvent(event)
+            }
+        }
     }
     
-    /// Delegates active media change events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - media: The new active playable media item.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeMediaTo media: any AKPlayable
-    ) {
-        delegate?.akPlayer(self, didChangeMediaTo: media)
-    }
-    
-    /// Delegates playback rate change events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - newRate: The updated playback speed multiplier.
-    ///   - oldRate: The previous playback speed multiplier.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangePlaybackRateTo newRate: AKPlaybackRate,
-        from oldRate: AKPlaybackRate
-    ) {
-        delegate?.akPlayer(self, didChangePlaybackRateTo: newRate, from: oldRate)
-    }
-    
-    /// Delegates playback position time change events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - currentTime: The updated current time position.
-    ///   - media: The active media item associated with the event.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeCurrentTimeTo currentTime: CMTime,
-        for media: any AKPlayable
-    ) {
-        delegate?.akPlayer(self, didChangeCurrentTimeTo: currentTime, for: media)
-    }
-    
-    /// Delegates boundary time observer invocation events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - time: The boundary time position reached.
-    ///   - media: The active media item associated with the event.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didInvokeBoundaryTimeObserverAt time: CMTime,
-        for media: any AKPlayable
-    ) {
-        delegate?.akPlayer(self, didInvokeBoundaryTimeObserverAt: time, for: media)
-    }
-    
-    /// Delegates media playback completion events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - time: The playback end time position.
-    ///   - media: The media item that reached completion.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didReachEndAt time: CMTime,
-        for media: any AKPlayable
-    ) {
-        delegate?.akPlayer(self, didReachEndAt: time, for: media)
-    }
-    
-    /// Delegates volume level change events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - volume: The updated output volume level.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeVolumeTo volume: Float
-    ) {
-        delegate?.akPlayer(self, didChangeVolumeTo: volume)
-    }
-    
-    /// Delegates audio mute status change events emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - isMuted: The updated audio mute state boolean flag.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeMutedStatusTo isMuted: Bool
-    ) {
-        delegate?.akPlayer(self, didChangeMutedStatusTo: isMuted)
-    }
-    
-    /// Delegates action unavailability notifications emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - reason: The specific reason explaining why the requested action was unavailable.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason
-    ) {
-        delegate?.akPlayer(self, didEncounterUnavailableAction: reason)
-    }
-    
-    /// Delegates player error notifications emitted from the player manager to the public player delegate.
-    /// - Parameters:
-    ///   - playerManager: The underlying player manager source.
-    ///   - error: The player error encountered.
-    public func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didFailWith error: AKPlayerError
-    ) {
-        delegate?.akPlayer(self, didFailWith: error)
+    private func handleControllerEvent(_ event: AKPlayerEvent) {
+        switch event {
+        case .stateDidChange(let state):
+            delegate?.akPlayer(self, didChangeStateTo: state)
+            
+        case .mediaDidChange(let media):
+            delegate?.akPlayer(self, didChangeMediaTo: media)
+            
+        case .timeDidChange(let time):
+            delegate?.akPlayer(self, didChangeCurrentTimeTo: time, for: currentMedia!)
+            
+        case .didReachEnd(let time):
+            delegate?.akPlayer(self, didReachEndAt: time, for: currentMedia!)
+            
+        case .boundaryReached(let time):
+            delegate?.akPlayer(self, didInvokeBoundaryTimeObserverAt: time, for: currentMedia!)
+            
+        case .playbackRateDidChange(let newRate, let previousRate):
+            delegate?.akPlayer(self, didChangePlaybackRateTo: newRate, from: previousRate)
+            
+        case .volumeDidChange(let volume):
+            delegate?.akPlayer(self, didChangeVolumeTo: volume)
+            
+        case .muteStatusDidChange(let isMuted):
+            delegate?.akPlayer(self, didChangeMutedStatusTo: isMuted)
+            
+        case .commandUnavailable(let reason):
+            delegate?.akPlayer(self, didEncounterUnavailableAction: reason)
+            
+        case .didFail(let error):
+            delegate?.akPlayer(self, didFailWith: error)
+        }
     }
 }

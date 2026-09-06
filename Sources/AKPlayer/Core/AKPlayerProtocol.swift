@@ -79,6 +79,9 @@ public protocol AKPlayerProtocol: AnyObject, AKPlayerActionsProtocol {
     /// Contains error details if a failure occurs during initialization or playback.
     var error: AKPlayerError? { get }
     
+    /// An asynchronous sequence of player lifecycle and playback events.
+    var events: AsyncStream<AKPlayerEvent> { get }
+    
     // MARK: - Boundary Time Observers
     
     /// Registers a boundary time observer to trigger notifications when playback reaches explicit time markers.

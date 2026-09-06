@@ -28,7 +28,7 @@ import Foundation
 // MARK: - AKPlayableState
 
 /// Represents the lifecycle loading state of a playable media item.
-@objc public enum AKPlayableState: Int, CustomStringConvertible {
+@objc public enum AKPlayableState: Int, CustomStringConvertible, Sendable {
     
     /// Initial uninitialized state before asset loading begins.
     case idle = 0

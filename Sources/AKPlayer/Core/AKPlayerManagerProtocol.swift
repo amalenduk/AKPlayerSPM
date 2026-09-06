@@ -27,111 +27,6 @@ import AVFoundation
 import Foundation
 import MediaPlayer
 
-// MARK: - AKPlayerManagerDelegate
-
-/// Delegate protocol to receive state, media, rate, time, and error events from an `AKPlayerManagerProtocol`.
-@MainActor
-public protocol AKPlayerManagerDelegate: AnyObject {
-    
-    /// Called when the player's playback state changes.
-    /// - Parameters:
-    ///   - playerManager: The manager instance reporting the state update.
-    ///   - state: The new playback state (e.g., playing, paused, stopped, failed).
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeStateTo state: AKPlayerState
-    )
-    
-    /// Called when the currently active media item changes.
-    /// - Parameters:
-    ///   - playerManager: The manager instance updating its active media.
-    ///   - media: The new playable media item.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeMediaTo media: any AKPlayable
-    )
-    
-    /// Called when the playback rate changes.
-    /// - Parameters:
-    ///   - playerManager: The manager instance changing playback speed.
-    ///   - newRate: The newly applied playback rate.
-    ///   - oldRate: The previously active playback rate.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangePlaybackRateTo newRate: AKPlaybackRate,
-        from oldRate: AKPlaybackRate
-    )
-    
-    /// Called periodically during playback as the current playback position advances.
-    /// - Parameters:
-    ///   - playerManager: The manager instance updating playback position.
-    ///   - currentTime: The current playback timestamp as `CMTime`.
-    ///   - media: The playable item currently being evaluated.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeCurrentTimeTo currentTime: CMTime,
-        for media: any AKPlayable
-    )
-    
-    /// Called when playback crosses a registered boundary time marker.
-    /// - Parameters:
-    ///   - playerManager: The manager instance crossing the boundary timestamp.
-    ///   - time: The boundary time marker that was reached.
-    ///   - media: The active media item associated with the boundary notification.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didInvokeBoundaryTimeObserverAt time: CMTime,
-        for media: any AKPlayable
-    )
-    
-    /// Called when playback reaches the end of the current media duration.
-    /// - Parameters:
-    ///   - playerManager: The manager instance completing media playback.
-    ///   - time: The final timestamp reached at completion.
-    ///   - media: The media item that finished playing.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didReachEndAt time: CMTime,
-        for media: any AKPlayable
-    )
-    
-    /// Called when the player output volume level changes.
-    /// - Parameters:
-    ///   - playerManager: The manager instance updating its volume level.
-    ///   - volume: The updated output volume (0.0 to 1.0).
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeVolumeTo volume: Float
-    )
-    
-    /// Called when the player audio output is muted or unmuted.
-    /// - Parameters:
-    ///   - playerManager: The manager instance toggling mute status.
-    ///   - isMuted: `true` if audio output is muted; `false` otherwise.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didChangeMutedStatusTo isMuted: Bool
-    )
-    
-    /// Called when a requested player command or user interaction cannot be executed.
-    /// - Parameters:
-    ///   - playerManager: The manager instance rejecting the command.
-    ///   - reason: The specific reason explaining why the action was rejected.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason
-    )
-    
-    /// Called when an unrecoverable error occurs during media loading or playback.
-    /// - Parameters:
-    ///   - playerManager: The manager instance reporting the error.
-    ///   - error: The player error describing the failure state.
-    func playerManager(
-        _ playerManager: AKPlayerManagerProtocol,
-        didFailWith error: AKPlayerError
-    )
-}
-
 // MARK: - AKPlayerManagerProtocol
 
 /// Primary management protocol exposing high-level player control and now-playing integration.
@@ -143,9 +38,6 @@ public protocol AKPlayerManagerProtocol: AKPlayerProtocol, AKPlayerActionsProtoc
     
     /// Configuration options specifying audio session, remote command, and playback behaviors.
     var configuration: AKPlayerConfigurationProtocol { get }
-    
-    /// Delegate receiver for observing player state updates, time updates, and error events.
-    var delegate: AKPlayerManagerDelegate? { get set }
     
     /// Active state snapshot storing playback and app states during interruptions for auto-resumption.
     var playerStateSnapshot: AKPlayerStateSnapshot? { get }

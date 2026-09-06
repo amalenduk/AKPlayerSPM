@@ -75,11 +75,7 @@ public class AKLoadedState: AKBaseState {
         startObservingPlayerProperties()
         
         if let currentMedia = playerController.currentMedia {
-            playerController.delegate?.playerController(
-                playerController,
-                didChangeCurrentTimeTo: playerController.currentTime,
-                for: currentMedia
-            )
+            playerController.emit(.timeDidChange(playerController.currentTime))
         }
         
         if autoPlay {
@@ -88,10 +84,7 @@ public class AKLoadedState: AKBaseState {
             let (canSeek, reason) = currentMedia.seekingThroughMedia.canSeek(to: position)
             guard canSeek else {
                 if let reason {
-                    playerController.delegate?.playerController(
-                        playerController,
-                        didEncounterUnavailableAction: reason
-                    )
+                    playerController.emit(.commandUnavailable(reason: reason))
                 }
                 return
             }
@@ -129,10 +122,7 @@ public class AKLoadedState: AKBaseState {
     public override func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
               currentMedia.canPlay(at: rate) else {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .canNotPlayAtSpecifiedRate
-            )
+            playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
         
@@ -154,10 +144,7 @@ public class AKLoadedState: AKBaseState {
         if autoPlay {
             autoPlay = false
         } else {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .alreadyPaused
-            )
+            playerController.emit(.commandUnavailable(reason: .alreadyPaused))
         }
     }
     

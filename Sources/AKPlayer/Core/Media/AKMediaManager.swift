@@ -54,7 +54,10 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
     /// The current state of the playable media item.
     public private(set) var state: AKPlayableState {
         get { stateSubject.value }
-        set { stateSubject.send(newValue) }
+        set {
+            stateSubject.send(newValue)
+            emit(.stateDidChange(state))
+        }
     }
     
     /// Publisher emitting state updates starting with the current state upon subscription.
@@ -63,6 +66,15 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
             .removeDuplicates()
             .eraseToAnyPublisher()
     }
+    
+    /// Asynchronous stream of media events for Swift Concurrency.
+    public var events: AsyncStream<AKMediaEvent> {
+        eventBroadcaster.makeStream()
+    }
+    
+    public weak var delegate: AKMediaDelegate?
+    
+    private let eventBroadcaster = AKEventBroadcaster<AKMediaEvent>()
     
     private let stateSubject = CurrentValueSubject<AKPlayableState, Never>(.idle)
     
@@ -190,6 +202,13 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
         readinessSubscriptions.removeAll()
     }
     
+    public func startPlayerItemAssetKeysObserver() {
+        assert(state.isPlayerItemLoaded || state.isReadyToPlay,
+               "Cannot start readiness observer before player item is loaded.")
+        
+        startObservingPlayerItemProperties()
+    }
+    
     /// Stops active observation of asset keys.
     public nonisolated func stopPlayerItemAssetKeysObserver() {
         assetKeySubscriptions.removeAll()
@@ -260,5 +279,110 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
             }
         }
         return seekingThroughMediaService.canSeek(to: target)
+    }
+    
+    // MARK: - Player Item Property Observation
+    
+    private func startObservingPlayerItemProperties() {
+        guard let playerItem else { return }
+        
+        // Clear any existing subscriptions before re-attaching
+        assetKeySubscriptions.removeAll()
+        
+        // 1. Tracks
+        playerItem.publisher(for: \.tracks, options: [.initial, .new])
+            .sink { [weak self] tracks in
+                guard let self else { return }
+                delegate?.akMedia(media!, didChangeTracksTo: tracks)
+                emit(.tracksDidChange(tracks))
+            }
+            .store(in: &assetKeySubscriptions)
+        
+        // 2. Presentation Dimensions (Resolution)
+        playerItem.publisher(for: \.presentationSize, options: [.initial, .new])
+            .removeDuplicates()
+            .sink { [weak self] size in
+                guard let self else { return }
+                delegate?.akMedia(media!, didChangePresentationSizeTo: size)
+                emit(.presentationSizeDidChange(size))
+            }
+            .store(in: &assetKeySubscriptions)
+        
+        // 3. Duration
+        playerItem.publisher(for: \.duration, options: [.initial, .new])
+            .removeDuplicates()
+            .sink { [weak self] duration in
+                guard let self else { return }
+                delegate?.akMedia(media!, didChangeItemDurationTo: duration)
+                emit(.durationDidChange(duration))
+            }
+            .store(in: &assetKeySubscriptions)
+        
+        // 4. Timebase
+        playerItem.publisher(for: \.timebase, options: [.initial, .new])
+            .sink { [weak self] timebase in
+                guard let self else { return }
+                delegate?.akMedia(media!, didChangeTimebaseTo: timebase)
+                emit(.timebaseDidChange(timebase))
+            }
+            .store(in: &assetKeySubscriptions)
+        
+        // 5. Loaded (Buffered) Time Ranges
+        playerItem.publisher(for: \.loadedTimeRanges, options: [.initial, .new])
+            .sink { [weak self] nsValues in
+                guard let self else { return }
+                let ranges = nsValues.map { $0.timeRangeValue }
+                delegate?.akMedia(media!, didChangeLoadedTimeRangesTo: ranges)
+                emit(.loadedTimeRangesDidChange(ranges))
+            }
+            .store(in: &assetKeySubscriptions)
+        
+        // 6. Seekable Time Ranges
+        playerItem.publisher(for: \.seekableTimeRanges, options: [.initial, .new])
+            .sink { [weak self] nsValues in
+                guard let self else { return }
+                let ranges = nsValues.map { $0.timeRangeValue }
+                delegate?.akMedia(media!, didChangeSeekableTimeRangesTo: ranges)
+                emit(.seekableTimeRangesDidChange(ranges))
+            }
+            .store(in: &assetKeySubscriptions)
+        
+        // 7. Playback Capabilities
+        observeCapability(\.canStepForward, capability: .stepForward, on: playerItem)
+        observeCapability(\.canStepBackward, capability: .stepBackward, on: playerItem)
+        observeCapability(\.canPlayReverse, capability: .playReverse, on: playerItem)
+        observeCapability(\.canPlayFastForward, capability: .playFastForward, on: playerItem)
+        observeCapability(\.canPlayFastReverse, capability: .playFastReverse, on: playerItem)
+        observeCapability(\.canPlaySlowForward, capability: .playSlowForward, on: playerItem)
+        observeCapability(\.canPlaySlowReverse, capability: .playSlowReverse, on: playerItem)
+    }
+    
+    // Helper to keep capability observations DRY (Don't Repeat Yourself)
+    private func observeCapability(
+        _ keyPath: KeyPath<AVPlayerItem, Bool>,
+        capability: AKMediaCapability,
+        on item: AVPlayerItem
+    ) {
+        item.publisher(for: keyPath, options: [.initial, .new])
+            .removeDuplicates()
+            .sink { [weak self] isSupported in
+                guard let self else { return }
+                emit(.capabilityDidChange(capability,
+                                          isSupported: isSupported))
+                delegate?.akMedia(
+                    media!,
+                    didChangeCapability: capability,
+                    to: isSupported
+                )
+            }
+            .store(in: &assetKeySubscriptions)
+    }
+    
+    
+    // MARK: - Event Dispatch
+    
+    /// Emits a media event to active listeners.
+    public func emit(_ event: AKMediaEvent) {
+        eventBroadcaster.send(event)
     }
 }

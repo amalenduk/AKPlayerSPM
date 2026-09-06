@@ -98,10 +98,7 @@ public class AKWaitingForNetworkState: AKBaseState {
     /// Commands the player to play, updating the autoplay flag or notifying delegate if already attempting to play.
     public override func play() {
         if autoPlay {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .alreadyTryingToPlay
-            )
+            playerController.emit(.commandUnavailable(reason: .alreadyTryingToPlay))
         } else {
             self.autoPlay = true
         }
@@ -112,10 +109,7 @@ public class AKWaitingForNetworkState: AKBaseState {
     public override func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
               currentMedia.canPlay(at: rate) else {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .canNotPlayAtSpecifiedRate
-            )
+            playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
         self.rate = rate

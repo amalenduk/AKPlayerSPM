@@ -117,6 +117,11 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         return (controller as? AKFailedState)?.error
     }
     
+    /// Asynchronous stream of player events for Swift Concurrency.
+    public var events: AsyncStream<AKPlayerEvent> {
+        eventBroadcaster.makeStream()
+    }
+    
     /// Configuration options driving player behavior and timing defaults.
     public private(set) var configuration: AKPlayerConfigurationProtocol
     
@@ -127,14 +132,13 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             _controller = newValue
             newValue.processStateChange()
             processStateChange()
-            delegate?.playerController(self, didChangeStateTo: newValue.state)
+            emit(.stateDidChange(newValue.state))
         }
     }
     
     private var _controller: AKPlayerStateControllerProtocol?
     
-    /// Delegate object receiving state transition notifications, time updates, and error events.
-    public weak var delegate: AKPlayerControllerDelegate?
+    private let eventBroadcaster = AKEventBroadcaster<AKPlayerEvent>()
     
     /// Service managing seek operation queuing and execution against `AVPlayer`.
     public var playerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServiceProtocol
@@ -174,6 +178,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         print("AKPlayerController: Deinit called from the AKPlayerController ✌🏼")
         rateObservationTask?.cancel()
         rateObservationTask = nil
+        eventBroadcaster.finish()
     }
     
     // MARK: - Time Observers
@@ -337,7 +342,9 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         rateObservationTask = Task { @MainActor [weak self] in
             guard let self else { return }
             for await change in playerRateObserver.rateChanges {
-                self.delegate?.playerController(self, didChangePlaybackRateTo: change.currentRate, from: change.previousRate)
+                eventBroadcaster.send(.playbackRateDidChange(new: change.currentRate,
+                                                             previous: change.previousRate
+                                                            ))
             }
         }
         
@@ -345,7 +352,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] volume in
                 guard let self else { return }
-                self.delegate?.playerController(self, didChangeVolumeTo: volume)
+                eventBroadcaster.send(.volumeDidChange(volume))
             }
             .store(in: &subscriptions)
         
@@ -353,7 +360,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isMuted in
                 guard let self else { return }
-                self.delegate?.playerController(self, didChangeMutedStatusTo: isMuted)
+                eventBroadcaster.send(.muteStatusDidChange(isMuted: isMuted))
             }
             .store(in: &subscriptions)
         
@@ -361,7 +368,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] time in
                 guard let self, let currentMedia = self.currentMedia else { return }
-                self.delegate?.playerController(self, didChangeCurrentTimeTo: time, for: currentMedia)
+                eventBroadcaster.send(.timeDidChange(time))
             }
             .store(in: &subscriptions)
         
@@ -369,7 +376,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] time in
                 guard let self, let currentMedia = self.currentMedia else { return }
-                self.delegate?.playerController(self, didInvokeBoundaryTimeObserverAt: time, for: currentMedia)
+                eventBroadcaster.send(.boundaryReached(at: time))
             }
             .store(in: &subscriptions)
     }
@@ -381,10 +388,13 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         playerPlaybackTimeObserver.stopObservingBoundaryTime()
     }
     
-    /// Notifies the delegate when an attempted playback operation is unavailable in the current state.
-    /// - Parameter reason: The unavailable command reason explaining why the action was rejected.
-    private func unavailableCommand(reason: AKPlayerUnavailableCommandReason) {
-        delegate?.playerController(self, didEncounterUnavailableAction: reason)
+    // MARK: - Event Dispatcher
+    
+    /// Single entry point for dispatching all player events across the framework.
+    /// Broadcasts the event to the delegate and forwards it to event listeners (AsyncStream / Combine).
+    /// - Parameter event: The player event that occurred.
+    public func emit(_ event: AKPlayerEvent) {
+        eventBroadcaster.send(event)
     }
 }
 

@@ -87,10 +87,7 @@ public class AKLoadingState: AKBaseState {
     /// Entry point for state setup. Cleans up prior item observers, emits initial media change events, and monitors media load state transitions.
     public override func processStateChange() {
         resetPlayer()
-        playerController.delegate?.playerController(
-            playerController,
-            didChangeMediaTo: media
-        )
+        playerController.emit(.mediaDidChange(media))
         
         media.statePublisher
             .receive(on: DispatchQueue.main)
@@ -111,10 +108,7 @@ public class AKLoadingState: AKBaseState {
     /// Intercepts specific speed adjustments requested during loading state and fires unavailable action delegate notifications.
     /// - Parameter rate: The target speed requested.
     public override func play(at rate: AKPlaybackRate) {
-        playerController.delegate?.playerController(
-            playerController,
-            didEncounterUnavailableAction: .waitTillMediaLoaded
-        )
+        playerController.emit(.commandUnavailable(reason: .waitTillMediaLoaded))
     }
     
     /// Cancels queued autoplay request while media is loading.

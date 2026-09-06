@@ -117,10 +117,7 @@ public class AKBufferingState: AKBaseState {
     /// Commands the player to begin media playback, updating autoplay parameters if already buffering.
     public override func play() {
         if autoPlay {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .alreadyTryingToPlay
-            )
+            playerController.emit(.commandUnavailable(reason: .alreadyTryingToPlay))
         } else {
             self.autoPlay = true
             startPlayingIfPossible()
@@ -132,10 +129,7 @@ public class AKBufferingState: AKBaseState {
     public override func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
               currentMedia.canPlay(at: rate) else {
-            playerController.delegate?.playerController(
-                playerController,
-                didEncounterUnavailableAction: .canNotPlayAtSpecifiedRate
-            )
+            playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
         self.rate = rate
@@ -197,8 +191,8 @@ public class AKBufferingState: AKBaseState {
             },
             blocked: { [weak self] reason in
                 completionHandler(false)
-                guard let s = self else { return }
-                s.playerController.delegate?.playerController(s.playerController, didEncounterUnavailableAction: reason)
+                guard let self else { return }
+                playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
@@ -236,7 +230,7 @@ public class AKBufferingState: AKBaseState {
             blocked: { [weak self] reason in
                 completionHandler(false)
                 guard let s = self else { return }
-                s.playerController.delegate?.playerController(s.playerController, didEncounterUnavailableAction: reason)
+                s.playerController.emit(.commandUnavailable(reason: reason))
             },
             fallback: ()
         )
