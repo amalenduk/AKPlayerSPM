@@ -24,12 +24,12 @@
 //
 
 import Foundation
-@preconcurrency import MediaPlayer
+import MediaPlayer
 
 // MARK: - AKNowPlayableMetadata
 
 /// A concrete container holding combined static and dynamic metadata payload sources for MPNowPlayingInfoCenter.
-public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol {
+public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol, Sendable {
     
     // MARK: - Properties
     
@@ -57,7 +57,7 @@ public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol {
 // MARK: - AKNowPlayableStaticMetadata
 
 /// A concrete struct implementing static metadata properties for Now Playing displays.
-public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol {
+public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol, @unchecked Sendable {
     
     // MARK: - Properties
     
@@ -145,7 +145,7 @@ public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol {
 // MARK: - AKNowPlayableDynamicMetadata
 
 /// A concrete struct implementing dynamic metadata properties for Now Playing displays.
-public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol {
+public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol, @unchecked Sendable {
     
     // MARK: - Properties
     

@@ -23,7 +23,7 @@
 //  SOFTWARE.
 //
 
-@preconcurrency import Foundation
+import Foundation
 @preconcurrency import AVFoundation
 import MediaAccessibility
 
@@ -105,11 +105,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
         startObservingExternalChanges()
     }
     
-    deinit {
-        if let externalChangeObserver {
-            NotificationCenter.default.removeObserver(externalChangeObserver)
-        }
-    }
+    deinit { }
     
     // MARK: - Public API
     

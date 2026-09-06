@@ -51,7 +51,7 @@ public struct AKPlaybackRateChange: Sendable {
 @MainActor
 public protocol AKPlayerRateObserverProtocol: AnyObject {
     var player: AVPlayer { get }
-    var rateChangePublisher: AnyPublisher<AKPlaybackRateChange, Never> { get }
+    var rateChanges: AsyncStream<AKPlaybackRateChange> { get }
     
     func startObserving()
     func stopObserving()
@@ -67,21 +67,20 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     
     public let player: AVPlayer
     
-    public var rateChangePublisher: AnyPublisher<AKPlaybackRateChange, Never> {
-        _rateChangePublisher.eraseToAnyPublisher()
+    public var rateChanges: AsyncStream<AKPlaybackRateChange> {
+        rateChangeStream
     }
     
-    private let _rateChangePublisher = PassthroughSubject<AKPlaybackRateChange, Never>()
+    private let rateChangeStream: AsyncStream<AKPlaybackRateChange>
+    private let rateChangeContinuation: AsyncStream<AKPlaybackRateChange>.Continuation
     
     private var isObserving = false
-    private var rateChangeObserver: NSKeyValueObservation?
     
     /// Container holding reactive Combine event subscriptions.
-    /// Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
+    /// Marked `nonisolated(unsafe)` to safely clear it from `deinit`.
     private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
-    private var oldRate: AKPlaybackRate?
-    private var newRate: AKPlaybackRate?
+    private var currentRate: AKPlaybackRate?
     
     // MARK: - Init & Deinit
     
@@ -89,10 +88,14 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     /// - Parameter player: The AVPlayer instance to monitor.
     public init(with player: AVPlayer) {
         self.player = player
+        
+        let (stream, continuation) = AsyncStream.makeStream(of: AKPlaybackRateChange.self)
+        self.rateChangeStream = stream
+        self.rateChangeContinuation = continuation
     }
     
     deinit {
-        rateChangeObserver?.invalidate()
+        rateChangeContinuation.finish()
         subscriptions.removeAll()
     }
     
@@ -101,45 +104,36 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     public func startObserving() {
         guard !isObserving else { return }
         
-        // Establish initial baseline rate directly from player
         let initialRate = AKPlaybackRate(rate: player.rate)
-        self.oldRate = initialRate
-        self.newRate = initialRate
+        self.currentRate = initialRate
         
-        // KVO observer running synchronously on MainActor
-        rateChangeObserver = player.observe(
-            \.rate,
-            options: [.old, .new]
-        ) { [weak self] player, change in
-            Task { @MainActor [weak self] in
+        // Listen to NotificationCenter updates using @MainActor closure isolation
+        NotificationCenter.default.publisher(for: AVPlayer.rateDidChangeNotification, object: player)
+            .sink { @MainActor [weak self] notification in
                 guard let self else { return }
                 
-                if let newValue = change.newValue {
-                    self.oldRate = self.newRate ?? AKPlaybackRate(rate: change.oldValue ?? player.rate)
-                    self.newRate = AKPlaybackRate(rate: newValue)
-                }
-            }
-        }
-        
-        // Receive NotificationCenter updates on main thread to preserve UI & actor isolation
-        NotificationCenter.default.publisher(for: AVPlayer.rateDidChangeNotification, object: player)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] notification in
-                guard let self else { return }
-                guard let userInfo = notification.userInfo,
-                      let reason = userInfo[AVPlayer.rateDidChangeReasonKey] as? AVPlayer.RateDidChangeReason else {
+                guard
+                    let userInfo = notification.userInfo,
+                    let reason = userInfo[AVPlayer.rateDidChangeReasonKey]
+                        as? AVPlayer.RateDidChangeReason
+                else {
                     return
                 }
                 
-                let previous = self.oldRate ?? AKPlaybackRate(rate: self.player.rate)
-                let current = self.newRate ?? AKPlaybackRate(rate: self.player.rate)
+                let previous = self.currentRate
+                ?? AKPlaybackRate(rate: self.player.rate)
+                
+                let current = AKPlaybackRate(rate: self.player.rate)
+                
+                self.currentRate = current
                 
                 let change = AKPlaybackRateChange(
                     previousRate: previous,
                     currentRate: current,
                     reason: reason
                 )
-                self._rateChangePublisher.send(change)
+                
+                self.rateChangeContinuation.yield(change)
             }
             .store(in: &subscriptions)
         
@@ -148,8 +142,6 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     
     public func stopObserving() {
         guard isObserving else { return }
-        rateChangeObserver?.invalidate()
-        rateChangeObserver = nil
         subscriptions.removeAll()
         isObserving = false
     }

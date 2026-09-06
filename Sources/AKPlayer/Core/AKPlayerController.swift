@@ -149,7 +149,10 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     private var playerRateObserver: AKPlayerRateObserverProtocol
     
     /// Combine cancellable storage for active KVO and notification subscriptions.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
+    
+    /// Task responsible for asynchronously consuming and processing rate change events from the player stream.
+    private nonisolated(unsafe) var rateObservationTask: Task<Void, Never>?
     
     // MARK: - Initialization & Teardown
     
@@ -169,7 +172,8 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     
     deinit {
         print("AKPlayerController: Deinit called from the AKPlayerController ✌🏼")
-        subscriptions.removeAll()
+        rateObservationTask?.cancel()
+        rateObservationTask = nil
     }
     
     // MARK: - Time Observers
@@ -330,13 +334,12 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         playerRateObserver.startObserving()
         playerPlaybackTimeObserver.startObservingPeriodicTime(for: configuration.getPeriodicTimeInterval())
         
-        playerRateObserver.rateChangePublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] change in
-                guard let self else { return }
+        rateObservationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            for await change in playerRateObserver.rateChanges {
                 self.delegate?.playerController(self, didChangePlaybackRateTo: change.currentRate, from: change.previousRate)
             }
-            .store(in: &subscriptions)
+        }
         
         player.publisher(for: \.volume)
             .receive(on: DispatchQueue.main)

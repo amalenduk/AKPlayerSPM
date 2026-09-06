@@ -24,8 +24,11 @@
 //
 
 import Foundation
-import os.log
+import os
 
+// MARK: - AKLogCategory
+
+/// Categories used to organize AKPlayer's internal logging.
 public enum AKLogCategory: String, Sendable {
     case player = "Player"
     case media = "Media"
@@ -34,37 +37,135 @@ public enum AKLogCategory: String, Sendable {
     case lifecycle = "Lifecycle"
 }
 
-public struct AKLogger: Sendable {
+// MARK: - AKLogger
+
+/// Internal logger used throughout AKPlayer.
+///
+/// AKLogger is intentionally internal. Applications using AKPlayer should
+/// receive diagnostics through the system Console app rather than depending
+/// on AKPlayer's internal logging implementation.
+public enum AKLogger: Sendable {
+    
+    // MARK: - Subsystem & Static Loggers
+    
     private static let subsystem = "com.AKPlayer.framework"
     
-    /// Global toggle to enable or disable logging across the framework.
-    public static var isEnabled: Bool = true
+    private static let player = Logger(
+        subsystem: subsystem,
+        category: AKLogCategory.player.rawValue
+    )
+    
+    private static let media = Logger(
+        subsystem: subsystem,
+        category: AKLogCategory.media.rawValue
+    )
+    
+    private static let session = Logger(
+        subsystem: subsystem,
+        category: AKLogCategory.session.rawValue
+    )
+    
+    private static let remote = Logger(
+        subsystem: subsystem,
+        category: AKLogCategory.remote.rawValue
+    )
+    
+    private static let lifecycle = Logger(
+        subsystem: subsystem,
+        category: AKLogCategory.lifecycle.rawValue
+    )
+    
+    // MARK: - Logger Resolution
     
     private static func logger(for category: AKLogCategory) -> Logger {
-        return Logger(subsystem: subsystem, category: category.rawValue)
+        switch category {
+        case .player:
+            return player
+        case .media:
+            return media
+        case .session:
+            return session
+        case .remote:
+            return remote
+        case .lifecycle:
+            return lifecycle
+        }
+    }
+}
+
+// MARK: - AKLogger + Autoclosure Logging API
+
+public extension AKLogger {
+    
+    // MARK: - Debug
+    
+    /// Logs a debug-level message.
+    ///
+    /// - Parameters:
+    ///   - message: The log message.
+    ///   - category: The logging category.
+    static func debug(
+        _ message: String,
+        category: AKLogCategory
+    ) {
+        logger(for: category).debug(
+            "\(message, privacy: .public)"
+        )
     }
     
-    public static func debug(_ message: String, category: AKLogCategory) {
-        guard isEnabled else { return }
-        logger(for: category).debug("\(message, privacy: .public)")
+    // MARK: - Info
+    
+    /// Logs an info-level message.
+    ///
+    /// - Parameters:
+    ///   - message: The log message.
+    ///   - category: The logging category.
+    static func info(
+        _ message: String,
+        category: AKLogCategory
+    ) {
+        logger(for: category).info(
+            "\(message, privacy: .public)"
+        )
     }
     
-    public static func info(_ message: String, category: AKLogCategory) {
-        guard isEnabled else { return }
-        logger(for: category).info("\(message, privacy: .public)")
+    // MARK: - Warning
+    
+    /// Logs a warning-level message.
+    ///
+    /// - Parameters:
+    ///   - message: The log message.
+    ///   - category: The logging category.
+    static func warning(
+        _ message: String,
+        category: AKLogCategory
+    ) {
+        logger(for: category).warning(
+            "\(message, privacy: .public)"
+        )
     }
     
-    public static func warning(_ message: String, category: AKLogCategory) {
-        guard isEnabled else { return }
-        logger(for: category).warning("\(message, privacy: .public)")
-    }
+    // MARK: - Error
     
-    public static func error(_ message: String, category: AKLogCategory, error: Error? = nil) {
-        guard isEnabled else { return }
-        if let error = error {
-            logger(for: category).error("\(message) - Error: \(error.localizedDescription, privacy: .public)")
+    /// Logs an error-level message, optionally including an underlying error.
+    ///
+    /// - Parameters:
+    ///   - message: The log message.
+    ///   - category: The logging category.
+    ///   - error: An optional error associated with the log event.
+    static func error(
+        _ message: String,
+        category: AKLogCategory,
+        error: Error? = nil
+    ) {
+        if let error {
+            logger(for: category).error(
+                "\(message, privacy: .public) - Error: \(error.localizedDescription, privacy: .public)"
+            )
         } else {
-            logger(for: category).error("\(message, privacy: .public)")
+            logger(for: category).error(
+                "\(message, privacy: .public)"
+            )
         }
     }
 }

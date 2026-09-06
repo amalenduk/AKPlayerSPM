@@ -82,9 +82,7 @@ open class AKAudioSessionService: AKAudioSessionServiceProtocol {
         self.audioSession = audioSession
     }
     
-    deinit {
-        try? activate(false, options: [])
-    }
+    deinit { }
     
     // MARK: - Configuration Methods
     
