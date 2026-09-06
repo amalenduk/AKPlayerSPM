@@ -46,8 +46,8 @@ public class AKWaitingForNetworkState: AKBaseState {
     /// Optional pending seek command to preserve across network waiting state.
     private var targetSeek: AKSeek?
     
-    /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    /// Container holding reactive Combine event subscriptions.
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Initialization & Deinitialization
     
@@ -72,9 +72,7 @@ public class AKWaitingForNetworkState: AKBaseState {
         super.init(playerController: playerController, state: .waitingForNetwork)
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Lifecycle Hooks
     

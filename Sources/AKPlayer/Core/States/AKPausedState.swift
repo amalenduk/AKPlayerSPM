@@ -37,8 +37,8 @@ public class AKPausedState: AKBaseState {
     /// Flag indicating whether playback paused naturally because the media reached its end time.
     private let playerItemDidPlayToEndTime: Bool
     
-    /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    /// Container holding reactive Combine event subscriptions.
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Init
     
@@ -54,9 +54,7 @@ public class AKPausedState: AKBaseState {
         super.init(playerController: playerController, state: .paused)
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Lifecycle Hooks
     

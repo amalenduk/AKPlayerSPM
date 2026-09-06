@@ -31,7 +31,7 @@ import MediaAccessibility
 
 /// A protocol defining track selection and query capabilities for media streams (audio, subtitles, captions).
 @MainActor
-public protocol AKTrackSelectionServiceProtocol: Sendable {
+public protocol AKTrackSelectionServiceProtocol {
     
     /// Retrieves all available media track options for a specific track type.
     /// - Parameter type: The target `AKTrackType` (audio, subtitle, closed caption, etc.).
@@ -344,7 +344,6 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
     ///   - asset: The `AVAsset` containing media options.
     /// - Returns: The corresponding `AVMediaSelectionGroup`, or `nil` if unavailable.
     /// - Throws: An `AKPlayerError.trackSelectionFailure` if group loading encounters an error.
-    @MainActor
     private func mediaGroup(for type: AKTrackType, in asset: AVAsset) async throws -> AVMediaSelectionGroup? {
         guard let playerItem else { return nil }
         let key = "\(ObjectIdentifier(playerItem).hashValue)-\(type)"
@@ -352,9 +351,9 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
         
         let characteristic = mediaCharacteristic(for: type)
         do {
-            guard let group = try await asset.loadMediaSelectionGroup(for: characteristic) else {
-                return nil
-            }
+            // Explicitly isolate or ensure the compiler knows this stays within actor boundaries
+            let group = try await asset.loadMediaSelectionGroup(for: characteristic)
+            guard let group else { return nil }
             groupCache[key] = group
             return group
         } catch {

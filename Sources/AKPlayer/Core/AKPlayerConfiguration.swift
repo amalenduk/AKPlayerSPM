@@ -62,9 +62,6 @@ public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol, Sendable {
     /// The list of player states during which the system idle timer (screen sleep) is disabled. Defaults to `[.buffering, .playing]`.
     public var idleTimerDisabledForStates: [AKPlayerState] = [.buffering, .playing]
     
-    /// Optional custom text style rules applied to closed captioning and subtitle rendering.
-    public nonisolated(unsafe) var textStyleRules: [AVTextStyleRule]? = nil
-    
     // MARK: - Lifecycle Behavior Configurations
     
     /// Specifies whether playback automatically pauses when the application resigns active status. Defaults to `false`.

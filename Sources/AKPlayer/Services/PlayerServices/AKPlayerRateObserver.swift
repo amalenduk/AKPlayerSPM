@@ -77,8 +77,7 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     private var isObserving = false
     
     /// Container holding reactive Combine event subscriptions.
-    /// Marked `nonisolated(unsafe)` to safely clear it from `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     
     private var currentRate: AKPlaybackRate?
     
@@ -96,7 +95,6 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     
     deinit {
         rateChangeContinuation.finish()
-        subscriptions.removeAll()
     }
     
     // MARK: - Observation Lifecycle

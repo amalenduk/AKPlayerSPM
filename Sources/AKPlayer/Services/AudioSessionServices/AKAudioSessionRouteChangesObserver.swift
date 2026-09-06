@@ -93,8 +93,7 @@ public class AKAudioSessionRouteChangesObserver: AKAudioSessionRouteChangesObser
     private var isObserving = false
     
     /// Container holding reactive Combine event subscriptions.
-    /// Marked `nonisolated(unsafe)` for thread-safe cleanup during `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Init & Deinit
     
@@ -104,9 +103,7 @@ public class AKAudioSessionRouteChangesObserver: AKAudioSessionRouteChangesObser
         self.audioSession = audioSession
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Observation Lifecycle
     

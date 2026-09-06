@@ -44,7 +44,7 @@ public class AKLoadedState: AKBaseState {
     private var rate: AKPlaybackRate?
     
     /// Storage set for managing reactive Combine event subscriptions.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Initialization & Deinitialization
     
@@ -66,9 +66,7 @@ public class AKLoadedState: AKBaseState {
         super.init(playerController: playerController, state: .loaded)
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Lifecycle Hooks
     

@@ -34,8 +34,8 @@ public class AKStoppedState: AKBaseState {
     
     // MARK: - Properties
     
-    /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    /// Container holding reactive Combine event subscriptions.
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Initialization & Deinitialization
     
@@ -45,9 +45,7 @@ public class AKStoppedState: AKBaseState {
         super.init(playerController: playerController, state: .stopped)
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Lifecycle Hooks
     

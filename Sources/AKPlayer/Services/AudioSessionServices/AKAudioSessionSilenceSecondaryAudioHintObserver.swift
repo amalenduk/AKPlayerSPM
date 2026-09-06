@@ -90,8 +90,7 @@ open class AKAudioSessionSilenceSecondaryAudioHintObserver: AKAudioSessionSilenc
     private var isObserving = false
     
     /// Container holding reactive Combine event subscriptions.
-    /// Marked `nonisolated(unsafe)` for safe thread cleanup during `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Init & Deinit
     
@@ -101,9 +100,7 @@ open class AKAudioSessionSilenceSecondaryAudioHintObserver: AKAudioSessionSilenc
         self.audioSession = audioSession
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Observation Lifecycle
     

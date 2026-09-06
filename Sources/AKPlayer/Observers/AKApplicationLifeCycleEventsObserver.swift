@@ -139,17 +139,14 @@ open class AKApplicationLifeCycleEventsObserver: AKApplicationLifeCycleEventsObs
     public private(set) var state: AKApplicationLifeCycleState = .foreground
     
     /// Container holding reactive Combine event subscriptions.
-    /// Marked `nonisolated(unsafe)` for safe thread cleanup during `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Init & Deinit
     
     /// Initializes a new instance of the application lifecycle events observer.
     public init() { }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Observation Lifecycle
     

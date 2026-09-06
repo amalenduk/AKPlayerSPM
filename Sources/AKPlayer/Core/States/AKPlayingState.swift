@@ -37,8 +37,8 @@ public class AKPlayingState: AKBaseState {
     /// The target playback speed multiplier requested when entering the playing state.
     private var rate: AKPlaybackRate?
     
-    /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    /// Container holding reactive Combine event subscriptions.
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Initialization & Deinitialization
     
@@ -54,9 +54,7 @@ public class AKPlayingState: AKBaseState {
         super.init(playerController: playerController, state: .playing)
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Lifecycle Hooks
     

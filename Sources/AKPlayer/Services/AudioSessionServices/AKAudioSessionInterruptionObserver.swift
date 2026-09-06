@@ -104,8 +104,7 @@ open class AKAudioSessionInterruptionObserver: AKAudioSessionInterruptionObserve
     open private(set) var isInterrupted: Bool = false
     
     /// Container holding reactive Combine event subscriptions.
-    /// Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Init & Deinit
     
@@ -115,9 +114,7 @@ open class AKAudioSessionInterruptionObserver: AKAudioSessionInterruptionObserve
         self.audioSession = audioSession
     }
     
-    deinit {
-        subscriptions.removeAll()
-    }
+    deinit { }
     
     // MARK: - Observation Lifecycle
     

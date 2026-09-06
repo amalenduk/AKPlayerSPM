@@ -52,8 +52,8 @@ public class AKLoadingState: AKBaseState {
     /// Asynchronous validation task reference used for loading asset playability.
     private var task: Task<Void, Never>?
     
-    /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
-    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
+    /// Container holding reactive Combine event subscriptions.
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Initialization & Deinitialization
     
@@ -79,7 +79,6 @@ public class AKLoadingState: AKBaseState {
     }
     
     deinit {
-        subscriptions.removeAll()
         task?.cancel()
     }
     
