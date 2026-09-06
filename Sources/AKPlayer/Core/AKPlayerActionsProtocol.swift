@@ -85,6 +85,32 @@ public protocol AKPlayerActionsProtocol {
         toleranceAfter: CMTime
     ) async -> Bool
     
+    // MARK: - Seeking Through Media (Completion Handler Overloads)
+    
+    /// Seeks to a designated target position with a completion handler callback.
+    ///
+    /// - Parameters:
+    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
+    ///   - completionHandler: A callback invoked when the seek operation completes or is canceled, receiving a boolean indicating success.
+    func seek(
+        to target: AKSeekTarget,
+        completionHandler: @escaping @Sendable (Bool) -> Void
+    )
+    
+    /// Seeks to a designated target position with custom tolerance bounds and a completion handler callback.
+    ///
+    /// - Parameters:
+    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
+    ///   - toleranceBefore: The allowable tolerance before the target time.
+    ///   - toleranceAfter: The allowable tolerance after the target time.
+    ///   - completionHandler: A callback invoked when the seek operation completes or is canceled, receiving a boolean indicating success.
+    func seek(
+        to target: AKSeekTarget,
+        toleranceBefore: CMTime,
+        toleranceAfter: CMTime,
+        completionHandler: @escaping @Sendable (Bool) -> Void
+    )
+    
     // MARK: - Media Navigation
     
     /// Steps forward or backward by a specific frame count.

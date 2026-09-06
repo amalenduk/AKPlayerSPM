@@ -156,10 +156,12 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
         }
         let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         timeObserverToken = player.player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            guard let self = self else { return }
-            self.currentTime = time.seconds
-            if let dur = self.player.currentItem?.duration.seconds, dur.isFinite {
-                self.duration = dur
+            MainActor.assumeIsolated {
+                guard let self = self else { return }
+                self.currentTime = time.seconds
+                if let dur = self.player.currentItem?.duration.seconds, dur.isFinite {
+                    self.duration = dur
+                }
             }
         }
     }
@@ -176,7 +178,7 @@ extension SimpleVideoPlayerViewModel: AKPlayerDelegate {
             self.isLoading = (state == .waitingForNetwork || state == .buffering || state == .loading)
         }
     }
-    nonisolated public func akPlayer(_ player: AKPlayer, didChangeCurrentTimeTo currentTime: CMTime, for media: AKPlayable) {
+    nonisolated public func akPlayer(_ player: AKPlayer, didChangeCurrentTimeTo currentTime: CMTime, for media: any AKPlayable) {
         DispatchQueue.main.async { self.currentTime = currentTime.seconds }
     }
     nonisolated public func akPlayer(_ player: AKPlayer, didChangePlaybackRateTo newRate: AKPlaybackRate, from oldRate: AKPlaybackRate) {
@@ -198,30 +200,4 @@ extension SimpleVideoPlayerViewModel: AKPlayerDelegate {
     nonisolated public func akPlayer(_ player: AKPlayer, didFailWith error: AKPlayerError) {}
     nonisolated public func akPlayer(_ player: AKPlayer, didChangeVolumeTo volume: Float) {}
     nonisolated public func akPlayer(_ player: AKPlayer, didChangeMutedStatusTo isMuted: Bool) {}
-}
-
-extension SimpleVideoPlayerViewModel {
-    public func akMedia(_ media: AKPlayable, didChangeItemDurationTo itemDuration: CMTime) {
-        DispatchQueue.main.async {
-            if itemDuration.isNumeric && itemDuration.seconds.isFinite {
-                self.duration = itemDuration.seconds
-            }
-        }
-    }
-    public func akMedia(_ media: AKPlayable, didChangeCanStepForwardStatusTo canStepForward: Bool) {}
-    public func akMedia(_ media: AKPlayable, didChangeCanStepBackwardStatusTo canStepBackward: Bool) {}
-    public func akMedia(_ media: AKPlayable, didChangeLoadedTimeRangesTo loadedTimeRanges: [NSValue]) {
-        DispatchQueue.main.async {
-            guard self.duration > 0 else { self.bufferedRanges = []; return }
-            let ranges = loadedTimeRanges.compactMap { (ns: NSValue) -> ClosedRange<Double>? in
-                let tr = ns.timeRangeValue
-                let start = tr.start.seconds
-                let end = tr.start.seconds + tr.duration.seconds
-                guard start.isFinite && end.isFinite else { return nil }
-                return start...end
-            }
-            self.bufferedRanges = ranges
-        }
-    }
-    public func akMedia(_ media: AKPlayable, didChangeSeekableTimeRangesTo seekableTimeRanges: [NSValue]) {}
 }

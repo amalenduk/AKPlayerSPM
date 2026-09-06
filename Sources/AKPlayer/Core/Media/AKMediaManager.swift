@@ -52,27 +52,19 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
     public var error: AKPlayerError?
     
     /// The current state of the playable media item.
-//    public private(set) var state: AKPlayableState {
-//        get { stateSubject.value }
-//        set { stateSubject.send(newValue) }
-//    }
-//    
-//    /// Publisher emitting state updates starting with the current state upon subscription.
-//    public var statePublisher: AnyPublisher<AKPlayableState, Never> {
-//        stateSubject.eraseToAnyPublisher()
-//    }
+    public private(set) var state: AKPlayableState {
+        get { stateSubject.value }
+        set { stateSubject.send(newValue) }
+    }
     
-    public private(set) var state: AKPlayableState = .idle {
-           didSet {
-               stateSubject.send(state)
-           }
-       }
-       
-       public var statePublisher: AnyPublisher<AKPlayableState, Never> {
-           return stateSubject.eraseToAnyPublisher()
-       }
+    /// Publisher emitting state updates starting with the current state upon subscription.
+    public var statePublisher: AnyPublisher<AKPlayableState, Never> {
+        stateSubject
+            .removeDuplicates()
+            .eraseToAnyPublisher()
+    }
     
-    private let stateSubject = PassthroughSubject<AKPlayableState, Never>()
+    private let stateSubject = CurrentValueSubject<AKPlayableState, Never>(.idle)
     
     private  var playerItemInitService: any AKPlayerItemInitServiceProtocol
     

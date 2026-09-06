@@ -94,7 +94,6 @@ public class AKLoadingState: AKBaseState {
         )
         
         media.statePublisher
-            .prepend(media.state)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 guard let self else { return }

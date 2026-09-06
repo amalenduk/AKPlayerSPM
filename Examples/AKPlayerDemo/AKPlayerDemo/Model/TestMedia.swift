@@ -43,7 +43,7 @@ extension TestMediaKind {
 }
 
 // Sample dataset used in Example / manual testing
-public let sampleTestMedia: [TestMedia] = [
+@MainActor public let sampleTestMedia: [TestMedia] = [
     TestMedia(name: "Clip — H264, stereo", url: URL(string: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"), kind: .clip, isPlayable: true, note: "video, stereo"),
     TestMedia(name: "Audio — MP3 podcast", url: URL(string: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"), kind: .clip, isPlayable: true, note: "audio-only"),
     TestMedia(name: "Protected — DRM simulated", url: URL(string: "https://example.com/media/drm_protected.m3u8"), kind: .clip, isPlayable: false, note: "protected / not playable without keys"),

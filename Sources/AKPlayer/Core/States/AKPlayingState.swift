@@ -52,9 +52,11 @@ public class AKPlayingState: AKBaseState {
     ) {
         self.rate = rate
         super.init(playerController: playerController, state: .playing)
+        print("Init called from: \(#file):\(#function):\(#line)")
     }
     
     deinit {
+        print("Deinit called from: \(#file):\(#function):\(#line)")
         subscriptions.removeAll()
     }
     

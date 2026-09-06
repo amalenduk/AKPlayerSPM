@@ -76,6 +76,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     
     // MARK: - Commands
     
+    // MARK: 1. Loading Media
+    
     /// Initiates loading of a new playable media item into the player pipeline.
     /// - Parameters:
     ///   - media: The playable media target.
@@ -88,6 +90,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     ) {
         startLoad(media: media, autoPlay: autoPlay, at: position)
     }
+    
+    // MARK: 2. Controlling Playback
     
     /// Commands the player to begin media playback.
     public func play() {
@@ -183,34 +187,26 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         )
     }
     
+    // MARK: 3. Seeking Through Media
+    
     /// Asynchronously seeks to a given target position within current media.
+    /// - Warning: Do not call state async seek directly. Use AKPlayerController.seek instead.
     /// - Parameter target: The target position (`.time`, `.seconds`, `.offset`, `.percentage`, or `.date`).
     /// - Returns: `true` if the seek command was accepted and successfully executed; `false` otherwise.
     @discardableResult
     public func seek(to target: AKSeekTarget) async -> Bool {
-        await performIfAllowed(
-            check: { [unowned self] in
-                availability(for: .seek(to: target))
-            },
-            action: { [weak self] in
-                guard let self else { return false }
-                let controller = AKBufferingState(
-                    playerController: playerController,
-                    autoPlay: state.isPlaying || autoPlay
-                )
-                let success = await controller.seek(to: target)
-                change(controller)
-                return success
-            },
-            blocked: { [weak self] reason in
-                guard let self else { return }
-                playerController.delegate?.playerController(playerController, didEncounterUnavailableAction: reason)
-            },
-            fallback: false
-        )
+        return await withCheckedContinuation { con in
+            seek(
+                to: target
+            ) { finished in
+                print("Seek finished")
+                con.resume(returning: finished)
+            }
+        }
     }
     
     /// Asynchronously seeks to a given target position with explicit tolerance parameters.
+    /// - Warning: Do not call state async seek directly. Use AKPlayerController.seek instead.
     /// - Parameters:
     ///   - target: The target position.
     ///   - toleranceBefore: Acceptable time offset before the target.
@@ -247,6 +243,97 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             fallback: false
         )
     }
+    
+    /// Seeks to a designated target position with a completion handler callback.
+    /// - Parameters:
+    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
+    ///   - completionHandler: A callback invoked when the seek operation completes or is canceled, receiving a boolean indicating success.
+    public func seek(to target: AKSeekTarget, completionHandler: @escaping @Sendable (Bool) -> Void) {
+        performIfAllowed(
+            check: { [unowned self] in
+                return availability(for: .seek(to: target))
+            },
+            action: { [weak self] in
+                guard let s = self else {
+                    completionHandler(false)
+                    return
+                }
+                
+                let seekToken = AKSeek(
+                    target: target,
+                    completionHandler: completionHandler
+                )
+                
+                let controller = AKBufferingState(
+                    playerController: s.playerController,
+                    autoPlay: s.state.isPlaying || s.autoPlay,
+                    targetSeek: seekToken
+                )
+                
+                s.change(controller)
+            },
+            blocked: { [weak self] reason in
+                completionHandler(false)
+                
+                guard let s = self else { return }
+                s.playerController.delegate?.playerController(
+                    s.playerController,
+                    didEncounterUnavailableAction: reason
+                )
+            },
+            fallback: ()
+        )
+    }
+    
+    /// Seeks to a designated target position with custom tolerance bounds and a completion handler callback.
+    /// - Parameters:
+    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
+    ///   - toleranceBefore: The allowable tolerance before the target time.
+    ///   - toleranceAfter: The allowable tolerance after the target time.
+    ///   - completionHandler: A callback invoked when the seek operation completes or is canceled, receiving a boolean indicating success.
+    public func seek(to target: AKSeekTarget,
+                     toleranceBefore: CMTime,
+                     toleranceAfter: CMTime,
+                     completionHandler: @Sendable @escaping (Bool) -> Void) {
+        performIfAllowed(
+            check: { [unowned self] in
+                return availability(for: .seek(to: target))
+            },
+            action: { [weak self] in
+                guard let s = self else {
+                    completionHandler(false)
+                    return
+                }
+                
+                let seekToken = AKSeek(
+                    target: target,
+                    toleranceBefore: toleranceBefore,
+                    toleranceAfter: toleranceAfter,
+                    completionHandler: completionHandler
+                )
+                
+                let controller = AKBufferingState(
+                    playerController: s.playerController,
+                    autoPlay: s.state.isPlaying || s.autoPlay,
+                    targetSeek: seekToken
+                )
+                
+                s.change(controller)
+            },
+            blocked: { [weak self] reason in
+                completionHandler(false)
+                
+                guard let s = self else { return }
+                s.playerController.delegate?.playerController(
+                    s.playerController,
+                    didEncounterUnavailableAction: reason
+                )
+            },
+            fallback: ()
+        )
+    }
+    
+    // MARK: 4. Media Navigation
     
     /// Steps frame-by-frame through video media by a specified frame count offset.
     /// - Parameter count: The frame offset count (positive for forward, negative for reverse).

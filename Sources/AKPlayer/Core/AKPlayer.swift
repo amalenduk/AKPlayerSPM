@@ -176,6 +176,14 @@ public class AKPlayer: NSObject, AKPlayerProtocol {
         await manager.seek(to: target, toleranceBefore: toleranceBefore, toleranceAfter: toleranceAfter)
     }
     
+    public func seek(to target: AKSeekTarget, completionHandler: @escaping @Sendable (Bool) -> Void) {
+        manager.seek(to: target, completionHandler: completionHandler)
+    }
+    
+    public func seek(to target: AKSeekTarget, toleranceBefore: CMTime, toleranceAfter: CMTime, completionHandler: @escaping @Sendable (Bool) -> Void) {
+        manager.seek(to: target, toleranceBefore: toleranceBefore, toleranceAfter: toleranceAfter, completionHandler: completionHandler)
+    }
+    
     public func step(by count: Int) {
         manager.step(by: count)
     }

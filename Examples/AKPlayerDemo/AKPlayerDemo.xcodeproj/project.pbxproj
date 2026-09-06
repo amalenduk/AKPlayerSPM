@@ -202,7 +202,7 @@
 			mainGroup = 04E8CB3C30488DAC0067ACC6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../../AKPlayer" */,
+				04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 04E8CB4630488DAC0067ACC6 /* Products */;
@@ -571,15 +571,16 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../../AKPlayer" */ = {
+		04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../../AKPlayer;
+			relativePath = ../..;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		04E6D9F2304B2401009B6503 /* AKPlayer */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../" */;
 			productName = AKPlayer;
 		};
 /* End XCSwiftPackageProductDependency section */

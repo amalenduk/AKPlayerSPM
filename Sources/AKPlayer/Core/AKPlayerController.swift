@@ -183,11 +183,27 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     }
     
     public func seek(to target: AKSeekTarget) async -> Bool {
-        await controller.seek(to: target)
+        return await withCheckedContinuation { continuation in
+            seek(to: target) { finished in
+                continuation.resume(returning: finished)
+            }
+        }
     }
     
     public func seek(to target: AKSeekTarget, toleranceBefore: CMTime, toleranceAfter: CMTime) async -> Bool {
-        await controller.seek(to: target, toleranceBefore: toleranceBefore, toleranceAfter: toleranceAfter)
+        return await withCheckedContinuation { continuation in
+            seek(to: target, toleranceBefore: toleranceBefore, toleranceAfter: toleranceAfter) { finished in
+                continuation.resume(returning: finished)
+            }
+        }
+    }
+    
+    public func seek(to target: AKSeekTarget, completionHandler: @escaping @Sendable (Bool) -> Void) {
+        controller.seek(to: target, completionHandler: completionHandler)
+    }
+    
+    public func seek(to target: AKSeekTarget, toleranceBefore: CMTime, toleranceAfter: CMTime, completionHandler: @escaping @Sendable (Bool) -> Void) {
+        controller.seek(to: target, toleranceBefore: toleranceBefore, toleranceAfter: toleranceAfter, completionHandler: completionHandler)
     }
     
     public func step(by count: Int) {

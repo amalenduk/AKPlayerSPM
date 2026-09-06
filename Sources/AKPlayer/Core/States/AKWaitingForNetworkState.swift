@@ -110,27 +110,28 @@ public class AKWaitingForNetworkState: AKBaseState {
     
     // MARK: - Async Seek Handlers
     
-    @discardableResult
-    public override func seek(to target: AKSeekTarget) async -> Bool {
-        await seek(to: target, toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity)
+    public override func seek(
+        to target: AKSeekTarget,
+        completionHandler: @escaping @Sendable (Bool) -> Void
+    ) {
+        targetSeek = AKSeek(
+            target: target,
+            completionHandler: completionHandler
+        )
     }
     
-    @discardableResult
     public override func seek(
         to target: AKSeekTarget,
         toleranceBefore: CMTime,
-        toleranceAfter: CMTime
-    ) async -> Bool {
-        await withCheckedContinuation { continuation in
-            self.targetSeek = AKSeek(
-                target: target,
-                toleranceBefore: toleranceBefore,
-                toleranceAfter: toleranceAfter,
-                completionHandler: { finished in
-                    continuation.resume(returning: finished)
-                }
-            )
-        }
+        toleranceAfter: CMTime,
+        completionHandler: @escaping @Sendable (Bool) -> Void
+    ) {
+        targetSeek = AKSeek(
+            target: target,
+            toleranceBefore: toleranceBefore,
+            toleranceAfter: toleranceAfter,
+            completionHandler: completionHandler
+        )
     }
     
     // MARK: - Additional Helper Functions

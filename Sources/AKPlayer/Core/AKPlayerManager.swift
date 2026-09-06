@@ -337,6 +337,14 @@ open class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
                                     toleranceAfter: toleranceAfter)
     }
     
+    public func seek(to target: AKSeekTarget, completionHandler: @escaping @Sendable (Bool) -> Void) {
+        playerController.seek(to: target, completionHandler: completionHandler)
+    }
+    
+    public func seek(to target: AKSeekTarget, toleranceBefore: CMTime, toleranceAfter: CMTime, completionHandler: @escaping @Sendable (Bool) -> Void) {
+        playerController.seek(to: target, toleranceBefore: toleranceBefore, toleranceAfter: toleranceAfter, completionHandler: completionHandler)
+    }
+    
     /// Steps forward or backward by a specific number of frames.
     /// - Parameter count: Positive integer for forward frame steps, negative for backward steps.
     open func step(by count: Int) {

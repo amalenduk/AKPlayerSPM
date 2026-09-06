@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:AKPlayer}",
+            "name": "Debug AKPlayerDemo",
+            "target": "AKPlayerDemo",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug AKPlayerDemo"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:AKPlayer}",
+            "name": "Release AKPlayerDemo",
+            "target": "AKPlayerDemo",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release AKPlayerDemo"
+        }
+    ]
+}
