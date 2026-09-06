@@ -34,50 +34,52 @@ public class AKPlayingState: AKBaseState {
     
     // MARK: - Properties
     
-    /// Target playback speed multiplier.
+    /// The target playback speed multiplier requested when entering the playing state.
     private var rate: AKPlaybackRate?
     
     /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
     private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
-    // MARK: - Init & Deinit
+    // MARK: - Initialization & Deinitialization
     
-    /// Initializes a playing state instance.
+    /// Initializes a playing state instance associated with the specified player controller.
     /// - Parameters:
     ///   - playerController: The underlying player controller driving execution.
-    ///   - rate: Optional target playback speed multiplier.
+    ///   - rate: An optional initial playback speed multiplier.
     public init(
         playerController: any AKPlayerControllerProtocol,
         rate: AKPlaybackRate? = nil
     ) {
         self.rate = rate
         super.init(playerController: playerController, state: .playing)
-        print("Init called from: \(#file):\(#function):\(#line)")
     }
     
     deinit {
-        print("Deinit called from: \(#file):\(#function):\(#line)")
         subscriptions.removeAll()
     }
     
     // MARK: - Lifecycle Hooks
     
-    /// Entry point for active playback processing. Starts observation pipelines and executes play requests.
+    /// Entry point for playing state setup. Begins observing player status and item notifications, triggers playback, and applies targeted playback rate.
     public override func processStateChange() {
         startObservingPlayerStatus()
         startObservingPlayerItemNotifications()
         
         playerController.performPlay()
         
-        guard let rate = rate,
-              playerController.player.rate != rate.rate else { return }
+        guard let rate, playerController.player.rate != rate.rate else { return }
         play(at: rate)
+    }
+    
+    /// Cleans up Combine observation pipelines before transitioning to another state.
+    public override func beforeStateChange() {
+        subscriptions.removeAll()
     }
     
     // MARK: - Commands
     
-    /// Adjusts playback speed to the requested rate if supported by current media.
-    /// - Parameter rate: The target speed requested.
+    /// Adjusts playback rate when supported by the current media item.
+    /// - Parameter rate: The targeted playback speed multiplier.
     public override func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
               currentMedia.canPlay(at: rate) else {
@@ -87,18 +89,19 @@ public class AKPlayingState: AKBaseState {
             )
             return
         }
+        
         self.rate = rate
         playerController.performPlay(at: rate)
     }
     
-    /// Toggles play/pause behavior by pausing playback.
+    /// Toggles playback state by pausing the active media playback.
     public override func togglePlayPause() {
         pause()
     }
     
-    // MARK: - Helper Functions
+    // MARK: - Private Helper Functions
     
-    /// Observes status updates and empty item scenarios on AVPlayer while actively playing.
+    /// Observes status updates and empty current item conditions on AVPlayer while actively playing.
     private func startObservingPlayerStatus() {
         playerController.player.publisher(for: \.status)
             .prepend(playerController.player.status)
@@ -123,7 +126,7 @@ public class AKPlayingState: AKBaseState {
             .store(in: &subscriptions)
     }
     
-    /// Registers listeners for AVPlayerItem lifecycle events (e.g. playback failures, end-of-time reached, buffer stalls).
+    /// Registers notification listeners for player item playback completion, failure, and buffering stall conditions.
     private func startObservingPlayerItemNotifications() {
         guard let playerItem = playerController.currentMedia?.playerItem else { return }
         
@@ -187,19 +190,15 @@ public class AKPlayingState: AKBaseState {
     
     // MARK: - Availability Overrides
     
-    /// Checks action availability while in playing state.
-    public override func availability(for action: AKPlayerAction)
-    -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
+    /// Evaluates preflight permission and unavailable reasons for a given player action when actively playing.
+    /// - Parameter action: The candidate action to evaluate.
+    /// - Returns: A tuple returning `false` and `.alreadyPlaying` for `.play` action; base availability otherwise.
+    public override func availability(for action: AKPlayerAction) -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
         switch action {
         case .play:
             return (false, .alreadyPlaying)
         default:
             return super.availability(for: action)
         }
-    }
-    
-    /// Cleans active Combine observers prior to state transition.
-    public override func beforeStateChange() {
-        subscriptions.removeAll()
     }
 }

@@ -37,12 +37,16 @@ public class AKLoadedState: AKBaseState {
     /// Indicates whether autoplay should trigger automatically once preparation finishes.
     public private(set) var autoPlay: Bool
     
+    /// Optional target position to navigate to upon loading.
     private let position: AKSeekTarget?
+    
+    /// Optional target playback speed multiplier to apply on play.
     private var rate: AKPlaybackRate?
     
+    /// Storage set for managing reactive Combine event subscriptions.
     private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
-    // MARK: - Initialization
+    // MARK: - Initialization & Deinitialization
     
     /// Initializes a loaded state instance associated with the specified player controller.
     /// - Parameters:

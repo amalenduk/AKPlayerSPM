@@ -35,11 +35,11 @@ public class AKStoppedState: AKBaseState {
     // MARK: - Properties
     
     /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
-    private nonisolated(unsafe) var subscriptions: Set<AnyCancellable> = Set<AnyCancellable>()
+    private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
-    // MARK: - Init & Deinit
+    // MARK: - Initialization & Deinitialization
     
-    /// Initializes a stopped state instance.
+    /// Initializes a stopped state instance associated with the specified player controller.
     /// - Parameter playerController: The underlying player controller driving execution.
     public init(playerController: any AKPlayerControllerProtocol) {
         super.init(playerController: playerController, state: .stopped)
@@ -63,7 +63,12 @@ public class AKStoppedState: AKBaseState {
         playerController.player.replaceCurrentItem(with: nil)
     }
     
-    // MARK: - Additional Helper Functions
+    /// Cleans up Combine observation pipelines before transitioning to another state.
+    public override func beforeStateChange() {
+        subscriptions.removeAll()
+    }
+    
+    // MARK: - Private Helper Functions
     
     /// Observes status changes on AVPlayer while in stopped state.
     private func startObservingPlayerStatus() {
@@ -83,19 +88,15 @@ public class AKStoppedState: AKBaseState {
     
     // MARK: - Availability Overrides
     
-    /// Checks action availability in stopped state. Requires media to be loaded before performing most operations.
-    public override func availability(for action: AKPlayerAction)
-    -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
+    /// Evaluates preflight permission and unavailable reasons for a given player action when in stopped state.
+    /// - Parameter action: The candidate action to evaluate.
+    /// - Returns: A tuple returning `false` and `.loadMediaFirst` for playback/seeking actions; base availability otherwise.
+    public override func availability(for action: AKPlayerAction) -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
         switch action {
         case .play, .pause, .stop, .seek, .fastForward, .rewind, .step:
             return (false, .loadMediaFirst)
         default:
             return super.availability(for: action)
         }
-    }
-    
-    /// Cleans active Combine observers prior to state transition.
-    public override func beforeStateChange() {
-        subscriptions.removeAll()
     }
 }

@@ -64,6 +64,13 @@ public actor AKNowPlayingCommandRegistry {
     /// Creates a new isolated actor instance of `AKNowPlayingCommandRegistry`.
     public init() {}
     
+    /// Creates a new isolated actor instance initialized with a given `AKNowPlayingCommandConfiguration`.
+    /// - Parameter configuration: The configuration object to apply upon initialization.
+    public init(configuration: AKNowPlayingCommandConfiguration) async {
+        self.init()
+        await apply(configuration: configuration)
+    }
+    
     // MARK: - Registration
     
     /// Registers a command with optional configuration.
@@ -272,6 +279,35 @@ public actor AKNowPlayingCommandRegistry {
         commandConfigs.removeAll()
         commandStates.removeAll()
         customHandlers.removeAll()
+    }
+}
+
+// MARK: - Actor Integration Extensions
+
+extension AKNowPlayingCommandRegistry {
+    
+    /// Applies a complete `AKNowPlayingCommandConfiguration` snapshot to this registry actor.
+    /// - Parameter configuration: The configuration object to apply.
+    public func apply(configuration: AKNowPlayingCommandConfiguration) async {
+        for command in configuration.allCommands {
+            let isEnabled = configuration.isEnabled(command)
+            
+            // Ensure the command is registered if not already present
+            if !isRegistered(command) {
+                register(command, isEnabled: isEnabled)
+            } else {
+                if isEnabled {
+                    _ = enable(command)
+                } else {
+                    _ = disable(command)
+                }
+            }
+            
+            // Apply custom handler if present
+            if let handler = configuration.handler(for: command) {
+                setCustomHandler(command, handler: handler)
+            }
+        }
     }
 }
 

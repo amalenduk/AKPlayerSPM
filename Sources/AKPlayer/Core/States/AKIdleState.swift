@@ -31,12 +31,16 @@ import AVFoundation
 @MainActor
 public class AKIdleState: AKBaseState {
     
-    // MARK: - Initialization
+    // MARK: - Initialization & Deinitialization
     
     /// Initializes an idle state instance associated with the specified player controller.
     /// - Parameter playerController: The target player controller executing playback commands.
     public init(playerController: any AKPlayerControllerProtocol) {
         super.init(playerController: playerController, state: .idle)
+    }
+    
+    deinit {
+        // Cleanup routine if needed when state memory is released
     }
     
     // MARK: - Preflight Checks

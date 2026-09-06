@@ -31,6 +31,9 @@ import Combine
 
 /// Events emitted when the application transitions through different lifecycle phases.
 public enum AKApplicationLifeCycleEvent: Sendable {
+    
+    // MARK: - Cases
+    
     /// The application is about to lose active status (e.g., phone call or control center presentation).
     case willResignActive
     
@@ -48,6 +51,9 @@ public enum AKApplicationLifeCycleEvent: Sendable {
 
 /// Represents the current tracked state of the application's lifecycle.
 public enum AKApplicationLifeCycleState: Sendable {
+    
+    // MARK: - Cases
+    
     /// The application is in an inactive state.
     case resignActive
     
@@ -59,6 +65,8 @@ public enum AKApplicationLifeCycleState: Sendable {
     
     /// The application is in the process of coming to the foreground.
     case foreground
+    
+    // MARK: - Computed Properties
     
     /// A convenience property returning `true` if the app is currently `.active` or `.foreground`.
     public var isActiveOrForeground: Bool {
@@ -76,6 +84,9 @@ public enum AKApplicationLifeCycleState: Sendable {
 /// Delegate interface for receiving application lifecycle event updates.
 @MainActor
 public protocol AKApplicationLifeCycleEventsObserverDelegate: AnyObject {
+    
+    // MARK: - Methods
+    
     /// Notifies the delegate that an application lifecycle transition event occurred.
     /// - Parameters:
     ///   - observer: The observer instance monitoring system lifecycle notifications.
@@ -91,11 +102,16 @@ public protocol AKApplicationLifeCycleEventsObserverDelegate: AnyObject {
 /// A contract for monitoring application state transitions and notifying a delegate.
 @MainActor
 public protocol AKApplicationLifeCycleEventsObserverProtocol: AnyObject {
+    
+    // MARK: - Properties
+    
     /// The current state of the application lifecycle.
     var state: AKApplicationLifeCycleState { get }
     
     /// The delegate object receiving lifecycle event notifications.
     var delegate: AKApplicationLifeCycleEventsObserverDelegate? { get set }
+    
+    // MARK: - Methods
     
     /// Begins observing system lifecycle notifications via Combine.
     func startObserving()

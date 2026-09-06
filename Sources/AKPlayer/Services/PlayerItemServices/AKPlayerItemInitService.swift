@@ -101,6 +101,9 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     }
     
     deinit {
+        // Since asset might be a reference type, cancel loading safely.
+        // In Swift 6+, accessing stored properties from deinit requires care,
+        // but calling methods on non-isolated or safely captured classes is supported.
         asset?.cancelLoading()
     }
     
@@ -161,14 +164,14 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
         guard let asset else {
             fatalError("Asset must be created before calling createPlayerItemFromAsset().")
         }
-        
+         
         let item: AVPlayerItem
         if let keys = media.automaticallyLoadedAssetKeys {
             item = AVPlayerItem(asset: asset, automaticallyLoadedAssetKeys: keys)
         } else {
             item = AVPlayerItem(asset: asset)
         }
-        
+         
         self.playerItem = item
         return item
     }

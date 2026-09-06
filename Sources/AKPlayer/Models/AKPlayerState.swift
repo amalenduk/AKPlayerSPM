@@ -25,8 +25,13 @@
 
 import Foundation
 
+// MARK: - AKPlayerState
+
 /// Represents the current operational state of the media player.
 public enum AKPlayerState: String, CustomStringConvertible, Sendable, Equatable {
+    
+    // MARK: - Cases
+    
     /// Initial state when no media is loaded.
     case idle
     /// Media asset is currently being loaded.
@@ -43,8 +48,10 @@ public enum AKPlayerState: String, CustomStringConvertible, Sendable, Equatable 
     case stopped
     /// Playback is paused waiting for network connectivity to restore.
     case waitingForNetwork
-    /// Player encountered a unrecoverable error.
+    /// Player encountered an unrecoverable error.
     case failed
+    
+    // MARK: - Computed Properties
     
     /// A human-readable description of the player state.
     public var description: String {
@@ -100,6 +107,8 @@ public enum AKPlayerState: String, CustomStringConvertible, Sendable, Equatable 
     public var isFailed: Bool {
         return self == .failed
     }
+    
+    // MARK: - Helper Methods
     
     /// Checks if the current state matches any of the provided states.
     /// - Parameter states: An array of target states.

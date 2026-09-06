@@ -119,12 +119,12 @@ public final class AKNowPlayingSession: AKNowPlayingSessionProtocol {
     /// - Parameter config: The `AKNowPlayingCommandConfiguration` to apply.
     public func applyConfiguration(_ config: AKNowPlayingCommandConfiguration) async {
         let commands = config.allCommands
-        
+         
         // Register all commands in internal registry
         for command in commands {
             await commandRegistry.register(command, isEnabled: config.isEnabled(command))
         }
-        
+         
         // Attach handlers to registry and controller
         for command in commands {
             if let handler = config.handler(for: command) {
@@ -132,10 +132,10 @@ public final class AKNowPlayingSession: AKNowPlayingSessionProtocol {
                 controller.setHandler(for: command, handler: handler)
             }
         }
-        
+         
         // Register target handlers on MPRemoteCommandCenter
         controller.register(commands: commands)
-        
+         
         // Enable or disable command targets based on configuration state
         for command in commands {
             if config.isEnabled(command) {

@@ -61,8 +61,10 @@ public extension AKNowPlayableInfoProtocol {
 public enum Artwork: @unchecked Sendable {
     /// Standard `UIImage` asset.
     case image(UIImage)
+    
     /// Raw binary image data.
     case data(Data)
+    
     /// An explicit system `MPMediaItemArtwork` instance.
     case artwork(MPMediaItemArtwork)
 }
@@ -73,26 +75,37 @@ public enum Artwork: @unchecked Sendable {
 public protocol AKNowPlayableStaticMetadataProtocol: Sendable {
     /// Destination asset URL (`MPNowPlayingInfoPropertyAssetURL`).
     var assetURL: URL { get set }
+    
     /// Media type classification (`MPNowPlayingInfoPropertyMediaType`).
     var mediaType: MPNowPlayingInfoMediaType { get set }
+    
     /// Indicates if the item is a live stream (`MPNowPlayingInfoPropertyIsLiveStream`).
     var isLiveStream: Bool { get set }
+    
     /// The primary title (`MPMediaItemPropertyTitle`).
     var title: String { get set }
+    
     /// The primary artist (`MPMediaItemPropertyArtist`).
     var artist: String? { get set }
+    
     /// Associated media artwork source (`MPMediaItemPropertyArtwork`).
     var artwork: Artwork? { get set }
+    
     /// The album artist (`MPMediaItemPropertyAlbumArtist`).
     var albumArtist: String? { get set }
+    
     /// The album title (`MPMediaItemPropertyAlbumTitle`).
     var albumTitle: String? { get set }
+    
     /// Collection identifier (`MPNowPlayingInfoCollectionIdentifier`).
     var collectionIdentifier: String? { get set }
+    
     /// External content identifier (`MPNowPlayingInfoPropertyExternalContentIdentifier`).
     var externalContentIdentifier: String? { get set }
+    
     /// External user profile identifier (`MPNowPlayingInfoPropertyExternalUserProfileIdentifier`).
     var externalUserProfileIdentifier: String? { get set }
+    
     /// Time ranges for advertisements (`MPNowPlayingInfoPropertyAdTimeRanges`).
     var adTimeRanges: [MPAdTimeRange]? { get set }
 }
@@ -147,30 +160,43 @@ public extension AKNowPlayableStaticMetadataProtocol {
 public protocol AKNowPlayableDynamicMetadataProtocol: Sendable {
     /// Current playback speed multiplier (`MPNowPlayingInfoPropertyPlaybackRate`).
     var rate: Double { get set }
+    
     /// Default intended playback rate (`MPNowPlayingInfoPropertyDefaultPlaybackRate`).
     var defaultRate: Double { get set }
+    
     /// Elapsed playback time in seconds (`MPNowPlayingInfoPropertyElapsedPlaybackTime`).
     var position: Double? { get set }
+    
     /// Total duration of the media in seconds (`MPMediaItemPropertyPlaybackDuration`).
     var duration: Float? { get set }
+    
     /// Active language options (`MPNowPlayingInfoPropertyCurrentLanguageOptions`).
     var currentLanguageOptions: [MPNowPlayingInfoLanguageOption]? { get set }
+    
     /// Available language options (`MPNowPlayingInfoPropertyAvailableLanguageOptions`).
     var availableLanguageOptionGroups: [MPNowPlayingInfoLanguageOptionGroup]? { get set }
+    
     /// Total chapter count (`MPNowPlayingInfoPropertyChapterCount`).
     var chapterCount: Int? { get set }
+    
     /// Current chapter index (`MPNowPlayingInfoPropertyChapterNumber`).
     var chapterNumber: Int? { get set }
+    
     /// Start offset for credits (`MPNowPlayingInfoPropertyCreditsStartTime`).
     var creditsStartTime: Double? { get set }
+    
     /// Current wall-clock playback timestamp (`MPNowPlayingInfoPropertyCurrentPlaybackDate`).
     var currentPlaybackDate: Date? { get set }
+    
     /// Playback completion percentage (`MPNowPlayingInfoPropertyPlaybackProgress`).
     var playbackProgress: Float? { get set }
+    
     /// Total items in queue (`MPNowPlayingInfoPropertyPlaybackQueueCount`).
     var playbackQueueCount: Int? { get set }
+    
     /// Current index within queue (`MPNowPlayingInfoPropertyPlaybackQueueIndex`).
     var playbackQueueIndex: Int? { get set }
+    
     /// Unique service identifier (`MPNowPlayingInfoPropertyServiceIdentifier`).
     var serviceIdentifier: String? { get set }
 }

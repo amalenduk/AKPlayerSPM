@@ -34,10 +34,10 @@ import Foundation
 @MainActor
 public protocol AKPlayerStateControllerProtocol: AKPlayerActionsProtocol {
     
-    /// The underlying player controller driving playback and asset management.
+    /// The underlying player controller driving playback, asset management, and audio state transitions.
     var playerController: any AKPlayerControllerProtocol { get }
     
-    /// The current operational state classification represented by this controller instance.
+    /// The current operational state classification represented by this state controller instance.
     var state: AKPlayerState { get }
     
     /// Indicates whether media playback should automatically begin upon asset load completion.
@@ -53,6 +53,6 @@ public extension AKPlayerStateControllerProtocol {
     
     /// Default implementation returning `false` for automatic playback behavior.
     var autoPlay: Bool {
-        false
+        return false
     }
 }

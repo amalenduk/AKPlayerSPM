@@ -26,10 +26,15 @@
 import Foundation
 import CoreMedia
 
+// MARK: - AKSeekTarget
+
 /// A single seek destination, replacing overloaded `seek(to:)` methods with a unified, type-safe target.
 ///
 /// Percentage values use `0...100` (percent of duration), matching standard AVFoundation/player semantics.
 public enum AKSeekTarget: Equatable, Sendable {
+    
+    // MARK: - Cases
+    
     /// Absolute media time.
     case time(CMTime)
     
@@ -44,6 +49,8 @@ public enum AKSeekTarget: Equatable, Sendable {
     
     /// Absolute wall-clock date (used primarily for live HLS streams).
     case date(Date)
+    
+    // MARK: - Methods
     
     /// Resolves this target to a valid absolute `CMTime`.
     ///

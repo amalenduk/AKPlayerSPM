@@ -23,8 +23,8 @@
 //  SOFTWARE.
 //
 
-import Foundation
 import AVFoundation
+import Foundation
 
 // MARK: - AKPlayerItemNotificationsObserverProtocol
 
@@ -95,22 +95,22 @@ public final class AKPlayerItemNotificationsObserver:
     // MARK: - AsyncStream Continuations
     
     private var didPlayToEndContinuation:
-    AsyncStream<CMTime>.Continuation?
+        AsyncStream<CMTime>.Continuation?
     
     private var failedToPlayToEndContinuation:
-    AsyncStream<AKPlayerError>.Continuation?
+        AsyncStream<AKPlayerError>.Continuation?
     
     private var playbackStalledContinuation:
-    AsyncStream<Void>.Continuation?
+        AsyncStream<Void>.Continuation?
     
     private var timeJumpedContinuation:
-    AsyncStream<Void>.Continuation?
+        AsyncStream<Void>.Continuation?
     
     private var mediaSelectionDidChangeContinuation:
-    AsyncStream<Void>.Continuation?
+        AsyncStream<Void>.Continuation?
     
     private var recommendedTimeOffsetContinuation:
-    AsyncStream<CMTime>.Continuation?
+        AsyncStream<CMTime>.Continuation?
     
     // MARK: - Async Streams
     
@@ -151,12 +151,12 @@ public final class AKPlayerItemNotificationsObserver:
     
     /// Emits when the recommended live offset changes.
     public lazy var recommendedTimeOffsetFromLiveDidChangeStream:
-    AsyncStream<CMTime> = {
-        
-        AsyncStream { continuation in
-            self.recommendedTimeOffsetContinuation = continuation
-        }
-    }()
+        AsyncStream<CMTime> = {
+            
+            AsyncStream { continuation in
+                self.recommendedTimeOffsetContinuation = continuation
+            }
+        }()
     
     // MARK: - Init
     
@@ -341,11 +341,11 @@ public final class AKPlayerItemNotificationsObserver:
     /// Therefore:
     ///
     /// Notification
-    ///     ↓
+    ///    ↓
     /// Extract NSError
-    ///     ↓
+    ///    ↓
     /// Discard Notification
-    ///     ↓
+    ///    ↓
     /// Transfer extracted value to MainActor
     private func observeFailedToPlayToEndNotification(
         object: AVPlayerItem

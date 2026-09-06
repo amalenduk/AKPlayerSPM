@@ -23,8 +23,10 @@
 //  SOFTWARE.
 //
 
-import Foundation
 import AVFoundation
+import Foundation
+
+// MARK: - AKMedia
 
 /// A thread-safe concrete representation of a playable media item.
 public class AKMedia: NSObject, AKPlayable, @unchecked Sendable {
@@ -34,7 +36,7 @@ public class AKMedia: NSObject, AKPlayable, @unchecked Sendable {
     /// The media asset's destination URL (file path or remote stream).
     public let url: URL
     
-    /// The type classification of the media item.
+    /// The type classification of the media item (e.g., audio, video, stream).
     public let type: AKMediaType
     
     /// Optional dictionary options used when initializing the underlying `AVURLAsset`.

@@ -26,6 +26,8 @@
 import Foundation
 import MediaPlayer
 
+// MARK: - AKNowPlayingCommandConfiguration
+
 /// Thread-safe builder for configuring Now Playing remote command sessions.
 /// Designed as a value type (`struct`) conforming to `Sendable` using an immutable copy-on-write builder pattern.
 public struct AKNowPlayingCommandConfiguration: Sendable {
@@ -196,7 +198,7 @@ public struct AKNowPlayingCommandConfiguration: Sendable {
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func setHandler(for command: AKRemoteCommand,
-                           handler: @escaping AKRemoteCommandHandler) -> Self {
+                          handler: @escaping AKRemoteCommandHandler) -> Self {
         var copy = self
         copy.customHandlers[command] = handler
         if !copy.commands.contains(command) {
@@ -280,23 +282,5 @@ extension AKNowPlayingCommandConfiguration {
     /// Factory creating an empty configuration starting from scratch.
     public static func custom() -> AKNowPlayingCommandConfiguration {
         return AKNowPlayingCommandConfiguration()
-    }
-}
-
-// MARK: - Actor Integration Extensions
-
-extension AKNowPlayingCommandRegistry {
-    
-    /// Applies a complete `AKNowPlayingCommandConfiguration` snapshot to this registry actor.
-    /// - Parameter configuration: The configuration object to apply.
-    public func apply(configuration: AKNowPlayingCommandConfiguration) async {
-        for command in configuration.allCommands {
-            let isEnabled = configuration.isEnabled(command)
-            register(command, isEnabled: isEnabled)
-            
-            if let handler = configuration.handler(for: command) {
-                setCustomHandler(command, handler: handler)
-            }
-        }
     }
 }

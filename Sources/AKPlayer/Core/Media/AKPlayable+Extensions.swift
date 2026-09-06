@@ -51,6 +51,11 @@ public extension AKPlayable {
     }
     
     /// Observes key-path updates on the underlying `AVPlayerItem` on the Main Actor.
+    /// - Parameters:
+    ///   - keyPath: Key path on `AVPlayerItem` to observe.
+    ///   - options: Key-value observing options governing initial and change notifications.
+    ///   - action: Closure executed on the Main Actor when the observed value updates.
+    /// - Returns: An `AnyCancellable` instance managing the observation lifetime, or `nil` if `playerItem` is unavailable.
     @discardableResult
     func observe<Value>(
         _ keyPath: KeyPath<AVPlayerItem, Value>,
@@ -100,6 +105,7 @@ public extension AKPlayable {
     }
     
     /// Asynchronously validates key asset properties.
+    /// - Throws: An error if asset playability validation fails.
     func validateAssetPlayability() async throws {
         try await manager.validateAssetPlayability()
     }
@@ -131,16 +137,22 @@ public extension AKPlayable {
 public extension AKPlayable {
     
     /// Evaluates if the player item can step forward or backward by a given frame count.
+    /// - Parameter count: Number of frames to step (positive for forward, negative for backward).
+    /// - Returns: A Boolean value indicating whether the step action is supported.
     func canStep(by count: Int) -> Bool {
         manager.canStep(by: count)
     }
     
     /// Evaluates whether the player item supports playback at a specified rate.
+    /// - Parameter rate: The target playback rate value.
+    /// - Returns: A Boolean value indicating whether playback at the specified rate is supported.
     func canPlay(at rate: AKPlaybackRate) -> Bool {
         manager.canPlay(at: rate)
     }
     
-    /// Evaluates whether seeking to a target seek target position is permitted.
+    /// Evaluates whether seeking to a target position is permitted.
+    /// - Parameter target: The target seek position.
+    /// - Returns: A Boolean value indicating whether the seek target can be reached.
     func canSeek(to target: AKSeekTarget) -> Bool {
         manager.canSeek(to: target)
     }
@@ -173,6 +185,8 @@ public extension AKPlayable {
 
 extension Comparable {
     /// Clamps the value within a specified closed boundary range.
+    /// - Parameter range: The closed boundary range to clamp the value within.
+    /// - Returns: The value clamped to the specified range limits.
     func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
     }

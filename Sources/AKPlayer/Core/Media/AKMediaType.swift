@@ -25,10 +25,13 @@
 
 import Foundation
 
+// MARK: - AKMediaType
+
 /// Defines the underlying structural type of a media asset.
 public enum AKMediaType: Sendable, Equatable {
     /// Standard finite media clip (e.g., MP4, MP3, VOD asset).
     case clip
+    
     /// Streaming media asset with an indicator for whether it is a live broadcast or a replay stream.
     case stream(isLive: Bool)
 }

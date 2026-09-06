@@ -29,19 +29,37 @@ import Combine
 
 // MARK: - AKNetworkStatusMonitorProtocol
 
+/// A contract for monitoring network status changes via NWPathMonitor.
 @MainActor
 public protocol AKNetworkStatusMonitorProtocol: AnyObject {
+    
+    // MARK: - Properties
+    
+    /// The current network path object.
     var currentPath: NWPath? { get }
+    
+    /// The current status of the network path.
     var currentNetworkStatus: NWPath.Status { get }
+    
+    /// A convenience boolean indicating if the network status is currently satisfied.
     var isConnected: Bool { get }
+    
+    /// A publisher emitting network status changes.
     var networkStatusPublisher: AnyPublisher<NWPath.Status, Never> { get }
     
+    // MARK: - Methods
+    
+    /// Begins observing network status updates.
     func startObserving()
+    
+    /// Stops observing network status updates and cleans up monitoring resources.
     func stopObserving()
 }
 
 // MARK: - AKNetworkStatusMonitor
 
+/// A monitor class responsible for tracking network connectivity changes using `NWPathMonitor`
+/// and exposing status updates through Combine publishers on the main thread.
 @MainActor
 open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
     
@@ -54,7 +72,7 @@ open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
     private var isObserving = false
     private let monitorQueue = DispatchQueue(label: "com.akplayer.networkmonitor", qos: .utility)
     
-    // Track the latest confirmed path state safely
+    /// Track the latest confirmed path state safely.
     private var latestPath: NWPath?
     
     public var currentPath: NWPath? {
@@ -79,6 +97,7 @@ open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
     
     // MARK: - Init & Deinit
     
+    /// Initializes a new instance of the network status monitor.
     public init() {}
     
     deinit {
@@ -88,6 +107,7 @@ open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
     
     // MARK: - Control Methods
     
+    /// Starts observing network path changes.
     open func startObserving() {
         guard !isObserving else { return }
         
@@ -106,6 +126,7 @@ open class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
         isObserving = true
     }
     
+    /// Stops observing network path changes and cancels the path monitor.
     open func stopObserving() {
         guard isObserving else { return }
         

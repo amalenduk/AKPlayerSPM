@@ -23,9 +23,9 @@
 //  SOFTWARE.
 //
 
-import Foundation
 import AVFoundation
 import Combine
+import Foundation
 
 // MARK: - AKMediaManager
 
@@ -66,7 +66,7 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
     
     private let stateSubject = CurrentValueSubject<AKPlayableState, Never>(.idle)
     
-    private  var playerItemInitService: any AKPlayerItemInitServiceProtocol
+    private var playerItemInitService: any AKPlayerItemInitServiceProtocol
     
     // Private backing storage initialized post-super.init
     private var _seekingThroughMediaService: (any AKSeekingThroughMediaServiceProtocol)!

@@ -1,5 +1,5 @@
 //
-//  AKPlayerUnavailableActionReason.swift
+//  AKPlayerUnavailableCommandReason.swift
 //  AKPlayer
 //
 //  Copyright (c) 2020 Amalendu Kar
@@ -25,8 +25,13 @@
 
 import Foundation
 
+// MARK: - AKPlayerUnavailableCommandReason
+
 /// Defines reasons why a specific player command or action cannot be executed.
 public enum AKPlayerUnavailableCommandReason: Equatable, Sendable {
+    
+    // MARK: - Cases
+    
     /// Command ignored because playback is already paused.
     case alreadyPaused
     /// Command ignored because media is already playing.
@@ -60,6 +65,7 @@ public enum AKPlayerUnavailableCommandReason: Equatable, Sendable {
 // MARK: - CustomStringConvertible
 
 extension AKPlayerUnavailableCommandReason: CustomStringConvertible {
+    
     /// A human-readable textual representation describing the reason command was unavailable.
     public var description: String {
         switch self {

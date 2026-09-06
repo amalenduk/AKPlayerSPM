@@ -245,10 +245,10 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
     private func register(_ command: AKRemoteCommand) {
         let id = command.id
         guard commandTargets[id] == nil else { return }
-        
+         
         let target = createTarget(for: command)
         commandTargets[id] = target
-        
+         
         // Configure specific parameters
         switch command {
         case .skipBackward(let intervals):
@@ -321,11 +321,11 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
     
     private func createTarget(for command: AKRemoteCommand) -> Any {
         let remoteCommand = command.metadata.getCommand(remoteCommandCenter)
-        
+         
         let handler: @MainActor (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus = { [weak self] event in
             return self?.handleCommand(command, event: event) ?? .commandFailed
         }
-        
+         
         return remoteCommand.addTarget(handler: handler)
     }
     
@@ -345,12 +345,12 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
             }
             return result
         }
-        
+         
         let commandEvent = AKRemoteCommandEvent(command, event)
         Task {
             await eventEmitter.emit(commandEvent)
         }
-        
+         
         return .success
     }
 }

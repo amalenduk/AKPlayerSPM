@@ -25,7 +25,11 @@
 
 import CoreMedia
 
-public struct AKTime: Equatable, Comparable, CustomStringConvertible {
+// MARK: - AKTime
+
+public struct AKTime: Equatable, Comparable, CustomStringConvertible, Sendable {
+    
+    // MARK: - Properties
     
     public let value: CMTime?
     
@@ -69,6 +73,8 @@ public struct AKTime: Equatable, Comparable, CustomStringConvertible {
             return String(format: "%@%02d:%02d", prefix, minutes, seconds)
         }
     }
+    
+    // MARK: - Methods
     
     public func subSecondStringValue() -> String {
         guard let value = self.value, value.isValid && value.isNumeric else {

@@ -1,8 +1,26 @@
 //
 //  AKMediaTrackOption.swift
-//  Pods
+//  AKPlayer
 //
-//  Created by Amalendu Kar on 26/08/26.
+//  Copyright (c) 2020 Amalendu Kar
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all
+//  copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  SOFTWARE.
 //
 
 import AVFoundation
@@ -32,9 +50,16 @@ public struct AKMediaTrackOption: Identifiable, Hashable, Sendable {
     
     // MARK: - Public Properties
     
+    /// Unique identifier representing the media track option.
     public let id: String
+    
+    /// Display title for the media track.
     public let title: String
+    
+    /// Language code associated with the media track (e.g., ISO or BCP-47 identifier).
     public let languageCode: String
+    
+    /// Flag indicating whether this option is marked as default in the underlying asset.
     public let isDefault: Bool
     
     // MARK: - Internal Properties
@@ -103,6 +128,11 @@ public struct AKTrackSelectionInfo: Sendable, Hashable {
     /// Flag indicating whether the system permits an empty selection (e.g., turning subtitles off).
     public let allowsEmptySelection: Bool
     
+    /// Initializes a track selection info payload.
+    /// - Parameters:
+    ///   - options: List of available track options.
+    ///   - selected: Currently selected track option.
+    ///   - allowsEmptySelection: Flag indicating if empty selection is permitted.
     public init(
         options: [AKMediaTrackOption],
         selected: AKMediaTrackOption?,

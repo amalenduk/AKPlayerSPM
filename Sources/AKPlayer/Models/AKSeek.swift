@@ -31,6 +31,8 @@ import CoreMedia
 /// Represents a media seek command containing the target position, tolerances, and completion callback.
 public struct AKSeek: Equatable, Hashable, Identifiable, Sendable {
     
+    // MARK: - Properties
+    
     /// Unique identifier for this specific seek request.
     public let id: UUID
     

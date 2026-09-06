@@ -31,6 +31,8 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 
+// MARK: - AKPlayable Protocol
+
 /// A protocol representing a playable media item with metadata and playback properties.
 public protocol AKPlayable: AnyObject, Equatable, Sendable {
     /// The media asset's destination URL (file path or remote stream).
@@ -60,11 +62,17 @@ public protocol AKPlayable: AnyObject, Equatable, Sendable {
 
 public extension AKPlayable {
     /// Default protocol equality comparison checking identity reference or URL and media type properties.
+    /// - Parameters:
+    ///   - lhs: The left-hand side `AKPlayable` instance.
+    ///   - rhs: The right-hand side `AKPlayable` instance.
+    /// - Returns: A Boolean value indicating whether two instances are equal.
     static func == (lhs: Self, rhs: Self) -> Bool {
         return lhs === rhs || (lhs.url == rhs.url && lhs.type == rhs.type)
     }
     
     /// Compares two existential instances (`any AKPlayable`) by reference or properties.
+    /// - Parameter other: The target `AKPlayable` instance to compare against.
+    /// - Returns: A Boolean value indicating whether the current instance matches the target.
     func isEqual(to other: any AKPlayable) -> Bool {
         return self === other || (self.url == other.url && self.type == other.type)
     }
@@ -83,6 +91,7 @@ public extension AKPlayable {
 
 public extension AKPlayable {
     /// Default implementation determining if the item is a live stream payload.
+    /// - Returns: `true` if the item represents an active live stream; otherwise, `false`.
     func isLive() -> Bool {
         guard case let AKMediaType.stream(isLive) = type, isLive else { return false }
         return true
@@ -93,11 +102,13 @@ public extension AKPlayable {
 
 public extension AKPlayable {
     /// Returns `true` if the URL represents a local file on disk.
+    /// - Returns: A Boolean value indicating if the asset is stored locally.
     func isLocal() -> Bool {
         return url.isFileURL
     }
     
     /// Returns `true` if the URL scheme points to a remote network resource (HTTP, HTTPS, RTSP, RTMP, etc.).
+    /// - Returns: A Boolean value indicating if the asset requires a network connection to play.
     func isOverNetwork() -> Bool {
         guard !url.isFileURL else { return false }
         guard let scheme = url.scheme?.lowercased() else { return false }

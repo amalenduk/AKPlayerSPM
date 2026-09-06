@@ -14,9 +14,6 @@
 //  The above copyright notice and this permission notice shall be included in all
 //  copies or substantial portions of the Software.
 //
-//  The above copyright notice and this permission notice shall be included in all
-//  copies or substantial portions of the Software.
-//
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -112,7 +109,7 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
         // KVO observer running synchronously on MainActor
         rateChangeObserver = player.observe(
             \.rate,
-             options: [.old, .new]
+            options: [.old, .new]
         ) { [weak self] player, change in
             Task { @MainActor [weak self] in
                 guard let self else { return }

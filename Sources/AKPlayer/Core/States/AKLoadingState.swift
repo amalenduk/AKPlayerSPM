@@ -55,7 +55,7 @@ public class AKLoadingState: AKBaseState {
     /// Container holding reactive Combine event subscriptions. Marked `nonisolated(unsafe)` for safe disposal in `deinit`.
     private nonisolated(unsafe) var subscriptions = Set<AnyCancellable>()
     
-    // MARK: - Init & Deinit
+    // MARK: - Initialization & Deinitialization
     
     /// Initializes a loading state instance with specified options.
     /// - Parameters:

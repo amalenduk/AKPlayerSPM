@@ -25,11 +25,16 @@
 
 import CoreMedia
 
+// MARK: - AKPlayerEvent
+
 /// Playback events published by ``AKPlayer``.
 ///
 /// Subscribe with `for await event in player.events`. The existing
 /// ``AKPlayerDelegate`` remains supported as a compatibility adapter.
 public enum AKPlayerEvent: Sendable {
+    
+    // MARK: - Cases
+    
     case stateChanged(AKPlayerState)
     case mediaChanged(any AKPlayable)
     case timeChanged(CMTime)
@@ -42,22 +47,36 @@ public enum AKPlayerEvent: Sendable {
     case failed(AKPlayerError)
 }
 
+// MARK: - Equatable Conformance
+
 extension AKPlayerEvent: Equatable {
+    
+    /// Compares two `AKPlayerEvent` instances for equality.
     public static func == (lhs: AKPlayerEvent, rhs: AKPlayerEvent) -> Bool {
         switch (lhs, rhs) {
         case (.mediaChanged(let l), .mediaChanged(let r)):
             return l.isEqual(to: r)
             
-        case (.stateChanged(let l), .stateChanged(let r)): return l == r
-        case (.timeChanged(let l), .timeChanged(let r)): return l == r
-        case (.playbackEnded(let l), .playbackEnded(let r)): return l == r
-        case (.boundaryReached(let l), .boundaryReached(let r)): return l == r
-        case (.rateChanged(let lNew, let lOld), .rateChanged(let rNew, let rOld)): return lNew == rNew && lOld == rOld
-        case (.volumeChanged(let l), .volumeChanged(let r)): return l == r
-        case (.muteChanged(let l), .muteChanged(let r)): return l == r
-        case (.unavailable(let l), .unavailable(let r)): return l == r
-        case (.failed(let l), .failed(let r)): return l == r
-        default: return false
+        case (.stateChanged(let l), .stateChanged(let r)):
+            return l == r
+        case (.timeChanged(let l), .timeChanged(let r)):
+            return l == r
+        case (.playbackEnded(let l), .playbackEnded(let r)):
+            return l == r
+        case (.boundaryReached(let l), .boundaryReached(let r)):
+            return l == r
+        case (.rateChanged(let lNew, let lOld), .rateChanged(let rNew, let rOld)):
+            return lNew == rNew && lOld == rOld
+        case (.volumeChanged(let l), .volumeChanged(let r)):
+            return l == r
+        case (.muteChanged(let l), .muteChanged(let r)):
+            return l == r
+        case (.unavailable(let l), .unavailable(let r)):
+            return l == r
+        case (.failed(let l), .failed(let r)):
+            return l == r
+        default:
+            return false
         }
     }
 }

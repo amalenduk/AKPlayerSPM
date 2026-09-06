@@ -106,4 +106,3 @@ public protocol AKMediaManagerProtocol: AnyObject, NSObjectProtocol {
     /// - Returns: A tuple containing a boolean flag indicating permission and an optional unavailability reason.
     func canSeek(to time: AKSeekTarget) -> (flag: Bool, reason: AKPlayerUnavailableCommandReason?)
 }
-

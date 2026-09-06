@@ -36,7 +36,7 @@ public class AKFailedState: AKBaseState {
     /// The specific player error that triggered this failure state.
     public let error: AKPlayerError
     
-    // MARK: - Initialization
+    // MARK: - Initialization & Deinitialization
     
     /// Initializes a failed state instance associated with a specified player controller and error.
     /// - Parameters:
@@ -50,7 +50,9 @@ public class AKFailedState: AKBaseState {
         super.init(playerController: playerController, state: .failed)
     }
     
-    deinit { }
+    deinit {
+        // Cleanup routine if needed when state memory is released
+    }
     
     // MARK: - Lifecycle Hooks
     

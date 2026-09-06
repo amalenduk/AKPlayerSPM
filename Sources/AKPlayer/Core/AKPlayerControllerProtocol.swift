@@ -113,10 +113,10 @@ public protocol AKPlayerControllerDelegate: AnyObject {
         didChangeMutedStatusTo isMuted: Bool
     )
     
-    /// Called when a requested player command is blocked by state preflight pre-requisites.
+    /// Called when a requested player command is blocked by state preflight prerequisites.
     /// - Parameters:
     ///   - playerController: The issuing player controller instance.
-    ///   - reason: The underlying reason prohibiting the action execution.
+    ///   - reason: The underlying reason prohibiting action execution.
     func playerController(
         _ playerController: any AKPlayerControllerProtocol,
         didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason
