@@ -1,16 +1,12 @@
 # Swift Version
 --swiftversion 6.0
 
-# 100-character line limit (Industry standard for Swift libraries)
+# 100-character line width
 --maxwidth 100
 
-# Wrap function parameter lists onto separate lines
+# Wrap function parameters & arguments onto separate lines when exceeding maxwidth
 --wrapparameters before-first
-
-# Wrap function call arguments onto separate lines
 --wraparguments before-first
-
-# Place closing parenthesis on its own line
 --closingparen balanced
 
 # Indentation & Linebreaks
@@ -18,6 +14,11 @@
 --linebreaks lf
 --trimwhitespace always
 
-# Clean redundant self and empty lines
+# Clean redundant code
 --redundanttype inferred
 --stripunusedargs always
+
+--redundant self explicitly
+
+# Modern 4-line Open Source License Header
+--header "\n  {file}\n  AKPlayer\n\n  Copyright (c) 2020 Amalendu Kar. All rights reserved.\n  Licensed under the MIT license. See LICENSE file in the project root.\n"
