@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -28,7 +32,8 @@ import Combine
 
 // MARK: - AKLoadingState
 
-/// Concrete state representing a state where media is currently being initialized, loaded, and prepared for active playback.
+/// Concrete state representing a state where media is currently being
+/// initialized, loaded, and prepared for active playback.
 @MainActor
 public class AKLoadingState: AKBaseState {
     // MARK: - Properties
@@ -36,7 +41,8 @@ public class AKLoadingState: AKBaseState {
     /// The media item being loaded into the player pipeline.
     private let media: any AKPlayable
 
-    /// Indicates whether playback should automatically start once loading completes.
+    /// Indicates whether playback should automatically start once loading
+    /// completes.
     public private(set) var autoPlay: Bool
 
     /// An optional initial position to seek to upon entering loaded state.
@@ -45,10 +51,12 @@ public class AKLoadingState: AKBaseState {
     /// An optional playback rate target to set upon loading complete.
     private var rate: AKPlaybackRate?
 
-    /// Tracks if initialization operations were explicitly aborted or cancelled.
+    /// Tracks if initialization operations were explicitly aborted or
+    /// cancelled.
     private var isCancelled: Bool = false
 
-    /// Asynchronous validation task reference used for loading asset playability.
+    /// Asynchronous validation task reference used for loading asset
+    /// playability.
     private var task: Task<Void, Never>?
 
     /// Container holding reactive Combine event subscriptions.
@@ -58,7 +66,8 @@ public class AKLoadingState: AKBaseState {
 
     /// Initializes a loading state instance with specified options.
     /// - Parameters:
-    ///   - playerController: The underlying player controller driving execution.
+    ///   - playerController: The underlying player controller driving
+    /// execution.
     ///   - media: The target media item to load.
     ///   - autoPlay: Whether auto-start is requested post-loading.
     ///   - position: Optional initial seek target.
@@ -83,7 +92,8 @@ public class AKLoadingState: AKBaseState {
 
     // MARK: - Lifecycle Hooks
 
-    /// Entry point for state setup. Cleans up prior item observers, emits initial media change events, and monitors media load state transitions.
+    /// Entry point for state setup. Cleans up prior item observers, emits
+    /// initial media change events, and monitors media load state transitions.
     override public func processStateChange() {
         resetPlayer()
         playerController.emit(.mediaDidChange(media))
@@ -92,19 +102,21 @@ public class AKLoadingState: AKBaseState {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 guard let self else { return }
-                self.hanldeChangeInMedia(state)
+                hanldeChangeInMedia(state)
             }
             .store(in: &subscriptions)
     }
 
     // MARK: - Commands
 
-    /// Registers playback request while media is still loading. Sets `autoPlay` flag to true.
+    /// Registers playback request while media is still loading. Sets `autoPlay`
+    /// flag to true.
     override public func play() {
         autoPlay = true
     }
 
-    /// Intercepts specific speed adjustments requested during loading state and fires unavailable action delegate notifications.
+    /// Intercepts specific speed adjustments requested during loading state and
+    /// fires unavailable action delegate notifications.
     /// - Parameter rate: The target speed requested.
     override public func play(at _: AKPlaybackRate) {
         playerController.emit(.commandUnavailable(reason: .waitTillMediaLoaded))
@@ -132,14 +144,15 @@ public class AKLoadingState: AKBaseState {
             task = Task { [weak self] in
                 guard let self else { return }
                 await validateAssetPlayability()
-                if self.isCancelled {
+                if isCancelled {
                     return
                 }
-                self.createPlayerItemFromAsset()
+                createPlayerItemFromAsset()
             }
         case .playerItemLoaded:
             playerItemLoaded()
-        case .readyToPlay where !(playerController.player.currentItem == media.playerItem):
+        case .readyToPlay
+            where !(playerController.player.currentItem == media.playerItem):
             playerItemLoaded()
         case .readyToPlay:
             becameReadyToPlay()
@@ -162,7 +175,9 @@ public class AKLoadingState: AKBaseState {
         } catch let playerError as AKPlayerError {
             failedToPrepareForPlayback(with: playerError)
         } catch {
-            failedToPrepareForPlayback(with: .playerCanNoLongerPlay(error: error))
+            failedToPrepareForPlayback(
+                with: .playerCanNoLongerPlay(error: error)
+            )
         }
     }
 
@@ -182,31 +197,36 @@ public class AKLoadingState: AKBaseState {
         }
     }
 
-    /// Evaluates AVPlayer ready status and transitions state to `AKLoadedState` upon success.
+    /// Evaluates AVPlayer ready status and transitions state to `AKLoadedState`
+    /// upon success.
     private func becameReadyToPlay() {
-        playerController.player.publisher(for: \.status, options: [.initial, .new])
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in
-                guard let self else { return }
-                switch status {
-                case .readyToPlay:
-                    let controller = AKLoadedState(
-                        playerController: self.playerController,
-                        autoPlay: self.autoPlay,
-                        position: self.position
-                    )
-                    self.change(controller)
-                case .failed:
-                    let controller = AKFailedState(
-                        playerController: self.playerController,
-                        error: .playerCanNoLongerPlay(error: self.playerController.player.error)
-                    )
-                    self.change(controller)
-                default:
-                    break
-                }
+        playerController.player.publisher(
+            for: \.status,
+            options: [.initial, .new]
+        )
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] status in
+            guard let self else { return }
+            switch status {
+            case .readyToPlay:
+                let controller = AKLoadedState(
+                    playerController: playerController,
+                    autoPlay: autoPlay,
+                    position: position
+                )
+                change(controller)
+            case .failed:
+                let controller = AKFailedState(
+                    playerController: playerController,
+                    error: .playerCanNoLongerPlay(error: playerController
+                        .player.error)
+                )
+                change(controller)
+            default:
+                break
             }
-            .store(in: &subscriptions)
+        }
+        .store(in: &subscriptions)
     }
 
     /// Aborts tasks and asset loading operations.
@@ -232,24 +252,30 @@ public class AKLoadingState: AKBaseState {
 
     // MARK: - Error Handling
 
-    /// Transitions state engine into `AKFailedState` when media initialization fails.
+    /// Transitions state engine into `AKFailedState` when media initialization
+    /// fails.
     /// - Parameter error: Specific player error description encounter.
     private func failedToPrepareForPlayback(with error: AKPlayerError) {
         guard !isCancelled else { return }
-        let controller = AKFailedState(playerController: playerController, error: error)
+        let controller = AKFailedState(
+            playerController: playerController,
+            error: error
+        )
         change(controller)
     }
 
     // MARK: - Transition Overrides
 
-    /// Aborts current load routines prior to processing a new media load command.
+    /// Aborts current load routines prior to processing a new media load
+    /// command.
     override public func beforeLoad(
         media _: any AKPlayable, autoPlay _: Bool, position _: AKSeekTarget?
     ) {
         abortAssetInitialization()
     }
 
-    /// Cancels asset loads and strips observers prior to stopping the player controller.
+    /// Cancels asset loads and strips observers prior to stopping the player
+    /// controller.
     override public func beforeStop() {
         abortAssetInitialization()
     }
@@ -260,9 +286,9 @@ public class AKLoadingState: AKBaseState {
     {
         switch action {
         case .seek, .step, .fastForward, .rewind:
-            return (false, .waitTillMediaLoaded)
+            (false, .waitTillMediaLoaded)
         default:
-            return super.availability(for: action)
+            super.availability(for: action)
         }
     }
 

@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -30,45 +34,50 @@ import AVFoundation
 public extension AVPlayerItem {
     // MARK: - Capabilities
 
-    /// Evaluates whether the player item can step by the specified frame count directionally.
-    /// - Parameter count: The frame step count. Positive for forward, negative for backward.
-    /// - Returns: A Boolean value indicating whether stepping in the requested direction is supported.
+    /// Evaluates whether the player item can step by the specified frame count
+    /// directionally.
+    /// - Parameter count: The frame step count. Positive for forward, negative
+    /// for backward.
+    /// - Returns: A Boolean value indicating whether stepping in the requested
+    /// direction is supported.
     func canStep(by count: Int) -> Bool {
         var isForward: Bool {
-            return count.signum() == 1
+            count.signum() == 1
         }
         return isForward ? canStepForward : canStepBackward
     }
 
-    /// Determines whether the player item can play at a given playback speed rate.
+    /// Determines whether the player item can play at a given playback speed
+    /// rate.
     /// - Parameter rate: The target playback speed rate to evaluate.
-    /// - Returns: A Boolean value indicating capability to play at the specified rate.
+    /// - Returns: A Boolean value indicating capability to play at the
+    /// specified rate.
     func canPlay(at rate: AKPlaybackRate) -> Bool {
         switch rate.rate {
         case 0.0...:
             switch rate.rate {
             case 2.0...:
-                return canPlayFastForward
+                canPlayFastForward
             case 1.0 ..< 2.0:
-                return true
+                true
             case 0.0 ..< 1.0:
-                return canPlaySlowForward
+                canPlaySlowForward
             default:
-                return false
+                false
             }
         case ..<0.0:
             switch rate.rate {
             case -1.0:
-                return canPlayReverse
+                canPlayReverse
             case -1.0 ..< 0.0:
-                return canPlaySlowReverse
+                canPlaySlowReverse
             case ..<(-1.0):
-                return canPlayFastReverse
+                canPlayFastReverse
             default:
-                return false
+                false
             }
         default:
-            return false
+            false
         }
     }
 }

@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -28,7 +32,8 @@ import Combine
 
 // MARK: - AKPlayerPlaybackTimeObserverProtocol
 
-/// Protocol declaring capabilities for monitoring AVPlayer periodic and boundary time updates.
+/// Protocol declaring capabilities for monitoring AVPlayer periodic and
+/// boundary time updates.
 @MainActor
 public protocol AKPlayerPlaybackTimeObserverProtocol: AnyObject {
     var player: AVPlayer { get }
@@ -43,7 +48,8 @@ public protocol AKPlayerPlaybackTimeObserverProtocol: AnyObject {
 
 // MARK: - AKPlayerPlaybackTimeObserver
 
-/// Concrete observer delivering periodic and boundary time progress updates via Combine publishers.
+/// Concrete observer delivering periodic and boundary time progress updates via
+/// Combine publishers.
 @MainActor
 public class AKPlayerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol {
     // MARK: - Properties
@@ -62,11 +68,13 @@ public class AKPlayerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol 
     private let _boundaryTimePublisher = PassthroughSubject<CMTime, Never>()
 
     /// Opaque token returned by AVPlayer when registering periodic observer.
-    /// Marked `nonisolated(unsafe)` to enable clean removal during deinitialization.
+    /// Marked `nonisolated(unsafe)` to enable clean removal during
+    /// deinitialization.
     private nonisolated(unsafe) var periodicTimeObserverToken: Any?
 
     /// Opaque token returned by AVPlayer when registering boundary observer.
-    /// Marked `nonisolated(unsafe)` to enable clean removal during deinitialization.
+    /// Marked `nonisolated(unsafe)` to enable clean removal during
+    /// deinitialization.
     private nonisolated(unsafe) var boundaryTimeObserverToken: Any?
 
     // MARK: - Init & Deinit
@@ -97,7 +105,7 @@ public class AKPlayerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol 
         ) { [weak self] time in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self._periodicTimePublisher.send(time)
+                _periodicTimePublisher.send(time)
             }
         }
     }
@@ -121,7 +129,7 @@ public class AKPlayerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol 
         ) { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self._boundaryTimePublisher.send(self.player.currentTime())
+                _boundaryTimePublisher.send(player.currentTime())
             }
         }
     }

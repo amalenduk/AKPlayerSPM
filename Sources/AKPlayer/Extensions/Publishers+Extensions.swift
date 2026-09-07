@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -31,7 +35,8 @@ import Foundation
 public extension Publishers {
     // MARK: - CombineLatest Variants
 
-    /// Combines elements from five publishers and delivers a tuple containing the latest value of each upstream publisher.
+    /// Combines elements from five publishers and delivers a tuple containing
+    /// the latest value of each upstream publisher.
     static func CombineLatest5<
         A: Publisher, B: Publisher, C: Publisher, D: Publisher, E: Publisher
     >(
@@ -40,18 +45,25 @@ public extension Publishers {
         _ c: C,
         _ d: D,
         _ e: E
-    ) -> AnyPublisher<(A.Output, B.Output, C.Output, D.Output, E.Output), A.Failure>
+    )
+        -> AnyPublisher<
+            (A.Output, B.Output, C.Output, D.Output, E.Output),
+            A.Failure
+        >
         where
-        B.Failure == A.Failure, C.Failure == A.Failure, D.Failure == A.Failure, E.Failure == A.Failure
+        B.Failure == A.Failure, C.Failure == A.Failure, D.Failure == A.Failure,
+        E.Failure == A.Failure
     {
         Publishers.CombineLatest(Publishers.CombineLatest4(a, b, c, d), e)
             .map { ($0.0, $0.1, $0.2, $0.3, $1) }
             .eraseToAnyPublisher()
     }
 
-    /// Combines elements from six publishers and delivers a tuple containing the latest value of each upstream publisher.
+    /// Combines elements from six publishers and delivers a tuple containing
+    /// the latest value of each upstream publisher.
     static func CombineLatest6<
-        A: Publisher, B: Publisher, C: Publisher, D: Publisher, E: Publisher, F: Publisher
+        A: Publisher, B: Publisher, C: Publisher, D: Publisher, E: Publisher,
+        F: Publisher
     >(
         _ a: A,
         _ b: B,
@@ -59,9 +71,17 @@ public extension Publishers {
         _ d: D,
         _ e: E,
         _ f: F
-    ) -> AnyPublisher<(A.Output, B.Output, C.Output, D.Output, E.Output, F.Output), A.Failure>
+    ) -> AnyPublisher<(
+        A.Output,
+        B.Output,
+        C.Output,
+        D.Output,
+        E.Output,
+        F.Output
+    ), A.Failure>
         where
-        B.Failure == A.Failure, C.Failure == A.Failure, D.Failure == A.Failure, E.Failure == A.Failure,
+        B.Failure == A.Failure, C.Failure == A.Failure, D.Failure == A.Failure,
+        E.Failure == A.Failure,
         F.Failure == A.Failure
     {
         Publishers.CombineLatest3(Publishers.CombineLatest4(a, b, c, d), e, f)
@@ -69,9 +89,11 @@ public extension Publishers {
             .eraseToAnyPublisher()
     }
 
-    /// Combines elements from seven publishers and delivers a tuple containing the latest value of each upstream publisher.
+    /// Combines elements from seven publishers and delivers a tuple containing
+    /// the latest value of each upstream publisher.
     static func CombineLatest7<
-        A: Publisher, B: Publisher, C: Publisher, D: Publisher, E: Publisher, F: Publisher, G: Publisher
+        A: Publisher, B: Publisher, C: Publisher, D: Publisher, E: Publisher,
+        F: Publisher, G: Publisher
     >(
         _ a: A,
         _ b: B,
@@ -81,15 +103,22 @@ public extension Publishers {
         _ f: F,
         _ g: G
     ) -> AnyPublisher<
-        (A.Output, B.Output, C.Output, D.Output, E.Output, F.Output, G.Output), A.Failure
+        (A.Output, B.Output, C.Output, D.Output, E.Output, F.Output, G.Output),
+        A.Failure
     >
         where
-        B.Failure == A.Failure, C.Failure == A.Failure, D.Failure == A.Failure, E.Failure == A.Failure,
+        B.Failure == A.Failure, C.Failure == A.Failure, D.Failure == A.Failure,
+        E.Failure == A.Failure,
         F.Failure == A.Failure, G.Failure == A.Failure
     {
-        Publishers.CombineLatest4(Publishers.CombineLatest4(a, b, c, d), e, f, g)
-            .map { ($0.0, $0.1, $0.2, $0.3, $1, $2, $3) }
-            .eraseToAnyPublisher()
+        Publishers.CombineLatest4(
+            Publishers.CombineLatest4(a, b, c, d),
+            e,
+            f,
+            g
+        )
+        .map { ($0.0, $0.1, $0.2, $0.3, $1, $2, $3) }
+        .eraseToAnyPublisher()
     }
 }
 
@@ -98,12 +127,18 @@ public extension Publishers {
 public extension Publisher {
     // MARK: - Weak Capture Operators
 
-    /// Weakly captures an object and extracts the value at a specified keypath for each emitted element, dropping values if the target object is deallocated.
+    /// Weakly captures an object and extracts the value at a specified keypath
+    /// for each emitted element, dropping values if the target object is
+    /// deallocated.
     /// - Parameters:
     ///   - other: The object instance to weakly reference.
     ///   - keyPath: A keypath accessing a property on the target object.
-    /// - Returns: A publisher emitting tuples containing original output and the evaluated keypath value.
-    func weakCapture<T: AnyObject, V>(_ other: T?, at keyPath: KeyPath<T, V>) -> AnyPublisher<
+    /// - Returns: A publisher emitting tuples containing original output and
+    /// the evaluated keypath value.
+    func weakCapture<T: AnyObject, V>(
+        _ other: T?,
+        at keyPath: KeyPath<T, V>
+    ) -> AnyPublisher<
         (Output, V), Failure
     > {
         compactMap { [weak other] output -> (Output, V)? in
@@ -113,10 +148,14 @@ public extension Publisher {
         .eraseToAnyPublisher()
     }
 
-    /// Weakly captures an object alongside each emitted element, dropping values if the target object is deallocated.
+    /// Weakly captures an object alongside each emitted element, dropping
+    /// values if the target object is deallocated.
     /// - Parameter other: The object instance to weakly reference.
-    /// - Returns: A publisher emitting tuples containing original output and the weakly retained object instance.
-    func weakCapture<T: AnyObject>(_ other: T?) -> AnyPublisher<(Output, T), Failure> {
+    /// - Returns: A publisher emitting tuples containing original output and
+    /// the weakly retained object instance.
+    func weakCapture<T: AnyObject>(_ other: T?)
+        -> AnyPublisher<(Output, T), Failure>
+    {
         weakCapture(other, at: \T.self)
     }
 }

@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -30,7 +34,8 @@ import Network
 
 // MARK: - AKPlayerAction
 
-/// Enumeration representing actionable playback intents evaluated by player state machine preflight checks.
+/// Enumeration representing actionable playback intents evaluated by player
+/// state machine preflight checks.
 public enum AKPlayerAction: Equatable {
     case load
     case play
@@ -44,7 +49,8 @@ public enum AKPlayerAction: Equatable {
 
 // MARK: - AKBaseState
 
-/// Base class for player states implementing state machine logic, preflight validation checks, and action handling.
+/// Base class for player states implementing state machine logic, preflight
+/// validation checks, and action handling.
 @MainActor
 public class AKBaseState: AKPlayerStateControllerProtocol {
     // MARK: - Properties
@@ -57,18 +63,25 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
 
     // MARK: - Initialization
 
-    /// Initializes a base state instance associated with a specific player controller and state classification.
+    /// Initializes a base state instance associated with a specific player
+    /// controller and state classification.
     /// - Parameters:
-    ///   - playerController: The target player controller executing playback commands.
-    ///   - state: The concrete player state classification represented by this instance.
-    public init(playerController: any AKPlayerControllerProtocol, state: AKPlayerState) {
+    ///   - playerController: The target player controller executing playback
+    /// commands.
+    ///   - state: The concrete player state classification represented by this
+    /// instance.
+    public init(
+        playerController: any AKPlayerControllerProtocol,
+        state: AKPlayerState
+    ) {
         self.playerController = playerController
         self.state = state
     }
 
     deinit {}
 
-    /// Called when the player transitions into this state. Concrete state subclasses override to perform setup.
+    /// Called when the player transitions into this state. Concrete state
+    /// subclasses override to perform setup.
     public func processStateChange() {
         // Default no-op; internal state implementations may override
     }
@@ -80,7 +93,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// Initiates loading of a new playable media item into the player pipeline.
     /// - Parameters:
     ///   - media: The playable media target.
-    ///   - autoPlay: Controls whether playback should automatically start when media is ready.
+    ///   - autoPlay: Controls whether playback should automatically start when
+    /// media is ready.
     ///   - position: An optional initial seek target position to apply on load.
     public func load(
         media: any AKPlayable,
@@ -114,7 +128,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         )
     }
 
-    /// Commands the player to begin media playback at a specified speed multiplier.
+    /// Commands the player to begin media playback at a specified speed
+    /// multiplier.
     /// - Parameter rate: The targeted playback rate.
     public func play(at rate: AKPlaybackRate) {
         performIfAllowed(
@@ -146,7 +161,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             },
             action: { [weak self] in
                 guard let self else { return }
-                let controller = AKPausedState(playerController: playerController)
+                let controller =
+                    AKPausedState(playerController: playerController)
                 change(controller)
             },
             blocked: { [weak self] reason in
@@ -157,7 +173,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         )
     }
 
-    /// Toggles between play and pause states depending on current active playback state.
+    /// Toggles between play and pause states depending on current active
+    /// playback state.
     public func togglePlayPause() {
         if state.isPlaying || autoPlay {
             pause()
@@ -175,7 +192,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             action: { [weak self] in
                 guard let self else { return }
                 beforeStop()
-                let controller = AKStoppedState(playerController: playerController)
+                let controller =
+                    AKStoppedState(playerController: playerController)
                 change(controller)
             },
             blocked: { [weak self] reason in
@@ -189,12 +207,15 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     // MARK: 3. Seeking Through Media
 
     /// Asynchronously seeks to a given target position within current media.
-    /// - Warning: Do not call state async seek directly. Use AKPlayerController.seek instead.
-    /// - Parameter target: The target position (`.time`, `.seconds`, `.offset`, `.percentage`, or `.date`).
-    /// - Returns: `true` if the seek command was accepted and successfully executed; `false` otherwise.
+    /// - Warning: Do not call state async seek directly. Use
+    /// AKPlayerController.seek instead.
+    /// - Parameter target: The target position (`.time`, `.seconds`, `.offset`,
+    /// `.percentage`, or `.date`).
+    /// - Returns: `true` if the seek command was accepted and successfully
+    /// executed; `false` otherwise.
     @discardableResult
     public func seek(to target: AKSeekTarget) async -> Bool {
-        return await withCheckedContinuation { con in
+        await withCheckedContinuation { con in
             seek(
                 to: target
             ) { finished in
@@ -204,13 +225,16 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         }
     }
 
-    /// Asynchronously seeks to a given target position with explicit tolerance parameters.
-    /// - Warning: Do not call state async seek directly. Use AKPlayerController.seek instead.
+    /// Asynchronously seeks to a given target position with explicit tolerance
+    /// parameters.
+    /// - Warning: Do not call state async seek directly. Use
+    /// AKPlayerController.seek instead.
     /// - Parameters:
     ///   - target: The target position.
     ///   - toleranceBefore: Acceptable time offset before the target.
     ///   - toleranceAfter: Acceptable time offset after the target.
-    /// - Returns: `true` if the seek command was accepted and successfully executed; `false` otherwise.
+    /// - Returns: `true` if the seek command was accepted and successfully
+    /// executed; `false` otherwise.
     @discardableResult
     public func seek(
         to target: AKSeekTarget,
@@ -243,11 +267,17 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         )
     }
 
-    /// Seeks to a designated target position with a completion handler callback.
+    /// Seeks to a designated target position with a completion handler
+    /// callback.
     /// - Parameters:
-    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
-    ///   - completionHandler: A callback invoked when the seek operation completes or is canceled, receiving a boolean indicating success.
-    public func seek(to target: AKSeekTarget, completionHandler: @escaping @Sendable (Bool) -> Void) {
+    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or
+    /// `.percentage`).
+    ///   - completionHandler: A callback invoked when the seek operation
+    /// completes or is canceled, receiving a boolean indicating success.
+    public func seek(
+        to target: AKSeekTarget,
+        completionHandler: @escaping @Sendable (Bool) -> Void
+    ) {
         performIfAllowed(
             check: { [unowned self] in
                 availability(for: .seek(to: target))
@@ -281,12 +311,15 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         )
     }
 
-    /// Seeks to a designated target position with custom tolerance bounds and a completion handler callback.
+    /// Seeks to a designated target position with custom tolerance bounds and a
+    /// completion handler callback.
     /// - Parameters:
-    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or `.percentage`).
+    ///   - target: The destination target (`.time`, `.seconds`, `.offset`, or
+    /// `.percentage`).
     ///   - toleranceBefore: The allowable tolerance before the target time.
     ///   - toleranceAfter: The allowable tolerance after the target time.
-    ///   - completionHandler: A callback invoked when the seek operation completes or is canceled, receiving a boolean indicating success.
+    ///   - completionHandler: A callback invoked when the seek operation
+    /// completes or is canceled, receiving a boolean indicating success.
     public func seek(
         to target: AKSeekTarget,
         toleranceBefore: CMTime,
@@ -330,8 +363,10 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
 
     // MARK: 4. Media Navigation
 
-    /// Steps frame-by-frame through video media by a specified frame count offset.
-    /// - Parameter count: The frame offset count (positive for forward, negative for reverse).
+    /// Steps frame-by-frame through video media by a specified frame count
+    /// offset.
+    /// - Parameter count: The frame offset count (positive for forward,
+    /// negative for reverse).
     public func step(by count: Int) {
         performIfAllowed(
             check: { [unowned self] in
@@ -349,7 +384,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         )
     }
 
-    /// Fast-forwards playback using default fast-forward speed defined in player configuration.
+    /// Fast-forwards playback using default fast-forward speed defined in
+    /// player configuration.
     public func fastForward() {
         play(at: playerController.configuration.fastForwardRate)
     }
@@ -360,7 +396,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         play(at: rate)
     }
 
-    /// Rewinds playback using default rewind speed defined in player configuration.
+    /// Rewinds playback using default rewind speed defined in player
+    /// configuration.
     public func rewind() {
         play(at: playerController.configuration.rewindRate)
     }
@@ -381,12 +418,17 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         afterStateChange()
     }
 
-    /// Validates an action requirement and executes an asynchronous task if permission check succeeds.
+    /// Validates an action requirement and executes an asynchronous task if
+    /// permission check succeeds.
     /// - Parameters:
-    ///   - check: Preflight verification closure evaluating action permission and returning blocking reasons on failure.
-    ///   - action: Asynchronous operation closure executed if permission check succeeds.
-    ///   - blocked: Closure called on preflight failure with the associated reason.
-    ///   - fallback: Fallback value returned when action execution is blocked or prohibited.
+    ///   - check: Preflight verification closure evaluating action permission
+    /// and returning blocking reasons on failure.
+    ///   - action: Asynchronous operation closure executed if permission check
+    /// succeeds.
+    ///   - blocked: Closure called on preflight failure with the associated
+    /// reason.
+    ///   - fallback: Fallback value returned when action execution is blocked
+    /// or prohibited.
     /// - Returns: The result of `action` if allowed; otherwise, `fallback`.
     @discardableResult
     public func performIfAllowed<T: Sendable>(
@@ -406,12 +448,17 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         return await action()
     }
 
-    /// Validates an action requirement and executes a synchronous task if permission check succeeds.
+    /// Validates an action requirement and executes a synchronous task if
+    /// permission check succeeds.
     /// - Parameters:
-    ///   - check: Preflight verification closure evaluating action permission and returning blocking reasons on failure.
-    ///   - action: Synchronous operation closure executed if permission check succeeds.
-    ///   - blocked: Closure called on preflight failure with the associated reason.
-    ///   - fallback: Fallback value returned when action execution is blocked or prohibited.
+    ///   - check: Preflight verification closure evaluating action permission
+    /// and returning blocking reasons on failure.
+    ///   - action: Synchronous operation closure executed if permission check
+    /// succeeds.
+    ///   - blocked: Closure called on preflight failure with the associated
+    /// reason.
+    ///   - fallback: Fallback value returned when action execution is blocked
+    /// or prohibited.
     /// - Returns: The result of `action` if allowed; otherwise, `fallback`.
     @discardableResult
     public func performIfAllowed<T: Sendable>(
@@ -431,9 +478,11 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         return action()
     }
 
-    /// Evaluates preflight permission and unavailable reasons for a given player action.
+    /// Evaluates preflight permission and unavailable reasons for a given
+    /// player action.
     /// - Parameter action: The candidate action to evaluate.
-    /// - Returns: A tuple containing a boolean flag indicating if allowed, and an optional unavailability reason.
+    /// - Returns: A tuple containing a boolean flag indicating if allowed, and
+    /// an optional unavailability reason.
     public func availability(for action: AKPlayerAction) -> (
         allowed: Bool, reason: AKPlayerUnavailableCommandReason?
     ) {
@@ -443,7 +492,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
                 return (false, .loadMediaFirst)
             }
 
-            let (flag, reason) = currentMedia.seekingThroughMedia.canSeek(to: target)
+            let (flag, reason) = currentMedia.seekingThroughMedia
+                .canSeek(to: target)
             return (allowed: flag, reason: reason)
 
         case let .step(by: count):
@@ -464,15 +514,19 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         }
     }
 
-    /// Subscribes to system network status changes to inform streaming decisions.
+    /// Subscribes to system network status changes to inform streaming
+    /// decisions.
     /// - Parameters:
-    ///   - subscriptions: The set of `AnyCancellable` storing active Combine subscriptions.
+    ///   - subscriptions: The set of `AnyCancellable` storing active Combine
+    /// subscriptions.
     ///   - handler: Closure invoked when network connectivity status changes.
     public func observeNetworkStatus(
         in subscriptions: inout Set<AnyCancellable>,
         handler: @escaping (NWPath.Status) -> Void
     ) {
-        guard let currentMedia = playerController.currentMedia, currentMedia.isOverNetwork() else {
+        guard let currentMedia = playerController.currentMedia,
+              currentMedia.isOverNetwork()
+        else {
             return
         }
 
@@ -486,12 +540,19 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
 
     // MARK: - Private Pipeline
 
-    /// Internal helper method executing pre-load lifecycle hooks and constructing initial loading state.
+    /// Internal helper method executing pre-load lifecycle hooks and
+    /// constructing initial loading state.
     /// - Parameters:
     ///   - media: The playable media item to load.
-    ///   - autoPlay: Whether playback should start automatically upon load completion.
-    ///   - position: An optional seek target position to apply once loading completes.
-    private func startLoad(media: any AKPlayable, autoPlay: Bool, at position: AKSeekTarget?) {
+    ///   - autoPlay: Whether playback should start automatically upon load
+    /// completion.
+    ///   - position: An optional seek target position to apply once loading
+    /// completes.
+    private func startLoad(
+        media: any AKPlayable,
+        autoPlay: Bool,
+        at position: AKSeekTarget?
+    ) {
         beforeLoad(media: media, autoPlay: autoPlay, position: position)
         let controller = AKLoadingState(
             playerController: playerController,
@@ -507,9 +568,14 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// Hook executed immediately prior to starting media loading.
     /// - Parameters:
     ///   - media: The media item being loaded.
-    ///   - autoPlay: Controls whether playback starts automatically upon load completion.
+    ///   - autoPlay: Controls whether playback starts automatically upon load
+    /// completion.
     ///   - position: The optional initial seek target position.
-    public func beforeLoad(media _: any AKPlayable, autoPlay _: Bool, position _: AKSeekTarget?) {}
+    public func beforeLoad(
+        media _: any AKPlayable,
+        autoPlay _: Bool,
+        position _: AKSeekTarget?
+    ) {}
 
     /// Hook executed immediately prior to stopping media playback.
     public func beforeStop() {}

@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -28,12 +32,14 @@ import Combine
 
 // MARK: - AKLoadedState
 
-/// Concrete state representing a state where media has been loaded into the pipeline and is ready for playback or seeking.
+/// Concrete state representing a state where media has been loaded into the
+/// pipeline and is ready for playback or seeking.
 @MainActor
 public class AKLoadedState: AKBaseState {
     // MARK: - Properties
 
-    /// Indicates whether autoplay should trigger automatically once preparation finishes.
+    /// Indicates whether autoplay should trigger automatically once preparation
+    /// finishes.
     public private(set) var autoPlay: Bool
 
     /// Optional target position to navigate to upon loading.
@@ -47,10 +53,13 @@ public class AKLoadedState: AKBaseState {
 
     // MARK: - Initialization & Deinitialization
 
-    /// Initializes a loaded state instance associated with the specified player controller.
+    /// Initializes a loaded state instance associated with the specified player
+    /// controller.
     /// - Parameters:
-    ///   - playerController: The target player controller executing playback commands.
-    ///   - autoPlay: Controls whether playback should automatically start upon entering this state.
+    ///   - playerController: The target player controller executing playback
+    /// commands.
+    ///   - autoPlay: Controls whether playback should automatically start upon
+    /// entering this state.
     ///   - position: An optional initial position to apply on load.
     ///   - rate: An optional initial playback rate speed multiplier.
     public init(
@@ -69,7 +78,8 @@ public class AKLoadedState: AKBaseState {
 
     // MARK: - Lifecycle Hooks
 
-    /// Processes state updates, sets up KVO observations, and handles automatic seek or playback triggers.
+    /// Processes state updates, sets up KVO observations, and handles automatic
+    /// seek or playback triggers.
     override public func processStateChange() {
         startObservingPlayerProperties()
 
@@ -79,8 +89,11 @@ public class AKLoadedState: AKBaseState {
 
         if autoPlay {
             play()
-        } else if let position, let currentMedia = playerController.currentMedia {
-            let (canSeek, reason) = currentMedia.seekingThroughMedia.canSeek(to: position)
+        } else if let position,
+                  let currentMedia = playerController.currentMedia
+        {
+            let (canSeek, reason) = currentMedia.seekingThroughMedia
+                .canSeek(to: position)
             guard canSeek else {
                 if let reason {
                     playerController.emit(.commandUnavailable(reason: reason))
@@ -94,14 +107,16 @@ public class AKLoadedState: AKBaseState {
         }
     }
 
-    /// Cleans up Combine observation pipelines before transitioning to another state.
+    /// Cleans up Combine observation pipelines before transitioning to another
+    /// state.
     override public func beforeStateChange() {
         subscriptions.removeAll()
     }
 
     // MARK: - Commands
 
-    /// Commands the player to unpause and enter the buffering state prior to active playback.
+    /// Commands the player to unpause and enter the buffering state prior to
+    /// active playback.
     override public func play() {
         let controller = AKBufferingState(
             playerController: playerController,
@@ -116,13 +131,15 @@ public class AKLoadedState: AKBaseState {
         change(controller)
     }
 
-    /// Commands the player to unpause and play at a specific target rate multiplier.
+    /// Commands the player to unpause and play at a specific target rate
+    /// multiplier.
     /// - Parameter rate: Target playback rate multiplier.
     override public func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
               currentMedia.canPlay(at: rate)
         else {
-            playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
+            playerController
+                .emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
 
@@ -139,7 +156,8 @@ public class AKLoadedState: AKBaseState {
         change(controller)
     }
 
-    /// Commands the player to pause. Disables `autoPlay` if queued, or emits an `.alreadyPaused` unavailability warning.
+    /// Commands the player to pause. Disables `autoPlay` if queued, or emits an
+    /// `.alreadyPaused` unavailability warning.
     override public func pause() {
         if autoPlay {
             autoPlay = false
@@ -150,7 +168,8 @@ public class AKLoadedState: AKBaseState {
 
     // MARK: - Private Pipeline Helpers
 
-    /// Binds KVO status publishers to monitor player status and missing current items.
+    /// Binds KVO status publishers to monitor player status and missing current
+    /// items.
     private func startObservingPlayerProperties() {
         playerController.player.publisher(for: \.status)
             .prepend(playerController.player.status)
@@ -159,7 +178,8 @@ public class AKLoadedState: AKBaseState {
                 guard let self, status == .failed else { return }
                 let controller = AKFailedState(
                     playerController: playerController,
-                    error: .playerCanNoLongerPlay(error: playerController.player.error)
+                    error: .playerCanNoLongerPlay(error: playerController.player
+                        .error)
                 )
                 change(controller)
             }
@@ -168,7 +188,8 @@ public class AKLoadedState: AKBaseState {
         playerController.player.publisher(for: \.timeControlStatus)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                guard let self, playerController.player.currentItem == nil else { return }
+                guard let self,
+                      playerController.player.currentItem == nil else { return }
                 stop()
             }
             .store(in: &subscriptions)

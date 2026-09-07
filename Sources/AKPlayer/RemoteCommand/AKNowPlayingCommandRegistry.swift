@@ -5,36 +5,43 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
 import Foundation
 import MediaPlayer
 
-/// Thread-safe actor registry for managing remote commands and their configurations.
-/// Uses Swift Concurrency (actor isolation) to ensure data synchronization without manual locks.
+/// Thread-safe actor registry for managing remote commands and their
+/// configurations.
+/// Uses Swift Concurrency (actor isolation) to ensure data synchronization
+/// without manual locks.
 public actor AKNowPlayingCommandRegistry {
     // MARK: - Properties
 
     /// Map storing internal configurations indexed by command string key.
     private var commandConfigs: [String: CommandConfig] = [:]
 
-    /// Map storing runtime execution and active state indexed by command string key.
+    /// Map storing runtime execution and active state indexed by command string
+    /// key.
     private var commandStates: [String: CommandState] = [:]
 
     /// Direct mapping of `AKRemoteCommand` targets to custom action closures.
@@ -63,8 +70,10 @@ public actor AKNowPlayingCommandRegistry {
     /// Creates a new isolated actor instance of `AKNowPlayingCommandRegistry`.
     public init() {}
 
-    /// Creates a new isolated actor instance initialized with a given `AKNowPlayingCommandConfiguration`.
-    /// - Parameter configuration: The configuration object to apply upon initialization.
+    /// Creates a new isolated actor instance initialized with a given
+    /// `AKNowPlayingCommandConfiguration`.
+    /// - Parameter configuration: The configuration object to apply upon
+    /// initialization.
     public init(configuration: AKNowPlayingCommandConfiguration) async {
         self.init()
         await apply(configuration: configuration)
@@ -75,8 +84,10 @@ public actor AKNowPlayingCommandRegistry {
     /// Registers a command with optional configuration.
     /// - Parameters:
     ///   - command: The target remote command to register.
-    ///   - isEnabled: Indicates if the command should start in an enabled state. Default is `true`.
-    ///   - canBeDisabled: Indicates whether this command can be dynamically disabled later. Default is `true`.
+    ///   - isEnabled: Indicates if the command should start in an enabled
+    /// state. Default is `true`.
+    ///   - canBeDisabled: Indicates whether this command can be dynamically
+    /// disabled later. Default is `true`.
     public func register(
         _ command: AKRemoteCommand,
         isEnabled: Bool = true,
@@ -101,18 +112,24 @@ public actor AKNowPlayingCommandRegistry {
     /// - Parameters:
     ///   - commands: Array of commands to register.
     ///   - isEnabled: Initial state applied to all commands. Default is `true`.
-    ///   - canBeDisabled: Flag determining whether commands can be disabled. Default is `true`.
+    ///   - canBeDisabled: Flag determining whether commands can be disabled.
+    /// Default is `true`.
     public func register(
         commands: [AKRemoteCommand],
         isEnabled: Bool = true,
         canBeDisabled: Bool = true
     ) {
         for command in commands {
-            register(command, isEnabled: isEnabled, canBeDisabled: canBeDisabled)
+            register(
+                command,
+                isEnabled: isEnabled,
+                canBeDisabled: canBeDisabled
+            )
         }
     }
 
-    /// Unregisters a single command and removes its associated configurations and handlers.
+    /// Unregisters a single command and removes its associated configurations
+    /// and handlers.
     /// - Parameter command: The target remote command to remove.
     public func unregister(_ command: AKRemoteCommand) {
         let key = command.hashKey
@@ -133,11 +150,13 @@ public actor AKNowPlayingCommandRegistry {
 
     /// Enables a registered remote command.
     /// - Parameter command: Target command to enable.
-    /// - Returns: `true` if state was mutated, or `false` if command is unregistered or non-mutable.
+    /// - Returns: `true` if state was mutated, or `false` if command is
+    /// unregistered or non-mutable.
     @discardableResult
     public func enable(_ command: AKRemoteCommand) -> Bool {
         let key = command.hashKey
-        guard var config = commandConfigs[key], config.canBeDisabled else { return false }
+        guard var config = commandConfigs[key],
+              config.canBeDisabled else { return false }
 
         config.isEnabled = true
         commandConfigs[key] = config
@@ -152,11 +171,13 @@ public actor AKNowPlayingCommandRegistry {
 
     /// Disables a registered remote command.
     /// - Parameter command: Target command to disable.
-    /// - Returns: `true` if state was mutated, or `false` if command is unregistered or protected (`canBeDisabled == false`).
+    /// - Returns: `true` if state was mutated, or `false` if command is
+    /// unregistered or protected (`canBeDisabled == false`).
     @discardableResult
     public func disable(_ command: AKRemoteCommand) -> Bool {
         let key = command.hashKey
-        guard var config = commandConfigs[key], config.canBeDisabled else { return false }
+        guard var config = commandConfigs[key],
+              config.canBeDisabled else { return false }
 
         config.isEnabled = false
         commandConfigs[key] = config
@@ -189,7 +210,7 @@ public actor AKNowPlayingCommandRegistry {
     /// - Parameter command: Target command to check.
     /// - Returns: `true` if registered; otherwise `false`.
     public func isRegistered(_ command: AKRemoteCommand) -> Bool {
-        return commandConfigs[command.hashKey] != nil
+        commandConfigs[command.hashKey] != nil
     }
 
     // MARK: - Custom Handlers
@@ -197,7 +218,8 @@ public actor AKNowPlayingCommandRegistry {
     /// Attaches a custom `@Sendable` action handler to a registered command.
     /// - Parameters:
     ///   - command: The remote command to attach the handler to.
-    ///   - handler: Thread-safe closure invoked when the remote command event triggers.
+    ///   - handler: Thread-safe closure invoked when the remote command event
+    /// triggers.
     public func setCustomHandler(
         _ command: AKRemoteCommand,
         handler: @escaping AKRemoteCommandHandler
@@ -228,8 +250,10 @@ public actor AKNowPlayingCommandRegistry {
     /// Retrieves the assigned custom handler for a command if available.
     /// - Parameter command: Target command to query.
     /// - Returns: The registered closure handler, or `nil` if none exists.
-    public func customHandler(for command: AKRemoteCommand) -> AKRemoteCommandHandler? {
-        return customHandlers[command]
+    public func customHandler(for command: AKRemoteCommand)
+        -> AKRemoteCommandHandler?
+    {
+        customHandlers[command]
     }
 
     // MARK: - Query Operations
@@ -237,28 +261,31 @@ public actor AKNowPlayingCommandRegistry {
     /// Retrieves all currently registered remote commands.
     /// - Returns: An array of `AKRemoteCommand` objects held in the registry.
     public func allRegisteredCommands() -> [AKRemoteCommand] {
-        return Array(commandConfigs.values.map { $0.command })
+        Array(commandConfigs.values.map(\.command))
     }
 
     /// Retrieves all currently enabled remote commands.
-    /// - Returns: Filtered array containing only enabled `AKRemoteCommand` targets.
+    /// - Returns: Filtered array containing only enabled `AKRemoteCommand`
+    /// targets.
     public func enabledCommands() -> [AKRemoteCommand] {
-        return commandConfigs.values
-            .filter { $0.isEnabled }
-            .map { $0.command }
+        commandConfigs.values
+            .filter(\.isEnabled)
+            .map(\.command)
     }
 
     /// Retrieves all currently disabled remote commands.
-    /// - Returns: Filtered array containing only disabled `AKRemoteCommand` targets.
+    /// - Returns: Filtered array containing only disabled `AKRemoteCommand`
+    /// targets.
     public func disabledCommands() -> [AKRemoteCommand] {
-        return commandConfigs.values
+        commandConfigs.values
             .filter { !$0.isEnabled }
-            .map { $0.command }
+            .map(\.command)
     }
 
     // MARK: - Execution Tracking
 
-    /// Records command execution timestamp and increments the run count for analytics.
+    /// Records command execution timestamp and increments the run count for
+    /// analytics.
     /// - Parameter command: The remote command being executed.
     public func recordExecution(for command: AKRemoteCommand) {
         let key = command.hashKey
@@ -271,15 +298,22 @@ public actor AKNowPlayingCommandRegistry {
 
     /// Retrieves execution statistics for a given command.
     /// - Parameter command: Target remote command to query.
-    /// - Returns: Tuple containing execution count and last executed date, or `nil` if unregistered.
-    public func executionInfo(for command: AKRemoteCommand) -> (count: Int, lastExecuted: Date?)? {
+    /// - Returns: Tuple containing execution count and last executed date, or
+    /// `nil` if unregistered.
+    public func executionInfo(for command: AKRemoteCommand)
+        -> (count: Int, lastExecuted: Date?)?
+    {
         guard let state = commandStates[command.hashKey] else { return nil }
-        return (count: state.executionCount, lastExecuted: state.lastExecutedDate)
+        return (
+            count: state.executionCount,
+            lastExecuted: state.lastExecutedDate
+        )
     }
 
     // MARK: - Cleanup
 
-    /// Resets the registry, purging all stored configs, active states, and custom handlers.
+    /// Resets the registry, purging all stored configs, active states, and
+    /// custom handlers.
     public func clear() {
         commandConfigs.removeAll()
         commandStates.removeAll()
@@ -290,7 +324,8 @@ public actor AKNowPlayingCommandRegistry {
 // MARK: - Actor Integration Extensions
 
 public extension AKNowPlayingCommandRegistry {
-    /// Applies a complete `AKNowPlayingCommandConfiguration` snapshot to this registry actor.
+    /// Applies a complete `AKNowPlayingCommandConfiguration` snapshot to this
+    /// registry actor.
     /// - Parameter configuration: The configuration object to apply.
     func apply(configuration: AKNowPlayingCommandConfiguration) async {
         for command in configuration.allCommands {
@@ -320,6 +355,6 @@ public extension AKNowPlayingCommandRegistry {
 extension AKRemoteCommand {
     /// String identifier derived from the command representation.
     var hashKey: String {
-        return String(describing: self)
+        String(describing: self)
     }
 }

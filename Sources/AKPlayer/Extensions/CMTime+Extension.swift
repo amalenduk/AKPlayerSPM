@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -30,9 +34,10 @@ import AVFoundation
 public extension CMTime {
     // MARK: - Formatting Properties & Functions
 
-    /// Converts the CMTime duration into a standard formatted time string (e.g., "01:23:45" or "03:45").
+    /// Converts the CMTime duration into a standard formatted time string
+    /// (e.g., "01:23:45" or "03:45").
     var stringValue: String {
-        guard isValid && isNumeric else {
+        guard isValid, isNumeric else {
             return "--:--"
         }
 
@@ -57,10 +62,11 @@ public extension CMTime {
         }
     }
 
-    /// Converts the CMTime duration into a precise formatted string including milliseconds (e.g., "03:45.123").
+    /// Converts the CMTime duration into a precise formatted string including
+    /// milliseconds (e.g., "03:45.123").
     /// - Returns: A formatted sub-second duration string.
     func subSecondStringValue() -> String {
-        guard isValid && isNumeric else {
+        guard isValid, isNumeric else {
             return "--:--.---"
         }
 
@@ -69,7 +75,8 @@ public extension CMTime {
         let hours = positiveDuration / 3600
         let minutes = (positiveDuration / 60) % 60
         let seconds = positiveDuration % 60
-        let milliseconds = positiveDuration - ((hours * 3600 + minutes * 60 + seconds) * 1000)
+        let milliseconds = positiveDuration -
+            ((hours * 3600 + minutes * 60 + seconds) * 1000)
 
         if hours > 1 {
             return String(
@@ -91,7 +98,8 @@ public extension CMTime {
         }
     }
 
-    /// Converts the CMTime duration into a localized, human-readable verbal string (e.g., "3 minutes 45 seconds").
+    /// Converts the CMTime duration into a localized, human-readable verbal
+    /// string (e.g., "3 minutes 45 seconds").
     /// - Returns: A descriptive time representation.
     func verboseStringValue() -> String {
         guard isValid && isNumeric else {
@@ -110,8 +118,14 @@ public extension CMTime {
         components.minute = Int(mins)
         components.second = Int(seconds)
 
-        var verboseString = DateComponentsFormatter.localizedString(from: components, unitsStyle: .full)
-        verboseString = remaining ? String(format: "%@ remaining", verboseString!) : verboseString
+        var verboseString = DateComponentsFormatter.localizedString(
+            from: components,
+            unitsStyle: .full
+        )
+        verboseString = remaining ? String(
+            format: "%@ remaining",
+            verboseString!
+        ) : verboseString
         return verboseString!.replacingOccurrences(of: ",", with: "")
     }
 }

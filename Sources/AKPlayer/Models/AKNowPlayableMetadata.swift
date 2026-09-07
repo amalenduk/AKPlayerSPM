@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -28,7 +32,8 @@ import MediaPlayer
 
 // MARK: - AKNowPlayableMetadata
 
-/// A concrete container holding combined static and dynamic metadata payload sources for MPNowPlayingInfoCenter.
+/// A concrete container holding combined static and dynamic metadata payload
+/// sources for MPNowPlayingInfoCenter.
 public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol, Sendable {
     // MARK: - Properties
 
@@ -43,7 +48,8 @@ public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol, Sendable {
     /// Initializes a combined metadata instance.
     /// - Parameters:
     ///   - staticMetadata: Immutable or rarely changed metadata payload.
-    ///   - dynamicMetadata: Real-time changeable playback state metadata payload.
+    ///   - dynamicMetadata: Real-time changeable playback state metadata
+    /// payload.
     public init(
         staticMetadata: (any AKNowPlayableStaticMetadataProtocol)? = nil,
         dynamicMetadata: (any AKNowPlayableDynamicMetadataProtocol)? = nil
@@ -55,8 +61,11 @@ public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol, Sendable {
 
 // MARK: - AKNowPlayableStaticMetadata
 
-/// A concrete struct implementing static metadata properties for Now Playing displays.
-public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol, @unchecked Sendable {
+/// A concrete struct implementing static metadata properties for Now Playing
+/// displays.
+public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol,
+    @unchecked Sendable
+{
     // MARK: - Properties
 
     /// Destination asset URL.
@@ -142,8 +151,10 @@ public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol, 
 
 // MARK: - AKNowPlayableDynamicMetadata
 
-/// A concrete struct implementing dynamic metadata properties for Now Playing displays.
-public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol, @unchecked
+/// A concrete struct implementing dynamic metadata properties for Now Playing
+/// displays.
+public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol,
+    @unchecked
 Sendable {
     // MARK: - Properties
 
@@ -163,7 +174,9 @@ Sendable {
     public var currentLanguageOptions: [MPNowPlayingInfoLanguageOption]?
 
     /// Available language options.
-    public var availableLanguageOptionGroups: [MPNowPlayingInfoLanguageOptionGroup]?
+    public var availableLanguageOptionGroups: [
+        MPNowPlayingInfoLanguageOptionGroup
+    ]?
 
     /// Total chapter count.
     public var chapterCount: Int?
@@ -213,7 +226,8 @@ Sendable {
         position: Double? = nil,
         duration: Float? = nil,
         currentLanguageOptions: [MPNowPlayingInfoLanguageOption]? = nil,
-        availableLanguageOptionGroups: [MPNowPlayingInfoLanguageOptionGroup]? = nil,
+        availableLanguageOptionGroups: [MPNowPlayingInfoLanguageOptionGroup]? =
+            nil,
         chapterCount: Int? = nil,
         chapterNumber: Int? = nil,
         creditsStartTime: Double? = nil,

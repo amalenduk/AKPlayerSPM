@@ -1,15 +1,21 @@
+# Specify Swift Version (enables all advanced wrapping features)
+--swiftversion 5.10
+
+# Maximum line width before wrapping (80 or 100 characters)
+--maxwidth 100
+
 # Wrap function parameters on separate lines
 --wrapparameters before-first
 
 # Wrap function call arguments on separate lines
 --wraparguments before-first
 
-# Place the closing parenthesis on its own line
+# Put closing parenthesis on its own line
 --closingparen balanced
 
 # 4-space indentation
 --indent 4
 
-# Keep lines clean
+# Clean whitespace
 --trimwhitespace always
 --linebreaks lf

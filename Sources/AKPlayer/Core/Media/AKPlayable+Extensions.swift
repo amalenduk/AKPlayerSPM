@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -51,17 +55,24 @@ public extension AKPlayable {
         manager.statePublisher
     }
 
-    /// Observes key-path updates on the underlying `AVPlayerItem` on the Main Actor.
+    /// Observes key-path updates on the underlying `AVPlayerItem` on the Main
+    /// Actor.
     /// - Parameters:
     ///   - keyPath: Key path on `AVPlayerItem` to observe.
-    ///   - options: Key-value observing options governing initial and change notifications.
-    ///   - action: Closure executed on the Main Actor when the observed value updates.
-    /// - Returns: An `AnyCancellable` instance managing the observation lifetime, or `nil` if `playerItem` is unavailable.
+    ///   - options: Key-value observing options governing initial and change
+    /// notifications.
+    ///   - action: Closure executed on the Main Actor when the observed value
+    /// updates.
+    /// - Returns: An `AnyCancellable` instance managing the observation
+    /// lifetime, or `nil` if `playerItem` is unavailable.
     @discardableResult
     func observe<Value: Sendable>(
         _ keyPath: KeyPath<AVPlayerItem, Value>,
         options: NSKeyValueObservingOptions = [.initial, .new],
-        action: @escaping @Sendable @MainActor (any AKMediaManagerProtocol, Value) -> Void
+        action: @escaping @Sendable @MainActor (
+            any AKMediaManagerProtocol,
+            Value
+        ) -> Void
     ) -> AnyCancellable? {
         guard let item = manager.playerItem else { return nil }
 
@@ -114,7 +125,8 @@ public extension AKPlayable {
         manager.createPlayerItemFromAsset()
     }
 
-    /// Aborts active asset property loading and cancels pending asynchronous tasks.
+    /// Aborts active asset property loading and cancels pending asynchronous
+    /// tasks.
     func abortAssetInitialization() {
         manager.abortAssetInitialization()
     }
@@ -124,23 +136,28 @@ public extension AKPlayable {
 
 @MainActor
 public extension AKPlayable {
-    /// Evaluates if the player item can step forward or backward by a given frame count.
-    /// - Parameter count: Number of frames to step (positive for forward, negative for backward).
-    /// - Returns: A Boolean value indicating whether the step action is supported.
+    /// Evaluates if the player item can step forward or backward by a given
+    /// frame count.
+    /// - Parameter count: Number of frames to step (positive for forward,
+    /// negative for backward).
+    /// - Returns: A Boolean value indicating whether the step action is
+    /// supported.
     func canStep(by count: Int) -> Bool {
         manager.canStep(by: count)
     }
 
     /// Evaluates whether the player item supports playback at a specified rate.
     /// - Parameter rate: The target playback rate value.
-    /// - Returns: A Boolean value indicating whether playback at the specified rate is supported.
+    /// - Returns: A Boolean value indicating whether playback at the specified
+    /// rate is supported.
     func canPlay(at rate: AKPlaybackRate) -> Bool {
         manager.canPlay(at: rate)
     }
 
     /// Evaluates whether seeking to a target position is permitted.
     /// - Parameter target: The target seek position.
-    /// - Returns: A Boolean value indicating whether the seek target can be reached.
+    /// - Returns: A Boolean value indicating whether the seek target can be
+    /// reached.
     func canSeek(to target: AKSeekTarget) -> Bool {
         manager.canSeek(to: target)
     }
@@ -162,7 +179,8 @@ public extension AKPlayable {
 
     /// Notification observer for player item playback lifecycle events.
     ///
-    /// Available once `createPlayerItemFromAsset()` initializes the `playerItem`.
+    /// Available once `createPlayerItemFromAsset()` initializes the
+    /// `playerItem`.
     var playerItemNotifications: AKPlayerItemNotificationsObserver? {
         manager.playerItemNotificationsObserver
     }

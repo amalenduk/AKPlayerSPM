@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -47,7 +51,8 @@ public struct AKPlaybackRateChange: Sendable {
 
 // MARK: - AKPlayerRateObserverProtocol
 
-/// Interface describing an object capable of observing rate change notifications on an AVPlayer.
+/// Interface describing an object capable of observing rate change
+/// notifications on an AVPlayer.
 @MainActor
 public protocol AKPlayerRateObserverProtocol: AnyObject {
     var player: AVPlayer { get }
@@ -59,7 +64,8 @@ public protocol AKPlayerRateObserverProtocol: AnyObject {
 
 // MARK: - AKPlayerRateObserver
 
-/// Class responsible for tracking AVPlayer rate transitions and publishing unified change events.
+/// Class responsible for tracking AVPlayer rate transitions and publishing
+/// unified change events.
 @MainActor
 public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     // MARK: - Properties
@@ -71,7 +77,8 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     }
 
     private let rateChangeStream: AsyncStream<AKPlaybackRateChange>
-    private let rateChangeContinuation: AsyncStream<AKPlaybackRateChange>.Continuation
+    private let rateChangeContinuation: AsyncStream<AKPlaybackRateChange>
+        .Continuation
 
     private var isObserving = false
 
@@ -87,7 +94,8 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
     public init(with player: AVPlayer) {
         self.player = player
 
-        let (stream, continuation) = AsyncStream.makeStream(of: AKPlaybackRateChange.self)
+        let (stream, continuation) = AsyncStream
+            .makeStream(of: AKPlaybackRateChange.self)
         rateChangeStream = stream
         rateChangeContinuation = continuation
     }
@@ -104,36 +112,40 @@ public class AKPlayerRateObserver: AKPlayerRateObserverProtocol {
         let initialRate = AKPlaybackRate(rate: player.rate)
         currentRate = initialRate
 
-        // Listen to NotificationCenter updates using @MainActor closure isolation
-        NotificationCenter.default.publisher(for: AVPlayer.rateDidChangeNotification, object: player)
-            .sink { @MainActor [weak self] notification in
-                guard let self else { return }
+        // Listen to NotificationCenter updates using @MainActor closure
+        // isolation
+        NotificationCenter.default.publisher(
+            for: AVPlayer.rateDidChangeNotification,
+            object: player
+        )
+        .sink { @MainActor [weak self] notification in
+            guard let self else { return }
 
-                guard
-                    let userInfo = notification.userInfo,
-                    let reason = userInfo[AVPlayer.rateDidChangeReasonKey]
-                    as? AVPlayer.RateDidChangeReason
-                else {
-                    return
-                }
-
-                let previous =
-                    self.currentRate
-                        ?? AKPlaybackRate(rate: self.player.rate)
-
-                let current = AKPlaybackRate(rate: self.player.rate)
-
-                self.currentRate = current
-
-                let change = AKPlaybackRateChange(
-                    previousRate: previous,
-                    currentRate: current,
-                    reason: reason
-                )
-
-                self.rateChangeContinuation.yield(change)
+            guard
+                let userInfo = notification.userInfo,
+                let reason = userInfo[AVPlayer.rateDidChangeReasonKey]
+                as? AVPlayer.RateDidChangeReason
+            else {
+                return
             }
-            .store(in: &subscriptions)
+
+            let previous =
+                currentRate
+                    ?? AKPlaybackRate(rate: player.rate)
+
+            let current = AKPlaybackRate(rate: player.rate)
+
+            currentRate = current
+
+            let change = AKPlaybackRateChange(
+                previousRate: previous,
+                currentRate: current,
+                reason: reason
+            )
+
+            rateChangeContinuation.yield(change)
+        }
+        .store(in: &subscriptions)
 
         isObserving = true
     }

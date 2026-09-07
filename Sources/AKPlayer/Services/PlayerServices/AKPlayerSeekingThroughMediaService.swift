@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -28,16 +32,19 @@ import Foundation
 
 // MARK: - AKPlayerSeekingThroughMediaServiceProtocol
 
-/// A protocol defining the service interface for managing sequential media seeking operations.
+/// A protocol defining the service interface for managing sequential media
+/// seeking operations.
 @MainActor
 public protocol AKPlayerSeekingThroughMediaServiceProtocol: AnyObject {
-    /// The underlying `AVPlayer` executing media playback and underlying seek operations.
+    /// The underlying `AVPlayer` executing media playback and underlying seek
+    /// operations.
     var player: AVPlayer { get }
 
     /// An ordered collection of pending seek requests queued for execution.
     var pendingSeeks: [AKSeek] { get }
 
-    /// The target position of the most recent seek request, if one is pending or active.
+    /// The target position of the most recent seek request, if one is pending
+    /// or active.
     var lastRequestedSeekTarget: AKSeekTarget? { get }
 
     /// Indicates whether a seek operation is currently active or queued.
@@ -46,7 +53,8 @@ public protocol AKPlayerSeekingThroughMediaServiceProtocol: AnyObject {
     /// Queues or executes a seek operation for the given request target.
     func seek(to seek: AKSeek)
 
-    /// Cancels all pending and currently active seek operations, notifying callbacks of cancellation.
+    /// Cancels all pending and currently active seek operations, notifying
+    /// callbacks of cancellation.
     func cancelAll()
 }
 
@@ -119,7 +127,9 @@ public class AKPlayerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServ
         }
 
         // Cancel intermediate skipped seeks
-        while let seekToCancel = pendingSeeks.first, seekToCancel != latestSeek {
+        while let seekToCancel = pendingSeeks.first,
+              seekToCancel != latestSeek
+        {
             pendingSeeks.removeFirst()
             seekToCancel.completionHandler?(false)
         }
@@ -150,7 +160,8 @@ public class AKPlayerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServ
             return
         }
 
-        let timescale = currentItem.duration.timescale > 0 ? currentItem.duration.timescale : 600
+        let timescale = currentItem.duration.timescale > 0 ? currentItem
+            .duration.timescale : 600
 
         // Resolve target to CMTime using AKSeekTarget resolve
         guard
@@ -173,7 +184,10 @@ public class AKPlayerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServ
         )
     }
 
-    private func handleSeekCompletion(for completedSeek: AKSeek, finished: Bool) {
+    private func handleSeekCompletion(
+        for completedSeek: AKSeek,
+        finished: Bool
+    ) {
         guard activeSeek == completedSeek else { return }
 
         completedSeek.completionHandler?(finished)

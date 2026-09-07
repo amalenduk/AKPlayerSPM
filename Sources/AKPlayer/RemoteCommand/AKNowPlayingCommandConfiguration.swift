@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -29,14 +33,16 @@ import MediaPlayer
 // MARK: - AKNowPlayingCommandConfiguration
 
 /// Thread-safe builder for configuring Now Playing remote command sessions.
-/// Designed as a value type (`struct`) conforming to `Sendable` using an immutable copy-on-write builder pattern.
+/// Designed as a value type (`struct`) conforming to `Sendable` using an
+/// immutable copy-on-write builder pattern.
 public struct AKNowPlayingCommandConfiguration: Sendable {
     // MARK: - Properties
 
     /// Unique set of remote commands added to this configuration.
     private var commands: Set<AKRemoteCommand> = []
 
-    /// Map tracking enablement state for registered commands indexed by command key.
+    /// Map tracking enablement state for registered commands indexed by command
+    /// key.
     private var commandEnablementMap: [String: Bool] = [:]
 
     /// Dictionary mapping explicit remote commands to their custom handlers.
@@ -100,50 +106,51 @@ public struct AKNowPlayingCommandConfiguration: Sendable {
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useAudioPreset() -> Self {
-        return add(commands: AKRemoteCommand.standardAudioPreset)
+        add(commands: AKRemoteCommand.standardAudioPreset)
     }
 
     /// Applies the standard video command preset.
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useVideoPreset() -> Self {
-        return add(commands: AKRemoteCommand.standardVideoPreset)
+        add(commands: AKRemoteCommand.standardVideoPreset)
     }
 
     /// Applies essential playback commands (play, pause, toggle, stop).
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func usePlaybackCommands() -> Self {
-        return add(commands: AKRemoteCommand.playbackCommands)
+        add(commands: AKRemoteCommand.playbackCommands)
     }
 
     /// Applies track navigation commands (next track, previous track).
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useTrackNavigationCommands() -> Self {
-        return add(commands: AKRemoteCommand.trackNavigationCommands)
+        add(commands: AKRemoteCommand.trackNavigationCommands)
     }
 
     /// Applies seeking commands with custom time skip intervals.
-    /// - Parameter intervals: Time intervals in seconds for skip forward/backward commands.
+    /// - Parameter intervals: Time intervals in seconds for skip
+    /// forward/backward commands.
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useSeekingCommands(intervals: [Double] = [15.0]) -> Self {
-        return add(commands: AKRemoteCommand.seekingCommands(intervals: intervals))
+        add(commands: AKRemoteCommand.seekingCommands(intervals: intervals))
     }
 
     /// Applies feedback and rating commands (like, dislike, bookmark).
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useFeedbackCommands() -> Self {
-        return add(commands: AKRemoteCommand.feedbackCommands)
+        add(commands: AKRemoteCommand.feedbackCommands)
     }
 
     /// Applies language and audio/subtitle selection commands.
     /// - Returns: Updated configuration copy instance for method chaining.
     @discardableResult
     public func useLanguageCommands() -> Self {
-        return add(commands: AKRemoteCommand.languageCommands)
+        add(commands: AKRemoteCommand.languageCommands)
     }
 
     /// Enables a specific command in this configuration.
@@ -224,31 +231,33 @@ public struct AKNowPlayingCommandConfiguration: Sendable {
 
     /// Returns an array of all registered commands in this configuration.
     public var allCommands: [AKRemoteCommand] {
-        return Array(commands)
+        Array(commands)
     }
 
     /// Returns an array containing only currently enabled commands.
     public var enabledCommands: [AKRemoteCommand] {
-        return commands.filter { commandEnablementMap[$0.hashKey] ?? false }
+        commands.filter { commandEnablementMap[$0.hashKey] ?? false }
     }
 
     /// Returns an array containing only currently disabled commands.
     public var disabledCommands: [AKRemoteCommand] {
-        return commands.filter { !(commandEnablementMap[$0.hashKey] ?? false) }
+        commands.filter { !(commandEnablementMap[$0.hashKey] ?? false) }
     }
 
     /// Retrieves the registered custom handler for a given command.
     /// - Parameter command: Target command to inspect.
     /// - Returns: The registered `@Sendable` handler, or `nil` if none exists.
-    public func handler(for command: AKRemoteCommand) -> AKRemoteCommandHandler? {
-        return customHandlers[command]
+    public func handler(for command: AKRemoteCommand)
+        -> AKRemoteCommandHandler?
+    {
+        customHandlers[command]
     }
 
     /// Checks whether a command is set as enabled in this configuration.
     /// - Parameter command: Target command to inspect.
     /// - Returns: `true` if configured and enabled; otherwise `false`.
     public func isEnabled(_ command: AKRemoteCommand) -> Bool {
-        return commandEnablementMap[command.hashKey] ?? false
+        commandEnablementMap[command.hashKey] ?? false
     }
 }
 
@@ -267,13 +276,15 @@ public extension AKNowPlayingCommandConfiguration {
         return config.useVideoPreset()
     }
 
-    /// Factory creating a minimal configuration with primary playback controls (.play, .pause, .togglePlayPause).
+    /// Factory creating a minimal configuration with primary playback controls
+    /// (.play, .pause, .togglePlayPause).
     static func minimal() -> AKNowPlayingCommandConfiguration {
         let config = AKNowPlayingCommandConfiguration()
         return config.add(commands: [.play, .pause, .togglePlayPause])
     }
 
-    /// Factory creating a complete configuration with all available commands added.
+    /// Factory creating a complete configuration with all available commands
+    /// added.
     static func full() -> AKNowPlayingCommandConfiguration {
         let config = AKNowPlayingCommandConfiguration()
         return config.add(commands: AKRemoteCommand.all())
@@ -281,6 +292,6 @@ public extension AKNowPlayingCommandConfiguration {
 
     /// Factory creating an empty configuration starting from scratch.
     static func custom() -> AKNowPlayingCommandConfiguration {
-        return AKNowPlayingCommandConfiguration()
+        AKNowPlayingCommandConfiguration()
     }
 }

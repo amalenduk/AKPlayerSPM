@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -95,49 +99,60 @@ public final class AKPlayerItemNotificationsObserver:
 
     private var didPlayToEndContinuation: AsyncStream<CMTime>.Continuation?
 
-    private var failedToPlayToEndContinuation: AsyncStream<AKPlayerError>.Continuation?
+    private var failedToPlayToEndContinuation: AsyncStream<AKPlayerError>
+        .Continuation?
 
     private var playbackStalledContinuation: AsyncStream<Void>.Continuation?
 
     private var timeJumpedContinuation: AsyncStream<Void>.Continuation?
 
-    private var mediaSelectionDidChangeContinuation: AsyncStream<Void>.Continuation?
+    private var mediaSelectionDidChangeContinuation: AsyncStream<Void>
+        .Continuation?
 
-    private var recommendedTimeOffsetContinuation: AsyncStream<CMTime>.Continuation?
+    private var recommendedTimeOffsetContinuation: AsyncStream<CMTime>
+        .Continuation?
 
     // MARK: - Async Streams
 
     /// Emits the current playback time when the item reaches its end.
-    public lazy var didPlayToEndTimeStream: AsyncStream<CMTime> = AsyncStream { continuation in
-        self.didPlayToEndContinuation = continuation
-    }
+    public lazy var didPlayToEndTimeStream: AsyncStream<CMTime> =
+        AsyncStream { continuation in
+            self.didPlayToEndContinuation = continuation
+        }
 
     /// Emits an AKPlayerError when playback fails to reach the end.
-    public lazy var failedToPlayToEndTimeStream: AsyncStream<AKPlayerError> = AsyncStream {
-        continuation in
-        self.failedToPlayToEndContinuation = continuation
-    }
+    public lazy var failedToPlayToEndTimeStream: AsyncStream<AKPlayerError> =
+        AsyncStream {
+            continuation in
+            self.failedToPlayToEndContinuation = continuation
+        }
 
     /// Emits when AVPlayerItem playback stalls.
-    public lazy var playbackStalledStream: AsyncStream<Void> = AsyncStream { continuation in
-        self.playbackStalledContinuation = continuation
-    }
+    public lazy var playbackStalledStream: AsyncStream<Void> =
+        AsyncStream { continuation in
+            self.playbackStalledContinuation = continuation
+        }
 
     /// Emits when AVPlayerItem performs a time jump.
-    public lazy var timeJumpedStream: AsyncStream<Void> = AsyncStream { continuation in
-        self.timeJumpedContinuation = continuation
-    }
+    public lazy var timeJumpedStream: AsyncStream<Void> =
+        AsyncStream { continuation in
+            self.timeJumpedContinuation = continuation
+        }
 
     /// Emits when the media selection changes.
-    public lazy var mediaSelectionDidChangeStream: AsyncStream<Void> = AsyncStream { continuation in
-        self.mediaSelectionDidChangeContinuation = continuation
-    }
+    public lazy var mediaSelectionDidChangeStream: AsyncStream<Void> =
+        AsyncStream { continuation in
+            self.mediaSelectionDidChangeContinuation = continuation
+        }
 
     /// Emits when the recommended live offset changes.
-    public lazy var recommendedTimeOffsetFromLiveDidChangeStream: AsyncStream<CMTime> = AsyncStream {
-        continuation in
-        self.recommendedTimeOffsetContinuation = continuation
-    }
+    public lazy var recommendedTimeOffsetFromLiveDidChangeStream: AsyncStream<
+        CMTime
+    > =
+        AsyncStream {
+            continuation in
+            self.recommendedTimeOffsetContinuation = continuation
+        }
 
     // MARK: - Init
 
@@ -188,8 +203,8 @@ public final class AKPlayerItemNotificationsObserver:
                 return
             }
 
-            self.didPlayToEndContinuation?.yield(
-                self.playerItem.currentTime()
+            didPlayToEndContinuation?.yield(
+                playerItem.currentTime()
             )
         }
 
@@ -246,8 +261,8 @@ public final class AKPlayerItemNotificationsObserver:
                 return
             }
 
-            self.recommendedTimeOffsetContinuation?.yield(
-                self.playerItem.recommendedTimeOffsetFromLive
+            recommendedTimeOffsetContinuation?.yield(
+                playerItem.recommendedTimeOffsetFromLive
             )
         }
     }
@@ -348,7 +363,7 @@ public final class AKPlayerItemNotificationsObserver:
                     return
                 }
 
-                self.failedToPlayToEndContinuation?.yield(
+                failedToPlayToEndContinuation?.yield(
                     .playerItemFailedToPlay(
                         reason: .failedToPlayToEndTime(
                             error: error

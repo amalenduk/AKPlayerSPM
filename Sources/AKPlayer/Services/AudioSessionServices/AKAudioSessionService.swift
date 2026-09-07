@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -33,7 +37,8 @@ import AVFoundation
 
 // MARK: - AKAudioSessionServiceProtocol
 
-/// A protocol defining requirements for managing audio session configuration, category settings, and activation state.
+/// A protocol defining requirements for managing audio session configuration,
+/// category settings, and activation state.
 @MainActor
 public protocol AKAudioSessionServiceProtocol: AnyObject {
     /// The underlying `AVAudioSession` instance managed by the service.
@@ -43,7 +48,8 @@ public protocol AKAudioSessionServiceProtocol: AnyObject {
     /// - Parameters:
     ///   - category: The audio session category to apply.
     ///   - mode: The audio session mode to apply.
-    ///   - options: The category options governing behavior such as mixing or ducking.
+    ///   - options: The category options governing behavior such as mixing or
+    /// ducking.
     /// - Throws: An error if the category configuration fails.
     func setCategory(
         _ category: AVAudioSession.Category,
@@ -53,8 +59,10 @@ public protocol AKAudioSessionServiceProtocol: AnyObject {
 
     /// Activates or deactivates the audio session.
     /// - Parameters:
-    ///   - active: A Boolean value indicating whether to activate (`true`) or deactivate (`true` / `false`) the session.
-    ///   - options: Options governing activation/deactivation behavior (such as notifying other audio sessions).
+    ///   - active: A Boolean value indicating whether to activate (`true`) or
+    /// deactivate (`true` / `false`) the session.
+    ///   - options: Options governing activation/deactivation behavior (such as
+    /// notifying other audio sessions).
     /// - Throws: An error if activation or deactivation fails.
     func activate(
         _ active: Bool,
@@ -64,7 +72,8 @@ public protocol AKAudioSessionServiceProtocol: AnyObject {
 
 // MARK: - AKAudioSessionService
 
-/// A concrete implementation of `AKAudioSessionServiceProtocol` for managing system audio session configurations safely on the main actor.
+/// A concrete implementation of `AKAudioSessionServiceProtocol` for managing
+/// system audio session configurations safely on the main actor.
 @MainActor
 public class AKAudioSessionService: AKAudioSessionServiceProtocol {
     // MARK: - Properties
@@ -74,9 +83,13 @@ public class AKAudioSessionService: AKAudioSessionServiceProtocol {
 
     // MARK: - Init & Deinit
 
-    /// Initializes a new audio session service with a target audio session instance.
-    /// - Parameter audioSession: The `AVAudioSession` instance to manage. Defaults to the shared instance.
-    public init(audioSession: AVAudioSession = AVAudioSession.sharedInstance()) {
+    /// Initializes a new audio session service with a target audio session
+    /// instance.
+    /// - Parameter audioSession: The `AVAudioSession` instance to manage.
+    /// Defaults to the shared instance.
+    public init(audioSession: AVAudioSession = AVAudioSession
+        .sharedInstance())
+    {
         self.audioSession = audioSession
     }
 
@@ -84,12 +97,14 @@ public class AKAudioSessionService: AKAudioSessionServiceProtocol {
 
     // MARK: - Configuration Methods
 
-    /// Configures the underlying audio session category, mode, and options, wrapping any failures into player-specific errors.
+    /// Configures the underlying audio session category, mode, and options,
+    /// wrapping any failures into player-specific errors.
     /// - Parameters:
     ///   - category: The audio session category.
     ///   - mode: The audio session mode. Defaults to `.default`.
     ///   - options: The category options. Defaults to an empty set.
-    /// - Throws: `AKPlayerError.audioSessionFailure` if setting the category fails.
+    /// - Throws: `AKPlayerError.audioSessionFailure` if setting the category
+    /// fails.
     public func setCategory(
         _ category: AVAudioSession.Category,
         mode: AVAudioSession.Mode = .default,
@@ -102,15 +117,19 @@ public class AKAudioSessionService: AKAudioSessionServiceProtocol {
                 options: options
             )
         } catch {
-            throw AKPlayerError.audioSessionFailure(reason: .failedToSetCategory(error: error))
+            throw AKPlayerError
+                .audioSessionFailure(reason: .failedToSetCategory(error: error))
         }
     }
 
-    /// Activates or deactivates the underlying audio session, wrapping any failures into player-specific errors.
+    /// Activates or deactivates the underlying audio session, wrapping any
+    /// failures into player-specific errors.
     /// - Parameters:
     ///   - active: A Boolean flag indicating activation state.
-    ///   - options: Set options guiding the activation behavior. Defaults to an empty set.
-    /// - Throws: `AKPlayerError.audioSessionFailure` if activation or deactivation fails.
+    ///   - options: Set options guiding the activation behavior. Defaults to an
+    /// empty set.
+    /// - Throws: `AKPlayerError.audioSessionFailure` if activation or
+    /// deactivation fails.
     public func activate(
         _ active: Bool,
         options: AVAudioSession.SetActiveOptions = []

@@ -37,7 +37,8 @@ final class AKEventBroadcaster<Event: Sendable>: @unchecked Sendable {
 
     /// Creates a new subscription for a caller.
     func makeStream(
-        bufferingPolicy: AsyncStream<Event>.Continuation.BufferingPolicy = .bufferingNewest(100)
+        bufferingPolicy: AsyncStream<Event>.Continuation
+            .BufferingPolicy = .bufferingNewest(100)
     ) -> AsyncStream<Event> {
         let id = UUID()
         return AsyncStream(bufferingPolicy: bufferingPolicy) { continuation in
@@ -47,9 +48,9 @@ final class AKEventBroadcaster<Event: Sendable>: @unchecked Sendable {
 
             continuation.onTermination = { [weak self] _ in
                 guard let self else { return }
-                self.lock.lock()
-                self.continuations.removeValue(forKey: id)
-                self.lock.unlock()
+                lock.lock()
+                continuations.removeValue(forKey: id)
+                lock.unlock()
             }
         }
     }

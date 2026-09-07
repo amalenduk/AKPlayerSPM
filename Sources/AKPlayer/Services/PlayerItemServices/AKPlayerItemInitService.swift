@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -34,7 +38,8 @@ import AVFoundation
 
 // MARK: - AKPlayerItemInitServiceProtocol
 
-/// Protocol defining media asset initialization, playability validation, and AVPlayerItem construction routines.
+/// Protocol defining media asset initialization, playability validation, and
+/// AVPlayerItem construction routines.
 @MainActor
 public protocol AKPlayerItemInitServiceProtocol: AnyObject {
     /// The target playable media item backing this initialization pipeline.
@@ -53,8 +58,10 @@ public protocol AKPlayerItemInitServiceProtocol: AnyObject {
     @discardableResult
     func createAsset() -> AVURLAsset
 
-    /// Asynchronously validates key asset properties (`isPlayable`, `hasProtectedContent`).
-    /// - Throws: `AKPlayerError` if validation fails, or `CancellationError` if cancelled.
+    /// Asynchronously validates key asset properties (`isPlayable`,
+    /// `hasProtectedContent`).
+    /// - Throws: `AKPlayerError` if validation fails, or `CancellationError` if
+    /// cancelled.
     func validateAssetPlayability() async throws
 
     /// Constructs an `AVPlayerItem` from the initialized `AVURLAsset`.
@@ -64,19 +71,23 @@ public protocol AKPlayerItemInitServiceProtocol: AnyObject {
 
     // MARK: - Unified Conveniences
 
-    /// Executes the full initialization pipeline: creates asset, validates playability, and constructs player item.
+    /// Executes the full initialization pipeline: creates asset, validates
+    /// playability, and constructs player item.
     /// - Returns: A fully prepared `AVPlayerItem`.
-    /// - Throws: An `AKPlayerError` or `CancellationError` if any pipeline stage fails.
+    /// - Throws: An `AKPlayerError` or `CancellationError` if any pipeline
+    /// stage fails.
     @discardableResult
     func preparePlayerItem() async throws -> AVPlayerItem
 
-    /// Aborts active asset property loading and cancels pending asynchronous tasks.
+    /// Aborts active asset property loading and cancels pending asynchronous
+    /// tasks.
     func abortAssetInitialization()
 }
 
 // MARK: - AKPlayerItemInitService
 
-/// Service responsible for asynchronous AVAsset loading, playability checks, and AVPlayerItem instantiation.
+/// Service responsible for asynchronous AVAsset loading, playability checks,
+/// and AVPlayerItem instantiation.
 @MainActor
 public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     // MARK: - Properties
@@ -92,7 +103,8 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
 
     // MARK: - Initialization & Deinitialization
 
-    /// Initializes an asset initialization service instance for a specific media item.
+    /// Initializes an asset initialization service instance for a specific
+    /// media item.
     /// - Parameter media: The target playable media context.
     public init(with media: any AKPlayable) {
         self.media = media
@@ -101,7 +113,8 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     deinit {
         // Since asset might be a reference type, cancel loading safely.
         // In Swift 6+, accessing stored properties from deinit requires care,
-        // but calling methods on non-isolated or safely captured classes is supported.
+        // but calling methods on non-isolated or safely captured classes is
+        // supported.
         asset?.cancelLoading()
     }
 
@@ -122,16 +135,23 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
         return asset!
     }
 
-    /// Asynchronously validates key asset properties (`isPlayable`, `hasProtectedContent`).
-    /// - Throws: `AKPlayerError` if validation fails, or `CancellationError` if cancelled.
+    /// Asynchronously validates key asset properties (`isPlayable`,
+    /// `hasProtectedContent`).
+    /// - Throws: `AKPlayerError` if validation fails, or `CancellationError` if
+    /// cancelled.
     public func validateAssetPlayability() async throws {
         guard let asset else {
             let error = NSError(
                 domain: "AKPlayer",
                 code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Asset must be created before validation."]
+                userInfo: [
+                    NSLocalizedDescriptionKey: "Asset must be created before validation.",
+                ]
             )
-            throw AKPlayerError.assetLoadingFailed(reason: .propertyKeyLoadingFailed(error: error))
+            throw AKPlayerError
+                .assetLoadingFailed(
+                    reason: .propertyKeyLoadingFailed(error: error)
+                )
         }
 
         do {
@@ -145,21 +165,30 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
                 throw AKPlayerError.assetLoadingFailed(reason: .notPlayable)
             }
             guard !hasProtectedContent else {
-                throw AKPlayerError.assetLoadingFailed(reason: .protectedContent)
+                throw AKPlayerError
+                    .assetLoadingFailed(reason: .protectedContent)
             }
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as URLError where error.code == .cancelled {
             throw CancellationError()
-        } catch let error as URLError where error.code == .notConnectedToInternet {
-            throw AKPlayerError.assetLoadingFailed(reason: .notConnectedToInternet(error: error))
+        } catch let error as URLError
+            where error.code == .notConnectedToInternet
+        {
+            throw AKPlayerError
+                .assetLoadingFailed(
+                    reason: .notConnectedToInternet(error: error)
+                )
         } catch let error as AKPlayerError {
             throw error
         } catch {
             if Task.isCancelled {
                 throw CancellationError()
             }
-            throw AKPlayerError.assetLoadingFailed(reason: .propertyKeyLoadingFailed(error: error))
+            throw AKPlayerError
+                .assetLoadingFailed(
+                    reason: .propertyKeyLoadingFailed(error: error)
+                )
         }
     }
 
@@ -168,18 +197,18 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     @discardableResult
     public func createPlayerItemFromAsset() -> AVPlayerItem {
         guard let asset = asset ?? media.asset else {
-            fatalError("Asset must be created before calling createPlayerItemFromAsset().")
+            fatalError(
+                "Asset must be created before calling createPlayerItemFromAsset()."
+            )
         }
 
-        let item: AVPlayerItem
-
-        if let customItem = media.playerItem {
-            item = customItem
+        let item: AVPlayerItem = if let customItem = media.playerItem {
+            customItem
         } else {
             if let keys = media.automaticallyLoadedAssetKeys {
-                item = AVPlayerItem(asset: asset, automaticallyLoadedAssetKeys: keys)
+                AVPlayerItem(asset: asset, automaticallyLoadedAssetKeys: keys)
             } else {
-                item = AVPlayerItem(asset: asset)
+                AVPlayerItem(asset: asset)
             }
         }
 
@@ -189,9 +218,11 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
 
     // MARK: - Unified Convenience API
 
-    /// Executes the full initialization pipeline: creates asset, validates playability, and constructs player item.
+    /// Executes the full initialization pipeline: creates asset, validates
+    /// playability, and constructs player item.
     /// - Returns: A fully prepared `AVPlayerItem`.
-    /// - Throws: An `AKPlayerError` or `CancellationError` if any pipeline stage fails.
+    /// - Throws: An `AKPlayerError` or `CancellationError` if any pipeline
+    /// stage fails.
     @discardableResult
     public func preparePlayerItem() async throws -> AVPlayerItem {
         createAsset()
@@ -199,7 +230,8 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
         return createPlayerItemFromAsset()
     }
 
-    /// Aborts active asset property loading and cancels pending asynchronous tasks.
+    /// Aborts active asset property loading and cancels pending asynchronous
+    /// tasks.
     public func abortAssetInitialization() {
         asset?.cancelLoading()
     }

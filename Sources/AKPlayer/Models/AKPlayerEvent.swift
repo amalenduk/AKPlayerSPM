@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -34,7 +38,8 @@ import CoreMedia
 public enum AKPlayerEvent: Sendable {
     // MARK: - State & Media
 
-    /// The player's operational state transitioned (e.g., from buffering to playing).
+    /// The player's operational state transitioned (e.g., from buffering to
+    /// playing).
     case stateDidChange(AKPlayerState)
 
     /// The active playable media item was swapped or updated.
@@ -64,7 +69,8 @@ public enum AKPlayerEvent: Sendable {
 
     // MARK: - Warnings & Errors
 
-    /// A requested action was blocked because current state preconditions were not met.
+    /// A requested action was blocked because current state preconditions were
+    /// not met.
     case commandUnavailable(reason: AKPlayerUnavailableCommandReason)
 
     /// An unrecoverable pipeline failure occurred.
@@ -78,27 +84,30 @@ extension AKPlayerEvent: Equatable {
     public static func == (lhs: AKPlayerEvent, rhs: AKPlayerEvent) -> Bool {
         switch (lhs, rhs) {
         case let (.mediaDidChange(l), .mediaDidChange(r)):
-            return l.isEqual(to: r)
+            l.isEqual(to: r)
         case let (.stateDidChange(l), .stateDidChange(r)):
-            return l == r
+            l == r
         case let (.timeDidChange(l), .timeDidChange(r)):
-            return l == r
+            l == r
         case let (.didReachEnd(l), .didReachEnd(r)):
-            return l == r
+            l == r
         case let (.boundaryReached(l), .boundaryReached(r)):
-            return l == r
-        case let (.playbackRateDidChange(lNew, lOld), .playbackRateDidChange(rNew, rOld)):
-            return lNew == rNew && lOld == rOld
+            l == r
+        case let (
+            .playbackRateDidChange(lNew, lOld),
+            .playbackRateDidChange(rNew, rOld)
+        ):
+            lNew == rNew && lOld == rOld
         case let (.volumeDidChange(l), .volumeDidChange(r)):
-            return l == r
+            l == r
         case let (.muteStatusDidChange(l), .muteStatusDidChange(r)):
-            return l == r
+            l == r
         case let (.commandUnavailable(l), .commandUnavailable(r)):
-            return l == r
+            l == r
         case let (.didFail(l), .didFail(r)):
-            return l == r
+            l == r
         default:
-            return false
+            false
         }
     }
 }

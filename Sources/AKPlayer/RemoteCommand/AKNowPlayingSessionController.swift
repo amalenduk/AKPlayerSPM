@@ -5,21 +5,25 @@
 //  Copyright (c) 2020 Amalendu Kar
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  of this software and associated documentation files (the "Software"), to deal
+//  of this software and associated documentation files (the "Software"), to
+//  deal
 //  in the Software without restriction, including without limitation the rights
 //  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 //  copies of the Software, and to permit persons to whom the Software is
 //  furnished to do so, subject to the following conditions:
 //
-//  The above copyright notice and this permission notice shall be included in all
+//  The above copyright notice and this permission notice shall be included in
+//  all
 //  copies or substantial portions of the Software.
 //
 //  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 //  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 //  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 //  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE
 //  SOFTWARE.
 //
 
@@ -45,12 +49,16 @@ public struct AKRemoteCommandEvent: Sendable {
 
 // MARK: - Event Emitter (Observable)
 
-/// Simple thread-safe event emitter/observable for remote commands using an actor.
+/// Simple thread-safe event emitter/observable for remote commands using an
+/// actor.
 /// Listeners register callbacks and are notified when commands occur.
 public actor AKRemoteCommandEventEmitter {
     // MARK: - Properties
 
-    private var listeners: [String: [@Sendable (AKRemoteCommandEvent) -> Void]] = [:]
+    private var listeners: [
+        String: [@Sendable (AKRemoteCommandEvent) -> Void]
+    ] =
+        [:]
 
     // MARK: - Initialization
 
@@ -59,24 +67,27 @@ public actor AKRemoteCommandEventEmitter {
     // MARK: - Subscribe/Unsubscribe
 
     /// Subscribe to all commands.
-    public func subscribe(callback: @escaping @Sendable (AKRemoteCommandEvent) -> Void)
+    public func subscribe(callback: @escaping @Sendable (AKRemoteCommandEvent)
+        -> Void)
         -> AKRemoteCommandSubscription
     {
-        return subscribe(to: nil, callback: callback)
+        subscribe(to: nil, callback: callback)
     }
 
     /// Subscribe to a specific command.
     public func subscribe(
-        to command: AKRemoteCommand?, callback: @escaping @Sendable (AKRemoteCommandEvent) -> Void
+        to command: AKRemoteCommand?,
+        callback: @escaping @Sendable (AKRemoteCommandEvent) -> Void
     ) -> AKRemoteCommandSubscription {
         let key = command?.id ?? "*"
         var callbacks = listeners[key] ?? []
         callbacks.append(callback)
         listeners[key] = callbacks
 
-        // Pass actor reference safely using unowned/weak equivalent behavior via isolated handler
+        // Pass actor reference safely using unowned/weak equivalent behavior
+        // via isolated handler
         return AKRemoteCommandSubscription { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
             Task {
                 await self.unsubscribe(key: key, callbackToken: callback)
             }
@@ -84,14 +95,17 @@ public actor AKRemoteCommandEventEmitter {
     }
 
     private func unsubscribe(
-        key: String, callbackToken _: @escaping @Sendable (AKRemoteCommandEvent) -> Void
+        key: String,
+        callbackToken _: @escaping @Sendable (AKRemoteCommandEvent) -> Void
     ) {
         guard var callbacks = listeners[key] else { return }
         // Clean up matching callbacks if needed, or clear key entry
         callbacks.removeAll { _ in
-            // Closures aren't directly comparable, so we clean up or re-assign based on index/implementation context,
+            // Closures aren't directly comparable, so we clean up or re-assign
+            // based on index/implementation context,
             // or simply remove the entry if tracking token-based registration.
-            // For safety and compatibility with original behavior, let's keep array filtering secure:
+            // For safety and compatibility with original behavior, let's keep
+            // array filtering secure:
             false
         }
         if callbacks.isEmpty {
@@ -153,7 +167,10 @@ public protocol AKNowPlayingSessionControllerProtocol: AnyObject {
     func disable(commands: [AKRemoteCommand]) async
     func isCommandEnabled(_ command: AKRemoteCommand) async -> Bool
 
-    func setHandler(for command: AKRemoteCommand, handler: @escaping AKRemoteCommandHandler) async
+    func setHandler(
+        for command: AKRemoteCommand,
+        handler: @escaping AKRemoteCommandHandler
+    ) async
     func removeHandler(for command: AKRemoteCommand) async
 
     func setNowPlayingInfo(_ metadata: AKNowPlayableMetadata?)
@@ -174,15 +191,15 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
     private nonisolated(unsafe) let _nowPlayingInfoCenter: MPNowPlayingInfoCenter
 
     public var remoteCommandCenter: MPRemoteCommandCenter {
-        return nowPlayingSession?.remoteCommandCenter ?? _remoteCommandCenter
+        nowPlayingSession?.remoteCommandCenter ?? _remoteCommandCenter
     }
 
     public var nowPlayingInfoCenter: MPNowPlayingInfoCenter {
-        return nowPlayingSession?.nowPlayingInfoCenter ?? _nowPlayingInfoCenter
+        nowPlayingSession?.nowPlayingInfoCenter ?? _nowPlayingInfoCenter
     }
 
     public var isActive: Bool {
-        return nowPlayingSession?.isActive ?? false
+        nowPlayingSession?.isActive ?? false
     }
 
     public let eventEmitter = AKRemoteCommandEventEmitter()
@@ -223,7 +240,7 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
     }
 
     public func canBecomeActive() -> Bool {
-        return nowPlayingSession?.canBecomeActive ?? true
+        nowPlayingSession?.canBecomeActive ?? true
     }
 
     public func becomeActiveIfPossible() async -> Bool {
@@ -233,7 +250,10 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
 
     // MARK: - Custom Handlers
 
-    public func setHandler(for command: AKRemoteCommand, handler: @escaping AKRemoteCommandHandler) {
+    public func setHandler(
+        for command: AKRemoteCommand,
+        handler: @escaping AKRemoteCommandHandler
+    ) {
         commandHandlers[command.id] = handler
     }
 
@@ -257,17 +277,20 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
         // Configure specific parameters
         switch command {
         case let .skipBackward(intervals):
-            remoteCommandCenter.skipBackwardCommand.preferredIntervals = intervals.map {
-                NSNumber(value: $0)
-            }
+            remoteCommandCenter.skipBackwardCommand
+                .preferredIntervals = intervals.map {
+                    NSNumber(value: $0)
+                }
         case let .skipForward(intervals):
-            remoteCommandCenter.skipForwardCommand.preferredIntervals = intervals.map {
-                NSNumber(value: $0)
-            }
+            remoteCommandCenter.skipForwardCommand
+                .preferredIntervals = intervals.map {
+                    NSNumber(value: $0)
+                }
         case let .changePlaybackRate(rates):
-            remoteCommandCenter.changePlaybackRateCommand.supportedPlaybackRates = rates.map {
-                NSNumber(value: $0)
-            }
+            remoteCommandCenter.changePlaybackRateCommand
+                .supportedPlaybackRates = rates.map {
+                    NSNumber(value: $0)
+                }
         default:
             break
         }
@@ -308,7 +331,10 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
         return remoteCommand.isEnabled
     }
 
-    private func setCommandEnabled(_ enabled: Bool, for command: AKRemoteCommand) {
+    private func setCommandEnabled(
+        _ enabled: Bool,
+        for command: AKRemoteCommand
+    ) {
         let remoteCommand = command.metadata.getCommand(remoteCommandCenter)
         remoteCommand.isEnabled = enabled
     }
@@ -316,7 +342,7 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
     // MARK: - Metadata Management
 
     public func setNowPlayingInfo(_ metadata: AKNowPlayableMetadata?) {
-        guard let metadata = metadata,
+        guard let metadata,
               let nowPlayingInfo = metadata.getNowPlayingInfo()
         else {
             clearNowPlayingPlaybackInfo()
@@ -334,10 +360,11 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
     private func createTarget(for command: AKRemoteCommand) -> Any {
         let remoteCommand = command.metadata.getCommand(remoteCommandCenter)
 
-        let handler: @MainActor (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus = {
-            [weak self] event in
-            self?.handleCommand(command, event: event) ?? .commandFailed
-        }
+        let handler: @MainActor (MPRemoteCommandEvent)
+            -> MPRemoteCommandHandlerStatus = {
+                [weak self] event in
+                self?.handleCommand(command, event: event) ?? .commandFailed
+            }
 
         return remoteCommand.addTarget(handler: handler)
     }
@@ -349,7 +376,10 @@ public class AKNowPlayingSessionController: AKNowPlayingSessionControllerProtoco
 
     // MARK: - Command Handler
 
-    private func handleCommand(_ command: AKRemoteCommand, event: MPRemoteCommandEvent)
+    private func handleCommand(
+        _ command: AKRemoteCommand,
+        event: MPRemoteCommandEvent
+    )
         -> MPRemoteCommandHandlerStatus
     {
         if let customHandler = commandHandlers[command.id] {
