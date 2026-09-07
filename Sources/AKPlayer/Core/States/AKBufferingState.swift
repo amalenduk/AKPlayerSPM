@@ -56,11 +56,11 @@ public class AKBufferingState: AKBaseState {
 
     /// Flag indicating whether the buffering state lifecycle has become fully
     /// active after initialization.
-    private var isActiveState: Bool = false
+    private var isActiveState = false
 
     /// Guard flag to prevent duplicate state transitions during asynchronous
     /// completion steps.
-    private var hasTransitioned: Bool = false
+    private var hasTransitioned = false
 
     /// Task tracking the active buffering timeout countdown loop.
     private var timeoutTask: Task<Void, Never>?

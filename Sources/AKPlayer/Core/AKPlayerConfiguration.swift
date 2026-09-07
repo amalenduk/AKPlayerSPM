@@ -46,7 +46,7 @@ public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol, Sendable {
 
     /// The offset multiplier applied when calculating boundary time observer
     /// positions relative to media duration. Defaults to `0.10`.
-    public var boundaryTimeObserverMultiplier: Double = 0.10
+    public var boundaryTimeObserverMultiplier = 0.10
 
     // MARK: - Buffer Management Configurations
 
@@ -69,7 +69,7 @@ public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol, Sendable {
     /// Indicates whether Now Playing metadata integration with
     /// `MPNowPlayingInfoCenter` and remote commands is enabled. Defaults to
     /// `true`.
-    public var isNowPlayingEnabled: Bool = true
+    public var isNowPlayingEnabled = true
 
     /// The list of player states during which the system idle timer (screen
     /// sleep) is disabled. Defaults to `[.buffering, .playing]`.
@@ -82,27 +82,27 @@ public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol, Sendable {
 
     /// Specifies whether playback automatically pauses when the application
     /// resigns active status. Defaults to `false`.
-    public var playbackPausesWhenResigningActive: Bool = false
+    public var playbackPausesWhenResigningActive = false
 
     /// Specifies whether playback automatically pauses when the application
     /// enters the background. Defaults to `false`.
-    public var playbackPausesWhenBackgrounded: Bool = false
+    public var playbackPausesWhenBackgrounded = false
 
     /// Specifies whether playback automatically resumes when the application
     /// returns to active status. Defaults to `true`.
-    public var playbackResumesWhenBecameActive: Bool = true
+    public var playbackResumesWhenBecameActive = true
 
     /// Specifies whether playback automatically resumes when the application
     /// enters the foreground. Defaults to `true`.
-    public var playbackResumesWhenEnteringForeground: Bool = true
+    public var playbackResumesWhenEnteringForeground = true
 
     /// Specifies whether playback automatically resumes after an audio session
     /// interruption ends. Defaults to `true`.
-    public var playbackResumesWhenAudioSessionInterruptionEnded: Bool = true
+    public var playbackResumesWhenAudioSessionInterruptionEnded = true
 
     /// Specifies whether playback freezes on the final video frame upon
     /// reaching media end instead of auto-resetting. Defaults to `true`.
-    public var playbackFreezesAtEnd: Bool = true
+    public var playbackFreezesAtEnd = true
 
     // MARK: - Speed Configurations
 

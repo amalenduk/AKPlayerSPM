@@ -113,7 +113,7 @@ public class AKAudioSessionInterruptionObserver: AKAudioSessionInterruptionObser
 
     /// A Boolean value indicating whether the audio session is currently
     /// interrupted.
-    public private(set) var isInterrupted: Bool = false
+    public private(set) var isInterrupted = false
 
     /// Container holding reactive Combine event subscriptions.
     private var subscriptions = Set<AnyCancellable>()

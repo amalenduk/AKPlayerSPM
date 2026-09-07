@@ -145,7 +145,7 @@ public class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
 
     /// Tracks connection status of external audio devices (e.g., Bluetooth,
     /// headphones).
-    private var isExternalAudioPlaybackDeviceConnected: Bool = false
+    private var isExternalAudioPlaybackDeviceConnected = false
 
     /// Audio session service managing system category, modes, and activation
     /// state.

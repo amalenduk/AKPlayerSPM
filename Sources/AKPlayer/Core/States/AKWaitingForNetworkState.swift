@@ -44,7 +44,7 @@ public class AKWaitingForNetworkState: AKBaseState {
 
     /// Indicates whether playback should resume automatically when network
     /// connectivity is re-established.
-    public private(set) var autoPlay: Bool = false
+    public private(set) var autoPlay = false
 
     /// The player state to transition into after buffering resolves following
     /// network restoration.

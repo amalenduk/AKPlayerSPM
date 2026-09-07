@@ -53,7 +53,7 @@ public class AKLoadingState: AKBaseState {
 
     /// Tracks if initialization operations were explicitly aborted or
     /// cancelled.
-    private var isCancelled: Bool = false
+    private var isCancelled = false
 
     /// Asynchronous validation task reference used for loading asset
     /// playability.
