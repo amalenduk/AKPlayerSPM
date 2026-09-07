@@ -1,0 +1,15 @@
+# Wrap function parameters on separate lines
+--wrapparameters before-first
+
+# Wrap function call arguments on separate lines
+--wraparguments before-first
+
+# Place the closing parenthesis on its own line
+--closingparen balanced
+
+# 4-space indentation
+--indent 4
+
+# Keep lines clean
+--trimwhitespace always
+--linebreaks lf
