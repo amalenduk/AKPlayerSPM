@@ -176,7 +176,6 @@ public class AKLoadingState: AKBaseState {
          You should call this method before associating the player item with the player to make
          sure you capture all state changes to the item’s status.
          */
-        media.startPlayerItemReadinessObserver()
         if let item = media.playerItem {
             playerController.player.replaceCurrentItem(with: item)
         }
@@ -217,17 +216,11 @@ public class AKLoadingState: AKBaseState {
         media.abortAssetInitialization()
     }
     
-    /// Stops observing readiness status of active player item.
-    private func stopPlayerItemObservers() {
-        media.stopPlayerItemReadinessObserver()
-    }
-    
     /// Resets active player item and pauses current playback.
     private func resetPlayer() {
         if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
         }
-        stopPlayerItemObservers()
         /*
          It seems to be a good idea to reset player current item
          Fix side effect when coming from failed state
@@ -256,7 +249,6 @@ public class AKLoadingState: AKBaseState {
     /// Cancels asset loads and strips observers prior to stopping the player controller.
     public override func beforeStop() {
         abortAssetInitialization()
-        stopPlayerItemObservers()
     }
     
     /// Checks availability for specified target actions during loading phase.

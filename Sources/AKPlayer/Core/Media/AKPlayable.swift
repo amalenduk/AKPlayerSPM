@@ -41,6 +41,12 @@ public protocol AKPlayable: AnyObject, Equatable, Sendable {
     /// The type classification of the media item (e.g., audio, video, stream).
     var type: AKMediaType { get }
     
+    @MainActor
+    var asset: AVURLAsset? { get }
+    
+    @MainActor
+    var playerItem: AVPlayerItem? { get }
+    
     /// Optional dictionary options used when initializing the underlying `AVURLAsset`.
     var assetInitializationOptions: [String: Any]? { get }
     

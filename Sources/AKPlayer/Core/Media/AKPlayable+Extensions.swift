@@ -78,11 +78,6 @@ public extension AKPlayable {
 @MainActor
 public extension AKPlayable {
     
-    /// The instantiated player item constructed from the asset.
-    var playerItem: AVPlayerItem? {
-        manager.playerItem
-    }
-    
     /// The current state of the playable media item.
     var state: AKPlayableState {
         manager.state
@@ -123,24 +118,6 @@ public extension AKPlayable {
     /// Aborts active asset property loading and cancels pending asynchronous tasks.
     func abortAssetInitialization() {
         manager.abortAssetInitialization()
-    }
-    
-    /// Starts observing the player item's `status` key path.
-    func startPlayerItemReadinessObserver() {
-        manager.startPlayerItemReadinessObserver()
-    }
-    
-    func startPlayerItemAssetKeysObserver() {
-        manager.startPlayerItemAssetKeysObserver()
-    }
-    
-    /// Stops active observation of the player item's `status` key path.
-    func stopPlayerItemReadinessObserver() {
-        manager.stopPlayerItemReadinessObserver()
-    }
-    
-    func stopPlayerItemAssetKeysObserver() {
-        manager.stopPlayerItemAssetKeysObserver()
     }
 }
 

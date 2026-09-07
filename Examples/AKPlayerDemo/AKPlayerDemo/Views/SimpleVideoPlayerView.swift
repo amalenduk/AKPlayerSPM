@@ -459,6 +459,7 @@ public struct SimpleVideoPlayerView: View {
         ) {
             tracksButton()
             infoButton()
+            testButton()
         }
         .padding(.horizontal)
     }
@@ -479,6 +480,14 @@ public struct SimpleVideoPlayerView: View {
             ?? "n/a"
             
             viewModel.debugInfo = "Asset: " + desc
+        }
+    }
+    
+    @ViewBuilder
+    private func testButton() -> some View {
+        Button("Test") {
+            print(initialMedia?.asset)
+            print(initialMedia?.playerItem)
         }
     }
     

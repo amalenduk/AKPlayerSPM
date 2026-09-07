@@ -177,10 +177,6 @@ extension SimpleVideoPlayerViewModel: AKPlayerDelegate {
         DispatchQueue.main.async {
             self.stateDescription = state.description
             self.isLoading = (state == .waitingForNetwork || state == .buffering || state == .loading)
-            
-            if case .loaded = state {
-                self.player.currentMedia?.startPlayerItemAssetKeysObserver()
-            }
         }
     }
     nonisolated public func akPlayer(_ player: AKPlayer, didChangeCurrentTimeTo currentTime: CMTime, for media: any AKPlayable) {
@@ -217,7 +213,7 @@ extension SimpleVideoPlayerViewModel: AKMediaDelegate {
         case .assetLoaded:
             break
         case .playerItemLoaded:
-            media.startPlayerItemAssetKeysObserver()
+            // break
         case .readyToPlay:
             break
         case .failed:

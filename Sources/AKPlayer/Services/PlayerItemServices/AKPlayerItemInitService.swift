@@ -113,9 +113,15 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     /// - Returns: The newly initialized `AVURLAsset`.
     @discardableResult
     public func createAsset() -> AVURLAsset {
-        let asset = AVURLAsset(url: media.url, options: media.assetInitializationOptions)
-        self.asset = asset
-        return asset
+        if let custom = media.asset {
+            self.asset = custom
+        } else {
+            self.asset = AVURLAsset(
+                url: media.url,
+                options: media.assetInitializationOptions
+            )
+        }
+        return asset!
     }
     
     /// Asynchronously validates key asset properties (`isPlayable`, `hasProtectedContent`).
@@ -161,17 +167,22 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     /// - Returns: The configured `AVPlayerItem`.
     @discardableResult
     public func createPlayerItemFromAsset() -> AVPlayerItem {
-        guard let asset else {
+        guard let asset = asset ?? media.asset else {
             fatalError("Asset must be created before calling createPlayerItemFromAsset().")
         }
-         
+        
         let item: AVPlayerItem
-        if let keys = media.automaticallyLoadedAssetKeys {
-            item = AVPlayerItem(asset: asset, automaticallyLoadedAssetKeys: keys)
+        
+        if let customItem = media.playerItem {
+            item = customItem
         } else {
-            item = AVPlayerItem(asset: asset)
+            if let keys = media.automaticallyLoadedAssetKeys {
+                item = AVPlayerItem(asset: asset, automaticallyLoadedAssetKeys: keys)
+            } else {
+                item = AVPlayerItem(asset: asset)
+            }
         }
-         
+        
         self.playerItem = item
         return item
     }

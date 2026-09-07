@@ -81,18 +81,6 @@ public protocol AKMediaManagerProtocol: AnyObject, NSObjectProtocol {
     /// Aborts active asset property loading and cancels pending asynchronous operations.
     func abortAssetInitialization()
     
-    // MARK: - Observation Controls
-    
-    /// Starts observing the player item's `status` key path for readiness or failure.
-    func startPlayerItemReadinessObserver()
-    
-    func startPlayerItemAssetKeysObserver()
-    
-    /// Stops active observation of the player item's `status` key path.
-    func stopPlayerItemReadinessObserver()
-    
-    func stopPlayerItemAssetKeysObserver()
-    
     // MARK: - Preflight Capability Checks
     
     /// Evaluates if the player item can step forward or backward by a given frame count.

@@ -99,9 +99,7 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
     /// Available once `createPlayerItemFromAsset()` initializes the `playerItem`.
     public private(set) var playerItemNotificationsObserver: AKPlayerItemNotificationsObserver?
     
-    // Distinct subscription sets so lifecycle calls don't clear each other
-    private nonisolated(unsafe) var readinessSubscriptions = Set<AnyCancellable>()
-    private nonisolated(unsafe) var assetKeySubscriptions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     
     // MARK: - Init & Deinit
     
@@ -121,8 +119,7 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
     }
     
     deinit {
-        stopPlayerItemReadinessObserver()
-        stopPlayerItemAssetKeysObserver()
+        
     }
     
     // MARK: - Asset Lifecycle Operations
@@ -148,70 +145,32 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
         assert(state.isAssetLoaded,
                "This function requires the asset to be loaded first.")
         self.error = nil
-        playerItemInitService.createPlayerItemFromAsset()
         
         // Stop any existing notifications observer instance
+        subscriptions.removeAll()
         playerItemNotificationsObserver?.stopObserving()
         playerItemNotificationsObserver = nil
         
+        let newItem = playerItemInitService.createPlayerItemFromAsset()
+        
         // Instantiate notification observer targeting the newly created player item
-        if let newItem = playerItem {
-            playerItemNotificationsObserver = AKPlayerItemNotificationsObserver(playerItem: newItem)
-        }
+        playerItemNotificationsObserver = AKPlayerItemNotificationsObserver(playerItem: newItem)
         
         Task {
             await trackSelectionService.resetSession()
         }
+        
+        bindObservers(to: newItem)
+        
         state = .playerItemLoaded
     }
     
     /// Aborts active asset property loading and cancels pending asynchronous tasks.
     public func abortAssetInitialization() {
+        subscriptions.removeAll()
+        playerItemNotificationsObserver?.stopObserving()
+        playerItemNotificationsObserver = nil
         playerItemInitService.abortAssetInitialization()
-    }
-    
-    // MARK: - Observation Controls
-    
-    /// Starts observing the player item's `status` key path for readiness or failure.
-    public func startPlayerItemReadinessObserver() {
-        assert(state.isPlayerItemLoaded || state.isReadyToPlay,
-               "Cannot start readiness observer before player item is loaded.")
-        
-        guard let playerItem else { return }
-        stopPlayerItemReadinessObserver()
-        
-        playerItem.publisher(for: \.status, options: [.initial, .new])
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in
-                guard let self else { return }
-                switch status {
-                case .readyToPlay:
-                    self.state = .readyToPlay
-                case .failed:
-                    let underlyingError = playerItem.error ?? NSError(domain: "AKPlayer", code: -1, userInfo: nil)
-                    self.error = .playerItemLoadingFailed(reason: .statusLoadingFailed(error: underlyingError))
-                    self.state = .failed
-                default: break
-                }
-            }
-            .store(in: &readinessSubscriptions)
-    }
-    
-    /// Stops active observation of the player item's `status` key path.
-    public nonisolated func stopPlayerItemReadinessObserver() {
-        readinessSubscriptions.removeAll()
-    }
-    
-    public func startPlayerItemAssetKeysObserver() {
-        assert(state.isPlayerItemLoaded || state.isReadyToPlay,
-               "Cannot start readiness observer before player item is loaded.")
-        
-        startObservingPlayerItemProperties()
-    }
-    
-    /// Stops active observation of asset keys.
-    public nonisolated func stopPlayerItemAssetKeysObserver() {
-        assetKeySubscriptions.removeAll()
     }
     
     // MARK: - Preflight Capability Checks
@@ -283,80 +242,6 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
     
     // MARK: - Player Item Property Observation
     
-    private func startObservingPlayerItemProperties() {
-        guard let playerItem else { return }
-        
-        // Clear any existing subscriptions before re-attaching
-        assetKeySubscriptions.removeAll()
-        
-        // 1. Tracks
-        playerItem.publisher(for: \.tracks, options: [.initial, .new])
-            .sink { [weak self] tracks in
-                guard let self else { return }
-                delegate?.akMedia(media!, didChangeTracksTo: tracks)
-                emit(.tracksDidChange(tracks))
-            }
-            .store(in: &assetKeySubscriptions)
-        
-        // 2. Presentation Dimensions (Resolution)
-        playerItem.publisher(for: \.presentationSize, options: [.initial, .new])
-            .removeDuplicates()
-            .sink { [weak self] size in
-                guard let self else { return }
-                delegate?.akMedia(media!, didChangePresentationSizeTo: size)
-                emit(.presentationSizeDidChange(size))
-            }
-            .store(in: &assetKeySubscriptions)
-        
-        // 3. Duration
-        playerItem.publisher(for: \.duration, options: [.initial, .new])
-            .removeDuplicates()
-            .sink { [weak self] duration in
-                guard let self else { return }
-                delegate?.akMedia(media!, didChangeItemDurationTo: duration)
-                emit(.durationDidChange(duration))
-            }
-            .store(in: &assetKeySubscriptions)
-        
-        // 4. Timebase
-        playerItem.publisher(for: \.timebase, options: [.initial, .new])
-            .sink { [weak self] timebase in
-                guard let self else { return }
-                delegate?.akMedia(media!, didChangeTimebaseTo: timebase)
-                emit(.timebaseDidChange(timebase))
-            }
-            .store(in: &assetKeySubscriptions)
-        
-        // 5. Loaded (Buffered) Time Ranges
-        playerItem.publisher(for: \.loadedTimeRanges, options: [.initial, .new])
-            .sink { [weak self] nsValues in
-                guard let self else { return }
-                let ranges = nsValues.map { $0.timeRangeValue }
-                delegate?.akMedia(media!, didChangeLoadedTimeRangesTo: ranges)
-                emit(.loadedTimeRangesDidChange(ranges))
-            }
-            .store(in: &assetKeySubscriptions)
-        
-        // 6. Seekable Time Ranges
-        playerItem.publisher(for: \.seekableTimeRanges, options: [.initial, .new])
-            .sink { [weak self] nsValues in
-                guard let self else { return }
-                let ranges = nsValues.map { $0.timeRangeValue }
-                delegate?.akMedia(media!, didChangeSeekableTimeRangesTo: ranges)
-                emit(.seekableTimeRangesDidChange(ranges))
-            }
-            .store(in: &assetKeySubscriptions)
-        
-        // 7. Playback Capabilities
-        observeCapability(\.canStepForward, capability: .stepForward, on: playerItem)
-        observeCapability(\.canStepBackward, capability: .stepBackward, on: playerItem)
-        observeCapability(\.canPlayReverse, capability: .playReverse, on: playerItem)
-        observeCapability(\.canPlayFastForward, capability: .playFastForward, on: playerItem)
-        observeCapability(\.canPlayFastReverse, capability: .playFastReverse, on: playerItem)
-        observeCapability(\.canPlaySlowForward, capability: .playSlowForward, on: playerItem)
-        observeCapability(\.canPlaySlowReverse, capability: .playSlowReverse, on: playerItem)
-    }
-    
     // Helper to keep capability observations DRY (Don't Repeat Yourself)
     private func observeCapability(
         _ keyPath: KeyPath<AVPlayerItem, Bool>,
@@ -375,7 +260,124 @@ public class AKMediaManager: NSObject, AKMediaManagerProtocol {
                     to: isSupported
                 )
             }
-            .store(in: &assetKeySubscriptions)
+            .store(in: &subscriptions)
+    }
+    
+    
+    private func bindObservers(to item: AVPlayerItem) {
+        // 1. Readiness & Status Observer
+        item.publisher(for: \.status, options: [.initial, .new])
+            .sink { @MainActor [weak self] status in
+                guard let self else { return }
+                switch status {
+                case .readyToPlay:
+                    self.state = .readyToPlay
+                case .failed:
+                    let underlyingError = item.error ?? NSError(domain: "AKPlayer", code: -1, userInfo: nil)
+                    self.error = .playerItemLoadingFailed(reason: .statusLoadingFailed(error: underlyingError))
+                    self.state = .failed
+                default:
+                    break
+                }
+            }
+            .store(in: &subscriptions)
+        
+        // 2. Duration
+        item.publisher(for: \.duration, options: [.initial, .new])
+            .removeDuplicates()
+            .sink { @MainActor [weak self] duration in
+                guard let self, let media = self.media else { return }
+                self.delegate?.akMedia(media, didChangeItemDurationTo: duration)
+                self.emit(.durationDidChange(duration))
+            }
+            .store(in: &subscriptions)
+        
+        // 3. Presentation Resolution Size
+        item.publisher(for: \.presentationSize, options: [.initial, .new])
+            .removeDuplicates()
+            .sink { @MainActor [weak self] size in
+                guard let self, let media = self.media else { return }
+                self.delegate?.akMedia(media, didChangePresentationSizeTo: size)
+                self.emit(.presentationSizeDidChange(size))
+            }
+            .store(in: &subscriptions)
+        
+        // 4. Tracks
+        item.publisher(for: \.tracks, options: [.initial, .new])
+            .sink { @MainActor [weak self] tracks in
+                guard let self, let media = self.media else { return }
+                self.delegate?.akMedia(media, didChangeTracksTo: tracks)
+                self.emit(.tracksDidChange(tracks))
+            }
+            .store(in: &subscriptions)
+        
+        // 5. Timebase
+        item.publisher(for: \.timebase, options: [.initial, .new])
+            .receive(on: DispatchQueue.main)
+            .sink { @MainActor [weak self] timebase in
+                guard let self, let media = self.media else { return }
+                self.delegate?.akMedia(media, didChangeTimebaseTo: timebase)
+                self.emit(.timebaseDidChange(timebase))
+            }
+            .store(in: &subscriptions)
+        
+        // 6. Loaded Time Ranges
+        item.publisher(for: \.loadedTimeRanges, options: [.initial, .new])
+            .sink { @MainActor [weak self] nsValues in
+                guard let self, let media = self.media else { return }
+                let ranges = nsValues.map { $0.timeRangeValue }
+                self.delegate?.akMedia(media, didChangeLoadedTimeRangesTo: ranges)
+                self.emit(.loadedTimeRangesDidChange(ranges))
+            }
+            .store(in: &subscriptions)
+        
+        // 7. Seekable Time Ranges
+        item.publisher(for: \.seekableTimeRanges, options: [.initial, .new])
+            .sink { @MainActor [weak self] nsValues in
+                guard let self, let media = self.media else { return }
+                let ranges = nsValues.map { $0.timeRangeValue }
+                self.delegate?.akMedia(media, didChangeSeekableTimeRangesTo: ranges)
+                self.emit(.seekableTimeRangesDidChange(ranges))
+            }
+            .store(in: &subscriptions)
+        
+        // 8. Playback Capabilities (DRY Observation)
+        bindCapability(\.canStepForward, capability: .stepForward, on: item)
+        bindCapability(\.canStepBackward, capability: .stepBackward, on: item)
+        bindCapability(\.canPlayReverse, capability: .playReverse, on: item)
+        bindCapability(\.canPlayFastForward, capability: .playFastForward, on: item)
+        bindCapability(\.canPlayFastReverse, capability: .playFastReverse, on: item)
+        bindCapability(\.canPlaySlowForward, capability: .playSlowForward, on: item)
+        bindCapability(\.canPlaySlowReverse, capability: .playSlowReverse, on: item)
+    }
+    
+    
+    private func bindCapability(
+        _ keyPath: KeyPath<AVPlayerItem, Bool>,
+        capability: AKMediaCapability,
+        on item: AVPlayerItem
+    ) {
+        item.publisher(for: keyPath, options: [.initial, .new])
+            .removeDuplicates()
+            .sink { @MainActor [weak self] isSupported in
+                guard let self, let media = self.media else { return }
+                self.delegate?.akMedia(media, didChangeCapability: capability, to: isSupported)
+                self.emit(.capabilityDidChange(capability, isSupported: isSupported))
+            }
+            .store(in: &subscriptions)
+    }
+    
+    public func isSupported(_ capability: AKMediaCapability) -> Bool {
+        guard state.isPlayerItemLoaded || state.isReadyToPlay, let playerItem else { return false }
+        switch capability {
+        case .playReverse: return playerItem.canPlayReverse
+        case .playFastForward: return playerItem.canPlayFastForward
+        case .playFastReverse: return playerItem.canPlayFastReverse
+        case .playSlowForward: return playerItem.canPlaySlowForward
+        case .playSlowReverse: return playerItem.canPlaySlowReverse
+        case .stepForward: return playerItem.canStepForward
+        case .stepBackward: return playerItem.canStepBackward
+        }
     }
     
     
