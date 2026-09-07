@@ -43,23 +43,23 @@ import Foundation
 /// Instead, callers interact with it through the MainActor.
 @MainActor
 public protocol AKPlayerItemNotificationsObserverProtocol {
-    var didPlayToEndTimeStream: AsyncStream<CMTime> { get }
+  var didPlayToEndTimeStream: AsyncStream<CMTime> { get }
 
-    var failedToPlayToEndTimeStream: AsyncStream<AKPlayerError> { get }
+  var failedToPlayToEndTimeStream: AsyncStream<AKPlayerError> { get }
 
-    var playbackStalledStream: AsyncStream<Void> { get }
+  var playbackStalledStream: AsyncStream<Void> { get }
 
-    var timeJumpedStream: AsyncStream<Void> { get }
+  var timeJumpedStream: AsyncStream<Void> { get }
 
-    var mediaSelectionDidChangeStream: AsyncStream<Void> { get }
+  var mediaSelectionDidChangeStream: AsyncStream<Void> { get }
 
-    var recommendedTimeOffsetFromLiveDidChangeStream: AsyncStream<CMTime> {
-        get
-    }
+  var recommendedTimeOffsetFromLiveDidChangeStream: AsyncStream<CMTime> {
+    get
+  }
 
-    func startObserving()
+  func startObserving()
 
-    func stopObserving()
+  func stopObserving()
 }
 
 // MARK: - AKPlayerItemNotificationsObserver
@@ -76,317 +76,321 @@ public protocol AKPlayerItemNotificationsObserverProtocol {
 ///    accessing the observer's state.
 @MainActor
 public final class AKPlayerItemNotificationsObserver:
-    AKPlayerItemNotificationsObserverProtocol
+  AKPlayerItemNotificationsObserverProtocol
 {
-    // MARK: - Properties
+  // MARK: - Properties
 
-    /// The AVPlayerItem being observed.
-    private let playerItem: AVPlayerItem
+  /// The AVPlayerItem being observed.
+  private let playerItem: AVPlayerItem
 
-    /// Indicates whether notification observers are currently registered.
-    public private(set) var isObserving = false
+  /// Indicates whether notification observers are currently registered.
+  public private(set) var isObserving = false
 
-    /// NotificationCenter observer tokens.
-    ///
-    /// `deinit` is nonisolated, so this property must be explicitly
-    /// marked `nonisolated(unsafe)` to allow cleanup from deinit.
-    ///
-    /// The property is only mutated while the object is alive and
-    /// operating on MainActor.
-    private nonisolated(unsafe) var observerTokens: [NSObjectProtocol] = []
+  /// NotificationCenter observer tokens.
+  ///
+  /// `deinit` is nonisolated, so this property must be explicitly
+  /// marked `nonisolated(unsafe)` to allow cleanup from deinit.
+  ///
+  /// The property is only mutated while the object is alive and
+  /// operating on MainActor.
+  private nonisolated(unsafe) var observerTokens: [NSObjectProtocol] = []
 
-    // MARK: - AsyncStream Continuations
+  // MARK: - AsyncStream Continuations
 
-    private var didPlayToEndContinuation: AsyncStream<CMTime>.Continuation?
+  private var didPlayToEndContinuation: AsyncStream<CMTime>.Continuation?
 
-    private var failedToPlayToEndContinuation: AsyncStream<AKPlayerError>
-        .Continuation?
+  private var failedToPlayToEndContinuation:
+    AsyncStream<AKPlayerError>
+      .Continuation?
 
-    private var playbackStalledContinuation: AsyncStream<Void>.Continuation?
+  private var playbackStalledContinuation: AsyncStream<Void>.Continuation?
 
-    private var timeJumpedContinuation: AsyncStream<Void>.Continuation?
+  private var timeJumpedContinuation: AsyncStream<Void>.Continuation?
 
-    private var mediaSelectionDidChangeContinuation: AsyncStream<Void>
-        .Continuation?
+  private var mediaSelectionDidChangeContinuation:
+    AsyncStream<Void>
+      .Continuation?
 
-    private var recommendedTimeOffsetContinuation: AsyncStream<CMTime>
-        .Continuation?
+  private var recommendedTimeOffsetContinuation:
+    AsyncStream<CMTime>
+      .Continuation?
 
-    // MARK: - Async Streams
+  // MARK: - Async Streams
 
-    /// Emits the current playback time when the item reaches its end.
-    public lazy var didPlayToEndTimeStream: AsyncStream<CMTime> =
-        AsyncStream { continuation in
-            self.didPlayToEndContinuation = continuation
-        }
+  /// Emits the current playback time when the item reaches its end.
+  public lazy var didPlayToEndTimeStream: AsyncStream<CMTime> =
+    AsyncStream { continuation in
+      self.didPlayToEndContinuation = continuation
+    }
 
-    /// Emits an AKPlayerError when playback fails to reach the end.
-    public lazy var failedToPlayToEndTimeStream: AsyncStream<AKPlayerError> =
-        AsyncStream {
-            continuation in
-            self.failedToPlayToEndContinuation = continuation
-        }
+  /// Emits an AKPlayerError when playback fails to reach the end.
+  public lazy var failedToPlayToEndTimeStream: AsyncStream<AKPlayerError> =
+    AsyncStream {
+      continuation in
+      self.failedToPlayToEndContinuation = continuation
+    }
 
-    /// Emits when AVPlayerItem playback stalls.
-    public lazy var playbackStalledStream: AsyncStream<Void> =
-        AsyncStream { continuation in
-            self.playbackStalledContinuation = continuation
-        }
+  /// Emits when AVPlayerItem playback stalls.
+  public lazy var playbackStalledStream: AsyncStream<Void> =
+    AsyncStream { continuation in
+      self.playbackStalledContinuation = continuation
+    }
 
-    /// Emits when AVPlayerItem performs a time jump.
-    public lazy var timeJumpedStream: AsyncStream<Void> =
-        AsyncStream { continuation in
-            self.timeJumpedContinuation = continuation
-        }
+  /// Emits when AVPlayerItem performs a time jump.
+  public lazy var timeJumpedStream: AsyncStream<Void> =
+    AsyncStream { continuation in
+      self.timeJumpedContinuation = continuation
+    }
 
-    /// Emits when the media selection changes.
-    public lazy var mediaSelectionDidChangeStream: AsyncStream<Void> =
-        AsyncStream { continuation in
-            self.mediaSelectionDidChangeContinuation = continuation
-        }
+  /// Emits when the media selection changes.
+  public lazy var mediaSelectionDidChangeStream: AsyncStream<Void> =
+    AsyncStream { continuation in
+      self.mediaSelectionDidChangeContinuation = continuation
+    }
 
-    /// Emits when the recommended live offset changes.
-    public lazy var recommendedTimeOffsetFromLiveDidChangeStream: AsyncStream<
-        CMTime
+  /// Emits when the recommended live offset changes.
+  public lazy var recommendedTimeOffsetFromLiveDidChangeStream:
+    AsyncStream<
+      CMTime
     > =
-        AsyncStream {
-            continuation in
-            self.recommendedTimeOffsetContinuation = continuation
-        }
+      AsyncStream {
+        continuation in
+        self.recommendedTimeOffsetContinuation = continuation
+      }
 
-    // MARK: - Init
+  // MARK: - Init
 
-    /// Initializes an observer for an AVPlayerItem.
-    ///
-    /// - Parameter playerItem: The AVPlayerItem to observe.
-    public init(playerItem: AVPlayerItem) {
-        self.playerItem = playerItem
+  /// Initializes an observer for an AVPlayerItem.
+  ///
+  /// - Parameter playerItem: The AVPlayerItem to observe.
+  public init(playerItem: AVPlayerItem) {
+    self.playerItem = playerItem
+  }
+
+  // MARK: - Deinit
+
+  deinit {
+    // deinit is nonisolated.
+    //
+    // observerTokens is therefore marked `nonisolated(unsafe)`
+    // so that NotificationCenter observers can be removed here.
+
+    for observerToken in observerTokens {
+      NotificationCenter.default.removeObserver(observerToken)
     }
 
-    // MARK: - Deinit
+    observerTokens.removeAll()
+  }
 
-    deinit {
-        // deinit is nonisolated.
-        //
-        // observerTokens is therefore marked `nonisolated(unsafe)`
-        // so that NotificationCenter observers can be removed here.
+  // MARK: - Observation Controls
 
-        for observerToken in observerTokens {
-            NotificationCenter.default.removeObserver(observerToken)
-        }
-
-        observerTokens.removeAll()
+  /// Starts observing AVPlayerItem notifications.
+  public func startObserving() {
+    guard !isObserving else {
+      return
     }
 
-    // MARK: - Observation Controls
+    // Remove any previous observers before registering new ones.
+    stopObservingObservers()
 
-    /// Starts observing AVPlayerItem notifications.
-    public func startObserving() {
-        guard !isObserving else {
-            return
+    isObserving = true
+
+    // ---------------------------------------------------------
+    // 1. Did Play To End Time
+    // ---------------------------------------------------------
+
+    observeNotification(
+      .AVPlayerItemDidPlayToEndTime,
+      object: playerItem
+    ) { [weak self] in
+      guard let self else {
+        return
+      }
+
+      didPlayToEndContinuation?.yield(
+        playerItem.currentTime()
+      )
+    }
+
+    // ---------------------------------------------------------
+    // 2. Failed To Play To End Time
+    // ---------------------------------------------------------
+
+    observeFailedToPlayToEndNotification(
+      object: playerItem
+    )
+
+    // ---------------------------------------------------------
+    // 3. Playback Stalled
+    // ---------------------------------------------------------
+
+    observeNotification(
+      .AVPlayerItemPlaybackStalled,
+      object: playerItem
+    ) { [weak self] in
+      self?.playbackStalledContinuation?.yield()
+    }
+
+    // ---------------------------------------------------------
+    // 4. Time Jumped
+    // ---------------------------------------------------------
+
+    observeNotification(
+      AVPlayerItem.timeJumpedNotification,
+      object: playerItem
+    ) { [weak self] in
+      self?.timeJumpedContinuation?.yield()
+    }
+
+    // ---------------------------------------------------------
+    // 5. Media Selection Changed
+    // ---------------------------------------------------------
+
+    observeNotification(
+      AVPlayerItem.mediaSelectionDidChangeNotification,
+      object: playerItem
+    ) { [weak self] in
+      self?.mediaSelectionDidChangeContinuation?.yield()
+    }
+
+    // ---------------------------------------------------------
+    // 6. Recommended Time Offset From Live Changed
+    // ---------------------------------------------------------
+
+    observeNotification(
+      AVPlayerItem.recommendedTimeOffsetFromLiveDidChangeNotification,
+      object: playerItem
+    ) { [weak self] in
+      guard let self else {
+        return
+      }
+
+      recommendedTimeOffsetContinuation?.yield(
+        playerItem.recommendedTimeOffsetFromLive
+      )
+    }
+  }
+
+  /// Stops observing all AVPlayerItem notifications.
+  public func stopObserving() {
+    guard isObserving else {
+      return
+    }
+
+    stopObservingObservers()
+
+    isObserving = false
+  }
+
+  // MARK: - Private Notification Helpers
+
+  /// Registers a notification that does not require the Notification
+  /// object itself.
+  ///
+  /// NotificationCenter's callback is a Sendable closure.
+  ///
+  /// IMPORTANT:
+  ///
+  /// `queue: .main` tells Foundation to execute the callback on the
+  /// main operation queue, but Swift's concurrency checker does not
+  /// automatically treat that callback as `@MainActor`.
+  ///
+  /// Therefore we explicitly create a MainActor Task before accessing
+  /// MainActor-isolated state.
+  ///
+  /// We intentionally do NOT pass Notification into the handler.
+  /// Foundation.Notification is not Sendable.
+  private func observeNotification(
+    _ name: Notification.Name,
+    object: AnyObject,
+    handler: @escaping @MainActor @Sendable () -> Void
+  ) {
+    let token = NotificationCenter.default.addObserver(
+      forName: name,
+      object: object,
+      queue: .main
+    ) { _ in
+      // Do not pass Notification across the concurrency boundary.
+      //
+      // The notification is ignored because these events don't
+      // require any information from it.
+      //
+      // The Task explicitly transfers execution to MainActor.
+      Task { @MainActor in
+        handler()
+      }
+    }
+
+    observerTokens.append(token)
+  }
+
+  /// Registers the AVPlayerItem failure notification.
+  ///
+  /// This notification is different because we need the NSError
+  /// contained in `Notification.userInfo`.
+  ///
+  /// The Notification object itself must NOT cross the concurrency
+  /// boundary because Notification is not Sendable.
+  ///
+  /// Therefore:
+  ///
+  /// Notification
+  ///    ↓
+  /// Extract NSError
+  ///    ↓
+  /// Discard Notification
+  ///    ↓
+  /// Transfer extracted value to MainActor
+  private func observeFailedToPlayToEndNotification(
+    object: AVPlayerItem
+  ) {
+    let token = NotificationCenter.default.addObserver(
+      forName: .AVPlayerItemFailedToPlayToEndTime,
+      object: object,
+      queue: .main
+    ) { [weak self] notification in
+      // Extract everything we need while we still have the
+      // Notification object.
+      let error =
+        notification.userInfo?[
+          AVPlayerItemFailedToPlayToEndTimeErrorKey
+        ] as? NSError
+
+      // Notification itself is NOT captured here.
+      //
+      // Only the extracted error is captured by the MainActor task.
+      Task { @MainActor [weak self, error] in
+        guard
+          let self,
+          let error
+        else {
+          return
         }
 
-        // Remove any previous observers before registering new ones.
-        stopObservingObservers()
-
-        isObserving = true
-
-        // ---------------------------------------------------------
-        // 1. Did Play To End Time
-        // ---------------------------------------------------------
-
-        observeNotification(
-            .AVPlayerItemDidPlayToEndTime,
-            object: playerItem
-        ) { [weak self] in
-            guard let self else {
-                return
-            }
-
-            didPlayToEndContinuation?.yield(
-                playerItem.currentTime()
+        failedToPlayToEndContinuation?.yield(
+          .playerItemFailedToPlay(
+            reason: .failedToPlayToEndTime(
+              error: error
             )
-        }
-
-        // ---------------------------------------------------------
-        // 2. Failed To Play To End Time
-        // ---------------------------------------------------------
-
-        observeFailedToPlayToEndNotification(
-            object: playerItem
+          )
         )
-
-        // ---------------------------------------------------------
-        // 3. Playback Stalled
-        // ---------------------------------------------------------
-
-        observeNotification(
-            .AVPlayerItemPlaybackStalled,
-            object: playerItem
-        ) { [weak self] in
-            self?.playbackStalledContinuation?.yield()
-        }
-
-        // ---------------------------------------------------------
-        // 4. Time Jumped
-        // ---------------------------------------------------------
-
-        observeNotification(
-            AVPlayerItem.timeJumpedNotification,
-            object: playerItem
-        ) { [weak self] in
-            self?.timeJumpedContinuation?.yield()
-        }
-
-        // ---------------------------------------------------------
-        // 5. Media Selection Changed
-        // ---------------------------------------------------------
-
-        observeNotification(
-            AVPlayerItem.mediaSelectionDidChangeNotification,
-            object: playerItem
-        ) { [weak self] in
-            self?.mediaSelectionDidChangeContinuation?.yield()
-        }
-
-        // ---------------------------------------------------------
-        // 6. Recommended Time Offset From Live Changed
-        // ---------------------------------------------------------
-
-        observeNotification(
-            AVPlayerItem.recommendedTimeOffsetFromLiveDidChangeNotification,
-            object: playerItem
-        ) { [weak self] in
-            guard let self else {
-                return
-            }
-
-            recommendedTimeOffsetContinuation?.yield(
-                playerItem.recommendedTimeOffsetFromLive
-            )
-        }
+      }
     }
 
-    /// Stops observing all AVPlayerItem notifications.
-    public func stopObserving() {
-        guard isObserving else {
-            return
-        }
+    observerTokens.append(token)
+  }
 
-        stopObservingObservers()
+  // MARK: - Observer Cleanup
 
-        isObserving = false
+  /// Removes all NotificationCenter observers.
+  ///
+  /// This method is MainActor-isolated because observerTokens is
+  /// normally managed from MainActor.
+  private func stopObservingObservers() {
+    for observerToken in observerTokens {
+      NotificationCenter.default.removeObserver(observerToken)
     }
 
-    // MARK: - Private Notification Helpers
-
-    /// Registers a notification that does not require the Notification
-    /// object itself.
-    ///
-    /// NotificationCenter's callback is a Sendable closure.
-    ///
-    /// IMPORTANT:
-    ///
-    /// `queue: .main` tells Foundation to execute the callback on the
-    /// main operation queue, but Swift's concurrency checker does not
-    /// automatically treat that callback as `@MainActor`.
-    ///
-    /// Therefore we explicitly create a MainActor Task before accessing
-    /// MainActor-isolated state.
-    ///
-    /// We intentionally do NOT pass Notification into the handler.
-    /// Foundation.Notification is not Sendable.
-    private func observeNotification(
-        _ name: Notification.Name,
-        object: AnyObject,
-        handler: @escaping @MainActor @Sendable () -> Void
-    ) {
-        let token = NotificationCenter.default.addObserver(
-            forName: name,
-            object: object,
-            queue: .main
-        ) { _ in
-            // Do not pass Notification across the concurrency boundary.
-            //
-            // The notification is ignored because these events don't
-            // require any information from it.
-            //
-            // The Task explicitly transfers execution to MainActor.
-            Task { @MainActor in
-                handler()
-            }
-        }
-
-        observerTokens.append(token)
-    }
-
-    /// Registers the AVPlayerItem failure notification.
-    ///
-    /// This notification is different because we need the NSError
-    /// contained in `Notification.userInfo`.
-    ///
-    /// The Notification object itself must NOT cross the concurrency
-    /// boundary because Notification is not Sendable.
-    ///
-    /// Therefore:
-    ///
-    /// Notification
-    ///    ↓
-    /// Extract NSError
-    ///    ↓
-    /// Discard Notification
-    ///    ↓
-    /// Transfer extracted value to MainActor
-    private func observeFailedToPlayToEndNotification(
-        object: AVPlayerItem
-    ) {
-        let token = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemFailedToPlayToEndTime,
-            object: object,
-            queue: .main
-        ) { [weak self] notification in
-            // Extract everything we need while we still have the
-            // Notification object.
-            let error =
-                notification.userInfo?[
-                    AVPlayerItemFailedToPlayToEndTimeErrorKey
-                ] as? NSError
-
-            // Notification itself is NOT captured here.
-            //
-            // Only the extracted error is captured by the MainActor task.
-            Task { @MainActor [weak self, error] in
-                guard
-                    let self,
-                    let error
-                else {
-                    return
-                }
-
-                failedToPlayToEndContinuation?.yield(
-                    .playerItemFailedToPlay(
-                        reason: .failedToPlayToEndTime(
-                            error: error
-                        )
-                    )
-                )
-            }
-        }
-
-        observerTokens.append(token)
-    }
-
-    // MARK: - Observer Cleanup
-
-    /// Removes all NotificationCenter observers.
-    ///
-    /// This method is MainActor-isolated because observerTokens is
-    /// normally managed from MainActor.
-    private func stopObservingObservers() {
-        for observerToken in observerTokens {
-            NotificationCenter.default.removeObserver(observerToken)
-        }
-
-        observerTokens.removeAll()
-    }
+    observerTokens.removeAll()
+  }
 }

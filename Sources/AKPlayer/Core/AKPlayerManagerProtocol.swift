@@ -37,47 +37,47 @@ import MediaPlayer
 /// now-playing integration.
 @MainActor
 public protocol AKPlayerManagerProtocol: AKPlayerProtocol,
-    AKPlayerActionsProtocol,
-    AKNowPlayingSessionProvider
+  AKPlayerActionsProtocol,
+  AKNowPlayingSessionProvider
 {
-    /// The underlying controller managing AVPlayer state machine operations and
-    /// commands.
-    var playerController: AKPlayerControllerProtocol { get }
+  /// The underlying controller managing AVPlayer state machine operations and
+  /// commands.
+  var playerController: AKPlayerControllerProtocol { get }
 
-    /// Configuration options specifying audio session, remote command, and
-    /// playback behaviors.
-    var configuration: AKPlayerConfigurationProtocol { get }
+  /// Configuration options specifying audio session, remote command, and
+  /// playback behaviors.
+  var configuration: AKPlayerConfigurationProtocol { get }
 
-    /// Active state snapshot storing playback and app states during
-    /// interruptions for auto-resumption.
-    var playerStateSnapshot: AKPlayerStateSnapshot? { get }
+  /// Active state snapshot storing playback and app states during
+  /// interruptions for auto-resumption.
+  var playerStateSnapshot: AKPlayerStateSnapshot? { get }
 
-    /// Service interface handling system `AVAudioSession` categories, modes,
-    /// and activation logic.
-    var audioSessionService: AKAudioSessionServiceProtocol { get }
+  /// Service interface handling system `AVAudioSession` categories, modes,
+  /// and activation logic.
+  var audioSessionService: AKAudioSessionServiceProtocol { get }
 
-    /// Configures the audio session, registers observers, and prepares the
-    /// player for immediate use.
-    /// - Throws: `AKPlayerError` or `AVAudioSession` initialization failures if
-    /// preparation fails.
-    func prepare() throws
+  /// Configures the audio session, registers observers, and prepares the
+  /// player for immediate use.
+  /// - Throws: `AKPlayerError` or `AVAudioSession` initialization failures if
+  /// preparation fails.
+  func prepare() throws
 
-    /// Updates lock screen and Control Center media metadata using
-    /// `MPNowPlayingInfoCenter`.
-    func setNowPlayingInfo()
+  /// Updates lock screen and Control Center media metadata using
+  /// `MPNowPlayingInfoCenter`.
+  func setNowPlayingInfo()
 
-    /// Retrieves current static and dynamic metadata payload used for system
-    /// Now Playing integration.
-    /// - Returns: Built `AKNowPlayableMetadata` container, or `nil` if no
-    /// active item is loaded.
-    func currentNowPlayingMetadata() -> AKNowPlayableMetadata?
+  /// Retrieves current static and dynamic metadata payload used for system
+  /// Now Playing integration.
+  /// - Returns: Built `AKNowPlayableMetadata` container, or `nil` if no
+  /// active item is loaded.
+  func currentNowPlayingMetadata() -> AKNowPlayableMetadata?
 
-    /// Generates current dynamic state metadata like playback position,
-    /// duration, and rate.
-    /// - Returns: Protocol implementation containing active dynamic values, or
-    /// `nil`.
-    func getNowPlayableDynamicMetadata()
-        -> (any AKNowPlayableDynamicMetadataProtocol)?
+  /// Generates current dynamic state metadata like playback position,
+  /// duration, and rate.
+  /// - Returns: Protocol implementation containing active dynamic values, or
+  /// `nil`.
+  func getNowPlayableDynamicMetadata()
+    -> (any AKNowPlayableDynamicMetadataProtocol)?
 }
 
 // MARK: - AKPlayerStateSnapshot
@@ -85,56 +85,55 @@ public protocol AKPlayerManagerProtocol: AKPlayerProtocol,
 /// Thread-safe snapshot capturing player state before lifecycle interruptions
 /// or audio session events.
 public struct AKPlayerStateSnapshot: Sendable {
-    /// Indicates whether playback should automatically resume when an
-    /// interruption resolves.
-    public var shouldResume: Bool
+  /// Indicates whether playback should automatically resume when an
+  /// interruption resolves.
+  public var shouldResume: Bool
 
-    /// The lifecycle state of the application at the precise moment the
-    /// snapshot was saved.
-    public var applicationState: AKApplicationLifeCycleState
+  /// The lifecycle state of the application at the precise moment the
+  /// snapshot was saved.
+  public var applicationState: AKApplicationLifeCycleState
 
-    /// The underlying event or system notification that caused the
-    /// interruption.
-    public var playbackInterruptionReason: AKPlaybackInterruptionReason
+  /// The underlying event or system notification that caused the
+  /// interruption.
+  public var playbackInterruptionReason: AKPlaybackInterruptionReason
 
-    /// Initializes a new instance of `AKPlayerStateSnapshot`.
-    /// - Parameters:
-    ///   - shouldResume: Flag dictating if playback resumes after the
-    /// interruption ends.
-    ///   - applicationState: Current application state at snapshot creation
-    /// time.
-    ///   - playbackInterruptionReason: The reason triggering the state capture.
-    public init(
-        shouldResume: Bool,
-        applicationState: AKApplicationLifeCycleState,
-        playbackInterruptionReason: AKPlaybackInterruptionReason
-    ) {
-        self.shouldResume = shouldResume
-        self.applicationState = applicationState
-        self.playbackInterruptionReason = playbackInterruptionReason
-    }
+  /// Initializes a new instance of `AKPlayerStateSnapshot`.
+  /// - Parameters:
+  ///   - shouldResume: Flag dictating if playback resumes after the
+  /// interruption ends.
+  ///   - applicationState: Current application state at snapshot creation
+  /// time.
+  ///   - playbackInterruptionReason: The reason triggering the state capture.
+  public init(
+    shouldResume: Bool,
+    applicationState: AKApplicationLifeCycleState,
+    playbackInterruptionReason: AKPlaybackInterruptionReason
+  ) {
+    self.shouldResume = shouldResume
+    self.applicationState = applicationState
+    self.playbackInterruptionReason = playbackInterruptionReason
+  }
 }
 
 // MARK: - AKPlaybackInterruptionReason
 
 /// Enumeration representing reasons for playback interruption.
 public enum AKPlaybackInterruptionReason: UInt, Sendable {
-    /// Interruption caused by an external audio session event (e.g., incoming
-    /// phone call, alarm).
-    case audioSessionInterruption
+  /// Interruption caused by an external audio session event (e.g., incoming
+  /// phone call, alarm).
+  case audioSessionInterruption
 
-    /// Interruption caused when the application resigns active status (e.g.,
-    /// opening Control Center).
-    case applicationResignActive
+  /// Interruption caused when the application resigns active status (e.g.,
+  /// opening Control Center).
+  case applicationResignActive
 
-    /// Interruption caused when the application transitions into the
-    /// background.
-    case applicationEnteredBackground
+  /// Interruption caused when the application transitions into the
+  /// background.
+  case applicationEnteredBackground
 
-    /// Flag indicating whether the interruption was caused directly by an app
-    /// lifecycle event.
-    public var isLifeCycleEvent: Bool {
-        self == .applicationEnteredBackground || self ==
-            .applicationResignActive
-    }
+  /// Flag indicating whether the interruption was caused directly by an app
+  /// lifecycle event.
+  public var isLifeCycleEvent: Bool {
+    self == .applicationEnteredBackground || self == .applicationResignActive
+  }
 }

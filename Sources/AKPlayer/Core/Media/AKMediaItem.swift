@@ -30,5 +30,5 @@
 import AVFoundation
 
 public protocol AKMediaItem {
-    var item: AVPlayerItem? { get }
+  var item: AVPlayerItem? { get }
 }

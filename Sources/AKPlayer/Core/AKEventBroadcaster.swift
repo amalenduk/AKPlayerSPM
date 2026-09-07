@@ -9,61 +9,61 @@ import Foundation
 
 /// Internal multicast broadcaster managing multiple `AsyncStream` subscribers.
 final class AKEventBroadcaster<Event: Sendable>: @unchecked Sendable {
-    // MARK: - Properties
+  // MARK: - Properties
 
-    private let lock = NSLock()
-    private var continuations: [UUID: AsyncStream<Event>.Continuation] = [:]
+  private let lock = NSLock()
+  private var continuations: [UUID: AsyncStream<Event>.Continuation] = [:]
 
-    // MARK: - Init & Deinit
+  // MARK: - Init & Deinit
 
-    init() {}
+  init() {}
 
-    deinit {
-        finish()
+  deinit {
+    finish()
+  }
+
+  // MARK: - API
+
+  /// Emits an event to all active streams.
+  func send(_ event: Event) {
+    lock.lock()
+    let active = Array(continuations.values)
+    lock.unlock()
+
+    for continuation in active {
+      continuation.yield(event)
     }
+  }
 
-    // MARK: - API
+  /// Creates a new subscription for a caller.
+  func makeStream(
+    bufferingPolicy: AsyncStream<Event>.Continuation
+      .BufferingPolicy = .bufferingNewest(100)
+  ) -> AsyncStream<Event> {
+    let id = UUID()
+    return AsyncStream(bufferingPolicy: bufferingPolicy) { continuation in
+      lock.lock()
+      continuations[id] = continuation
+      lock.unlock()
 
-    /// Emits an event to all active streams.
-    func send(_ event: Event) {
+      continuation.onTermination = { [weak self] _ in
+        guard let self else { return }
         lock.lock()
-        let active = Array(continuations.values)
+        continuations.removeValue(forKey: id)
         lock.unlock()
-
-        for continuation in active {
-            continuation.yield(event)
-        }
+      }
     }
+  }
 
-    /// Creates a new subscription for a caller.
-    func makeStream(
-        bufferingPolicy: AsyncStream<Event>.Continuation
-            .BufferingPolicy = .bufferingNewest(100)
-    ) -> AsyncStream<Event> {
-        let id = UUID()
-        return AsyncStream(bufferingPolicy: bufferingPolicy) { continuation in
-            lock.lock()
-            continuations[id] = continuation
-            lock.unlock()
+  /// Terminates all open streams. Safe to call from any context or deinit.
+  func finish() {
+    lock.lock()
+    let active = Array(continuations.values)
+    continuations.removeAll()
+    lock.unlock()
 
-            continuation.onTermination = { [weak self] _ in
-                guard let self else { return }
-                lock.lock()
-                continuations.removeValue(forKey: id)
-                lock.unlock()
-            }
-        }
+    for continuation in active {
+      continuation.finish()
     }
-
-    /// Terminates all open streams. Safe to call from any context or deinit.
-    func finish() {
-        lock.lock()
-        let active = Array(continuations.values)
-        continuations.removeAll()
-        lock.unlock()
-
-        for continuation in active {
-            continuation.finish()
-        }
-    }
+  }
 }

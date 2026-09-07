@@ -36,14 +36,14 @@ import Combine
 /// boundary time updates.
 @MainActor
 public protocol AKPlayerPlaybackTimeObserverProtocol: AnyObject {
-    var player: AVPlayer { get }
-    var periodicTimePublisher: AnyPublisher<CMTime, Never> { get }
-    var boundaryTimePublisher: AnyPublisher<CMTime, Never> { get }
+  var player: AVPlayer { get }
+  var periodicTimePublisher: AnyPublisher<CMTime, Never> { get }
+  var boundaryTimePublisher: AnyPublisher<CMTime, Never> { get }
 
-    func startObservingPeriodicTime(for interval: CMTime)
-    func startObservingBoundaryTime(for times: [CMTime])
-    func stopObservingPeriodicTime()
-    func stopObservingBoundaryTime()
+  func startObservingPeriodicTime(for interval: CMTime)
+  func startObservingBoundaryTime(for times: [CMTime])
+  func stopObservingPeriodicTime()
+  func stopObservingBoundaryTime()
 }
 
 // MARK: - AKPlayerPlaybackTimeObserver
@@ -52,92 +52,92 @@ public protocol AKPlayerPlaybackTimeObserverProtocol: AnyObject {
 /// Combine publishers.
 @MainActor
 public class AKPlayerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol {
-    // MARK: - Properties
+  // MARK: - Properties
 
-    public let player: AVPlayer
+  public let player: AVPlayer
 
-    public var periodicTimePublisher: AnyPublisher<CMTime, Never> {
-        _periodicTimePublisher.eraseToAnyPublisher()
+  public var periodicTimePublisher: AnyPublisher<CMTime, Never> {
+    _periodicTimePublisher.eraseToAnyPublisher()
+  }
+
+  public var boundaryTimePublisher: AnyPublisher<CMTime, Never> {
+    _boundaryTimePublisher.eraseToAnyPublisher()
+  }
+
+  private let _periodicTimePublisher = PassthroughSubject<CMTime, Never>()
+  private let _boundaryTimePublisher = PassthroughSubject<CMTime, Never>()
+
+  /// Opaque token returned by AVPlayer when registering periodic observer.
+  /// Marked `nonisolated(unsafe)` to enable clean removal during
+  /// deinitialization.
+  private nonisolated(unsafe) var periodicTimeObserverToken: Any?
+
+  /// Opaque token returned by AVPlayer when registering boundary observer.
+  /// Marked `nonisolated(unsafe)` to enable clean removal during
+  /// deinitialization.
+  private nonisolated(unsafe) var boundaryTimeObserverToken: Any?
+
+  // MARK: - Init & Deinit
+
+  /// Initializes an observer for player playback time events.
+  /// - Parameter player: The AVPlayer instance to observe.
+  public init(with player: AVPlayer) {
+    self.player = player
+  }
+
+  deinit {
+    if let token = periodicTimeObserverToken {
+      player.removeTimeObserver(token)
     }
-
-    public var boundaryTimePublisher: AnyPublisher<CMTime, Never> {
-        _boundaryTimePublisher.eraseToAnyPublisher()
+    if let token = boundaryTimeObserverToken {
+      player.removeTimeObserver(token)
     }
+  }
 
-    private let _periodicTimePublisher = PassthroughSubject<CMTime, Never>()
-    private let _boundaryTimePublisher = PassthroughSubject<CMTime, Never>()
+  // MARK: - Periodic Time Observation
 
-    /// Opaque token returned by AVPlayer when registering periodic observer.
-    /// Marked `nonisolated(unsafe)` to enable clean removal during
-    /// deinitialization.
-    private nonisolated(unsafe) var periodicTimeObserverToken: Any?
+  public func startObservingPeriodicTime(for interval: CMTime) {
+    stopObservingPeriodicTime()
 
-    /// Opaque token returned by AVPlayer when registering boundary observer.
-    /// Marked `nonisolated(unsafe)` to enable clean removal during
-    /// deinitialization.
-    private nonisolated(unsafe) var boundaryTimeObserverToken: Any?
-
-    // MARK: - Init & Deinit
-
-    /// Initializes an observer for player playback time events.
-    /// - Parameter player: The AVPlayer instance to observe.
-    public init(with player: AVPlayer) {
-        self.player = player
+    periodicTimeObserverToken = player.addPeriodicTimeObserver(
+      forInterval: interval,
+      queue: .main
+    ) { [weak self] time in
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        _periodicTimePublisher.send(time)
+      }
     }
+  }
 
-    deinit {
-        if let token = periodicTimeObserverToken {
-            player.removeTimeObserver(token)
-        }
-        if let token = boundaryTimeObserverToken {
-            player.removeTimeObserver(token)
-        }
+  public func stopObservingPeriodicTime() {
+    if let token = periodicTimeObserverToken {
+      player.removeTimeObserver(token)
+      periodicTimeObserverToken = nil
     }
+  }
 
-    // MARK: - Periodic Time Observation
+  // MARK: - Boundary Time Observation
 
-    public func startObservingPeriodicTime(for interval: CMTime) {
-        stopObservingPeriodicTime()
+  public func startObservingBoundaryTime(for times: [CMTime]) {
+    stopObservingBoundaryTime()
 
-        periodicTimeObserverToken = player.addPeriodicTimeObserver(
-            forInterval: interval,
-            queue: .main
-        ) { [weak self] time in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                _periodicTimePublisher.send(time)
-            }
-        }
+    let boundaryTimes = times.map { NSValue(time: $0) }
+    boundaryTimeObserverToken = player.addBoundaryTimeObserver(
+      forTimes: boundaryTimes,
+      queue: .main
+    ) { [weak self] in
+      Task { @MainActor [weak self] in
+        guard let self else { return }
+        _boundaryTimePublisher.send(player.currentTime())
+      }
     }
+  }
 
-    public func stopObservingPeriodicTime() {
-        if let token = periodicTimeObserverToken {
-            player.removeTimeObserver(token)
-            periodicTimeObserverToken = nil
-        }
+  public func stopObservingBoundaryTime() {
+    if let token = boundaryTimeObserverToken {
+      player.removeTimeObserver(token)
+      boundaryTimeObserverToken = nil
     }
-
-    // MARK: - Boundary Time Observation
-
-    public func startObservingBoundaryTime(for times: [CMTime]) {
-        stopObservingBoundaryTime()
-
-        let boundaryTimes = times.map { NSValue(time: $0) }
-        boundaryTimeObserverToken = player.addBoundaryTimeObserver(
-            forTimes: boundaryTimes,
-            queue: .main
-        ) { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                _boundaryTimePublisher.send(player.currentTime())
-            }
-        }
-    }
-
-    public func stopObservingBoundaryTime() {
-        if let token = boundaryTimeObserverToken {
-            player.removeTimeObserver(token)
-            boundaryTimeObserverToken = nil
-        }
-    }
+  }
 }

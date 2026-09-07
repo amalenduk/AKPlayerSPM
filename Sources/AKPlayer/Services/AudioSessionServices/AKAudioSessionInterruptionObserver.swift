@@ -42,31 +42,31 @@ import Combine
 /// begins or ends.
 @MainActor
 public protocol AKAudioSessionInterruptionObserverDelegate: AnyObject {
-    /// Informs the delegate that an audio session interruption has begun.
-    /// - Parameters:
-    ///   - observer: The interruption observer reporting the event.
-    ///   - reason: The specific `AVAudioSession.InterruptionReason` causing the
-    /// interruption, if available.
-    ///   - audioSession: The active `AVAudioSession` instance undergoing
-    /// interruption.
-    func audioSessionInterruptionObserver(
-        _ observer: AKAudioSessionInterruptionObserverProtocol,
-        didBeginInterruptionWith reason: AVAudioSession.InterruptionReason?,
-        for audioSession: AVAudioSession
-    )
+  /// Informs the delegate that an audio session interruption has begun.
+  /// - Parameters:
+  ///   - observer: The interruption observer reporting the event.
+  ///   - reason: The specific `AVAudioSession.InterruptionReason` causing the
+  /// interruption, if available.
+  ///   - audioSession: The active `AVAudioSession` instance undergoing
+  /// interruption.
+  func audioSessionInterruptionObserver(
+    _ observer: AKAudioSessionInterruptionObserverProtocol,
+    didBeginInterruptionWith reason: AVAudioSession.InterruptionReason?,
+    for audioSession: AVAudioSession
+  )
 
-    /// Informs the delegate that an audio session interruption has ended.
-    /// - Parameters:
-    ///   - observer: The interruption observer reporting the event.
-    ///   - shouldResume: A Boolean value indicating whether playback should
-    /// automatically resume.
-    ///   - audioSession: The active `AVAudioSession` instance that recovered
-    /// from interruption.
-    func audioSessionInterruptionObserver(
-        _ observer: AKAudioSessionInterruptionObserverProtocol,
-        didEndInterruptionWith shouldResume: Bool,
-        for audioSession: AVAudioSession
-    )
+  /// Informs the delegate that an audio session interruption has ended.
+  /// - Parameters:
+  ///   - observer: The interruption observer reporting the event.
+  ///   - shouldResume: A Boolean value indicating whether playback should
+  /// automatically resume.
+  ///   - audioSession: The active `AVAudioSession` instance that recovered
+  /// from interruption.
+  func audioSessionInterruptionObserver(
+    _ observer: AKAudioSessionInterruptionObserverProtocol,
+    didEndInterruptionWith shouldResume: Bool,
+    for audioSession: AVAudioSession
+  )
 }
 
 // MARK: - AKAudioSessionInterruptionObserverProtocol
@@ -75,22 +75,22 @@ public protocol AKAudioSessionInterruptionObserverDelegate: AnyObject {
 /// interruptions.
 @MainActor
 public protocol AKAudioSessionInterruptionObserverProtocol: AnyObject {
-    /// The target `AVAudioSession` instance being monitored.
-    var audioSession: AVAudioSession { get }
+  /// The target `AVAudioSession` instance being monitored.
+  var audioSession: AVAudioSession { get }
 
-    /// A Boolean value indicating whether the audio session is currently in an
-    /// interrupted state.
-    var isInterrupted: Bool { get }
+  /// A Boolean value indicating whether the audio session is currently in an
+  /// interrupted state.
+  var isInterrupted: Bool { get }
 
-    /// The delegate object notified of audio interruption events.
-    var delegate: AKAudioSessionInterruptionObserverDelegate? { get set }
+  /// The delegate object notified of audio interruption events.
+  var delegate: AKAudioSessionInterruptionObserverDelegate? { get set }
 
-    /// Begins observing system-level audio session interruption notifications.
-    func startObserving()
+  /// Begins observing system-level audio session interruption notifications.
+  func startObserving()
 
-    /// Stops monitoring audio session interruption notifications and removes
-    /// active subscriptions.
-    func stopObserving()
+  /// Stops monitoring audio session interruption notifications and removes
+  /// active subscriptions.
+  func stopObserving()
 }
 
 // MARK: - AKAudioSessionInterruptionObserver
@@ -99,111 +99,114 @@ public protocol AKAudioSessionInterruptionObserverProtocol: AnyObject {
 /// utilizing Combine to monitor audio session interruptions.
 @MainActor
 public class AKAudioSessionInterruptionObserver: AKAudioSessionInterruptionObserverProtocol {
-    // MARK: - Properties
+  // MARK: - Properties
 
-    /// The `AVAudioSession` instance managed by this observer.
-    public let audioSession: AVAudioSession
+  /// The `AVAudioSession` instance managed by this observer.
+  public let audioSession: AVAudioSession
 
-    /// The delegate object notified of interruption callbacks.
-    public weak var delegate: AKAudioSessionInterruptionObserverDelegate?
+  /// The delegate object notified of interruption callbacks.
+  public weak var delegate: AKAudioSessionInterruptionObserverDelegate?
 
-    /// A Boolean flag tracking whether notification subscriptions are currently
-    /// active.
-    private var isObserving = false
+  /// A Boolean flag tracking whether notification subscriptions are currently
+  /// active.
+  private var isObserving = false
 
-    /// A Boolean value indicating whether the audio session is currently
-    /// interrupted.
-    public private(set) var isInterrupted = false
+  /// A Boolean value indicating whether the audio session is currently
+  /// interrupted.
+  public private(set) var isInterrupted = false
 
-    /// Container holding reactive Combine event subscriptions.
-    private var subscriptions = Set<AnyCancellable>()
+  /// Container holding reactive Combine event subscriptions.
+  private var subscriptions = Set<AnyCancellable>()
 
-    // MARK: - Init & Deinit
+  // MARK: - Init & Deinit
 
-    /// Initializes a new interruption observer with a target audio session.
-    /// - Parameter audioSession: The `AVAudioSession` instance to observe.
-    public init(audioSession: AVAudioSession) {
-        self.audioSession = audioSession
+  /// Initializes a new interruption observer with a target audio session.
+  /// - Parameter audioSession: The `AVAudioSession` instance to observe.
+  public init(audioSession: AVAudioSession) {
+    self.audioSession = audioSession
+  }
+
+  deinit {}
+
+  // MARK: - Observation Lifecycle
+
+  /// Starts observing audio session interruption notifications on the main
+  /// queue.
+  public func startObserving() {
+    guard !isObserving else { return }
+
+    NotificationCenter.default.publisher(
+      for: AVAudioSession.interruptionNotification, object: audioSession
+    )
+    .receive(on: DispatchQueue.main)
+    .sink { [weak self] notification in
+      guard let self else { return }
+      handleAudioSessionInterruption(notification)
+    }
+    .store(in: &subscriptions)
+
+    isObserving = true
+  }
+
+  /// Stops observing interruptions and clears active Combine subscriptions.
+  public func stopObserving() {
+    guard isObserving else { return }
+    subscriptions.removeAll()
+    isObserving = false
+  }
+
+  // MARK: - Handlers
+
+  /// Processes incoming interruption notifications and updates state or
+  /// notifies the delegate.
+  /// - Parameter notification: The `Notification` object containing
+  /// interruption metadata.
+  public func handleAudioSessionInterruption(_ notification: Notification) {
+    guard let userInfo = notification.userInfo,
+      let typeValue =
+        userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+      let type = AVAudioSession.InterruptionType(rawValue: typeValue)
+    else {
+      return
     }
 
-    deinit {}
+    switch type {
+    case .began:
+      var interruptionReason: AVAudioSession.InterruptionReason?
+      if let reasonValue =
+        userInfo[AVAudioSessionInterruptionReasonKey] as? UInt,
+        let reason =
+          AVAudioSession
+          .InterruptionReason(rawValue: reasonValue)
+      {
+        interruptionReason = reason
+      }
+      isInterrupted = true
+      delegate?.audioSessionInterruptionObserver(
+        self,
+        didBeginInterruptionWith: interruptionReason,
+        for: audioSession
+      )
 
-    // MARK: - Observation Lifecycle
+    case .ended:
+      guard
+        let optionsValue =
+          userInfo[AVAudioSessionInterruptionOptionKey] as? UInt
+      else {
+        return
+      }
+      isInterrupted = false
+      let options =
+        AVAudioSession
+        .InterruptionOptions(rawValue: optionsValue)
+      delegate?.audioSessionInterruptionObserver(
+        self,
+        didEndInterruptionWith: options.contains(.shouldResume),
+        for: audioSession
+      )
 
-    /// Starts observing audio session interruption notifications on the main
-    /// queue.
-    public func startObserving() {
-        guard !isObserving else { return }
-
-        NotificationCenter.default.publisher(
-            for: AVAudioSession.interruptionNotification, object: audioSession
-        )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] notification in
-            guard let self else { return }
-            handleAudioSessionInterruption(notification)
-        }
-        .store(in: &subscriptions)
-
-        isObserving = true
+    @unknown default:
+      break
     }
-
-    /// Stops observing interruptions and clears active Combine subscriptions.
-    public func stopObserving() {
-        guard isObserving else { return }
-        subscriptions.removeAll()
-        isObserving = false
-    }
-
-    // MARK: - Handlers
-
-    /// Processes incoming interruption notifications and updates state or
-    /// notifies the delegate.
-    /// - Parameter notification: The `Notification` object containing
-    /// interruption metadata.
-    public func handleAudioSessionInterruption(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let typeValue =
-              userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: typeValue)
-        else {
-            return
-        }
-
-        switch type {
-        case .began:
-            var interruptionReason: AVAudioSession.InterruptionReason?
-            if let reasonValue =
-                userInfo[AVAudioSessionInterruptionReasonKey] as? UInt,
-                let reason = AVAudioSession
-                .InterruptionReason(rawValue: reasonValue)
-            {
-                interruptionReason = reason
-            }
-            isInterrupted = true
-            delegate?.audioSessionInterruptionObserver(
-                self,
-                didBeginInterruptionWith: interruptionReason,
-                for: audioSession
-            )
-
-        case .ended:
-            guard let optionsValue =
-                userInfo[AVAudioSessionInterruptionOptionKey] as? UInt
-            else {
-                return
-            }
-            isInterrupted = false
-            let options = AVAudioSession
-                .InterruptionOptions(rawValue: optionsValue)
-            delegate?.audioSessionInterruptionObserver(
-                self,
-                didEndInterruptionWith: options.contains(.shouldResume),
-                for: audioSession
-            )
-
-        @unknown default:
-            break
-        }
-    }
+  }
 }

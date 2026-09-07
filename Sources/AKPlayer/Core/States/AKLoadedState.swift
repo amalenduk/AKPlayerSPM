@@ -36,162 +36,164 @@ import Combine
 /// pipeline and is ready for playback or seeking.
 @MainActor
 public class AKLoadedState: AKBaseState {
-    // MARK: - Properties
+  // MARK: - Properties
 
-    /// Indicates whether autoplay should trigger automatically once preparation
-    /// finishes.
-    public private(set) var autoPlay: Bool
+  /// Indicates whether autoplay should trigger automatically once preparation
+  /// finishes.
+  public private(set) var autoPlay: Bool
 
-    /// Optional target position to navigate to upon loading.
-    private let position: AKSeekTarget?
+  /// Optional target position to navigate to upon loading.
+  private let position: AKSeekTarget?
 
-    /// Optional target playback speed multiplier to apply on play.
-    private var rate: AKPlaybackRate?
+  /// Optional target playback speed multiplier to apply on play.
+  private var rate: AKPlaybackRate?
 
-    /// Storage set for managing reactive Combine event subscriptions.
-    private var subscriptions = Set<AnyCancellable>()
+  /// Storage set for managing reactive Combine event subscriptions.
+  private var subscriptions = Set<AnyCancellable>()
 
-    // MARK: - Initialization & Deinitialization
+  // MARK: - Initialization & Deinitialization
 
-    /// Initializes a loaded state instance associated with the specified player
-    /// controller.
-    /// - Parameters:
-    ///   - playerController: The target player controller executing playback
-    /// commands.
-    ///   - autoPlay: Controls whether playback should automatically start upon
-    /// entering this state.
-    ///   - position: An optional initial position to apply on load.
-    ///   - rate: An optional initial playback rate speed multiplier.
-    public init(
-        playerController: any AKPlayerControllerProtocol,
-        autoPlay: Bool = false,
-        position: AKSeekTarget? = nil,
-        rate: AKPlaybackRate? = nil
-    ) {
-        self.autoPlay = autoPlay
-        self.position = position
-        self.rate = rate
-        super.init(playerController: playerController, state: .loaded)
+  /// Initializes a loaded state instance associated with the specified player
+  /// controller.
+  /// - Parameters:
+  ///   - playerController: The target player controller executing playback
+  /// commands.
+  ///   - autoPlay: Controls whether playback should automatically start upon
+  /// entering this state.
+  ///   - position: An optional initial position to apply on load.
+  ///   - rate: An optional initial playback rate speed multiplier.
+  public init(
+    playerController: any AKPlayerControllerProtocol,
+    autoPlay: Bool = false,
+    position: AKSeekTarget? = nil,
+    rate: AKPlaybackRate? = nil
+  ) {
+    self.autoPlay = autoPlay
+    self.position = position
+    self.rate = rate
+    super.init(playerController: playerController, state: .loaded)
+  }
+
+  deinit {}
+
+  // MARK: - Lifecycle Hooks
+
+  /// Processes state updates, sets up KVO observations, and handles automatic
+  /// seek or playback triggers.
+  override public func processStateChange() {
+    startObservingPlayerProperties()
+
+    if let currentMedia = playerController.currentMedia {
+      playerController.emit(.timeDidChange(playerController.currentTime))
     }
 
-    deinit {}
-
-    // MARK: - Lifecycle Hooks
-
-    /// Processes state updates, sets up KVO observations, and handles automatic
-    /// seek or playback triggers.
-    override public func processStateChange() {
-        startObservingPlayerProperties()
-
-        if let currentMedia = playerController.currentMedia {
-            playerController.emit(.timeDidChange(playerController.currentTime))
+    if autoPlay {
+      play()
+    } else if let position,
+      let currentMedia = playerController.currentMedia
+    {
+      let (canSeek, reason) = currentMedia.seekingThroughMedia
+        .canSeek(to: position)
+      guard canSeek else {
+        if let reason {
+          playerController.emit(.commandUnavailable(reason: reason))
         }
+        return
+      }
 
-        if autoPlay {
-            play()
-        } else if let position,
-                  let currentMedia = playerController.currentMedia
-        {
-            let (canSeek, reason) = currentMedia.seekingThroughMedia
-                .canSeek(to: position)
-            guard canSeek else {
-                if let reason {
-                    playerController.emit(.commandUnavailable(reason: reason))
-                }
-                return
-            }
+      Task {
+        await seek(to: position)
+      }
+    }
+  }
 
-            Task {
-                await seek(to: position)
-            }
-        }
+  /// Cleans up Combine observation pipelines before transitioning to another
+  /// state.
+  override public func beforeStateChange() {
+    subscriptions.removeAll()
+  }
+
+  // MARK: - Commands
+
+  /// Commands the player to unpause and enter the buffering state prior to
+  /// active playback.
+  override public func play() {
+    let controller = AKBufferingState(
+      playerController: playerController,
+      autoPlay: true,
+      rate: rate
+    )
+    if let position {
+      Task {
+        await controller.seek(to: position)
+      }
+    }
+    change(controller)
+  }
+
+  /// Commands the player to unpause and play at a specific target rate
+  /// multiplier.
+  /// - Parameter rate: Target playback rate multiplier.
+  override public func play(at rate: AKPlaybackRate) {
+    guard let currentMedia = playerController.currentMedia,
+      currentMedia.canPlay(at: rate)
+    else {
+      playerController
+        .emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
+      return
     }
 
-    /// Cleans up Combine observation pipelines before transitioning to another
-    /// state.
-    override public func beforeStateChange() {
-        subscriptions.removeAll()
+    let controller = AKBufferingState(
+      playerController: playerController,
+      autoPlay: true,
+      rate: rate
+    )
+    if let position {
+      Task {
+        await controller.seek(to: position)
+      }
     }
+    change(controller)
+  }
 
-    // MARK: - Commands
+  /// Commands the player to pause. Disables `autoPlay` if queued, or emits an
+  /// `.alreadyPaused` unavailability warning.
+  override public func pause() {
+    if autoPlay {
+      autoPlay = false
+    } else {
+      playerController.emit(.commandUnavailable(reason: .alreadyPaused))
+    }
+  }
 
-    /// Commands the player to unpause and enter the buffering state prior to
-    /// active playback.
-    override public func play() {
-        let controller = AKBufferingState(
-            playerController: playerController,
-            autoPlay: true,
-            rate: rate
+  // MARK: - Private Pipeline Helpers
+
+  /// Binds KVO status publishers to monitor player status and missing current
+  /// items.
+  private func startObservingPlayerProperties() {
+    playerController.player.publisher(for: \.status)
+      .prepend(playerController.player.status)
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] status in
+        guard let self, status == .failed else { return }
+        let controller = AKFailedState(
+          playerController: playerController,
+          error: .playerCanNoLongerPlay(
+            error: playerController.player
+              .error)
         )
-        if let position {
-            Task {
-                await controller.seek(to: position)
-            }
-        }
         change(controller)
-    }
+      }
+      .store(in: &subscriptions)
 
-    /// Commands the player to unpause and play at a specific target rate
-    /// multiplier.
-    /// - Parameter rate: Target playback rate multiplier.
-    override public func play(at rate: AKPlaybackRate) {
-        guard let currentMedia = playerController.currentMedia,
-              currentMedia.canPlay(at: rate)
-        else {
-            playerController
-                .emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
-            return
-        }
-
-        let controller = AKBufferingState(
-            playerController: playerController,
-            autoPlay: true,
-            rate: rate
-        )
-        if let position {
-            Task {
-                await controller.seek(to: position)
-            }
-        }
-        change(controller)
-    }
-
-    /// Commands the player to pause. Disables `autoPlay` if queued, or emits an
-    /// `.alreadyPaused` unavailability warning.
-    override public func pause() {
-        if autoPlay {
-            autoPlay = false
-        } else {
-            playerController.emit(.commandUnavailable(reason: .alreadyPaused))
-        }
-    }
-
-    // MARK: - Private Pipeline Helpers
-
-    /// Binds KVO status publishers to monitor player status and missing current
-    /// items.
-    private func startObservingPlayerProperties() {
-        playerController.player.publisher(for: \.status)
-            .prepend(playerController.player.status)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in
-                guard let self, status == .failed else { return }
-                let controller = AKFailedState(
-                    playerController: playerController,
-                    error: .playerCanNoLongerPlay(error: playerController.player
-                        .error)
-                )
-                change(controller)
-            }
-            .store(in: &subscriptions)
-
-        playerController.player.publisher(for: \.timeControlStatus)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self,
-                      playerController.player.currentItem == nil else { return }
-                stop()
-            }
-            .store(in: &subscriptions)
-    }
+    playerController.player.publisher(for: \.timeControlStatus)
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] _ in
+        guard let self,
+          playerController.player.currentItem == nil
+        else { return }
+        stop()
+      }
+      .store(in: &subscriptions)
+  }
 }

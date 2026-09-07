@@ -32,25 +32,25 @@ import UIKit
 
 /// A simple `UIView` subclass backed by an `AVPlayerLayer` layer.
 open class AKPlayerView: UIView {
-    /// The player from which to source the media content for the view
-    /// controller.
-    open var player: AVPlayer? {
-        get { playerLayer.player }
-        set { playerLayer.player = newValue }
-    }
+  /// The player from which to source the media content for the view
+  /// controller.
+  open var player: AVPlayer? {
+    get { playerLayer.player }
+    set { playerLayer.player = newValue }
+  }
 
-    open var playerLayer: AVPlayerLayer {
-        layer as! AVPlayerLayer
-    }
+  open var playerLayer: AVPlayerLayer {
+    layer as! AVPlayerLayer
+  }
 
-    /// Override UIView property
-    override public static var layerClass: AnyClass {
-        AVPlayerLayer.self
-    }
+  /// Override UIView property
+  override public static var layerClass: AnyClass {
+    AVPlayerLayer.self
+  }
 
-    /** Specifies how the video is displayed within a player layer’s bounds.
-     (AVLayerVideoGravityResizeAspect is default) */
-    open func setVideoFillMode(_ fillMode: String) {
-        playerLayer.videoGravity = AVLayerVideoGravity(rawValue: fillMode)
-    }
+  /** Specifies how the video is displayed within a player layer’s bounds.
+   (AVLayerVideoGravityResizeAspect is default) */
+  open func setVideoFillMode(_ fillMode: String) {
+    playerLayer.videoGravity = AVLayerVideoGravity(rawValue: fillMode)
+  }
 }
