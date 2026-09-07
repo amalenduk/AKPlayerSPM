@@ -127,8 +127,8 @@ public class AKNetworkStatusMonitor: AKNetworkStatusMonitorProtocol {
     monitor.pathUpdateHandler = { [weak self] path in
       Task { @MainActor [weak self] in
         guard let self else { return }
-        latestPath = path
-        networkStatusSubject.send(path.status)
+        self.latestPath = path
+        self.networkStatusSubject.send(path.status)
       }
     }
 

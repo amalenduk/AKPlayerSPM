@@ -367,7 +367,7 @@ public final class AKPlayerItemNotificationsObserver:
           return
         }
 
-        failedToPlayToEndContinuation?.yield(
+        self.failedToPlayToEndContinuation?.yield(
           .playerItemFailedToPlay(
             reason: .failedToPlayToEndTime(
               error: error

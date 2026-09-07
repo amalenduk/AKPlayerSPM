@@ -105,7 +105,7 @@ public class AKPlayerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol 
     ) { [weak self] time in
       Task { @MainActor [weak self] in
         guard let self else { return }
-        _periodicTimePublisher.send(time)
+        self._periodicTimePublisher.send(time)
       }
     }
   }
@@ -129,7 +129,7 @@ public class AKPlayerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol 
     ) { [weak self] in
       Task { @MainActor [weak self] in
         guard let self else { return }
-        _boundaryTimePublisher.send(player.currentTime())
+        self._boundaryTimePublisher.send(self.player.currentTime())
       }
     }
   }
