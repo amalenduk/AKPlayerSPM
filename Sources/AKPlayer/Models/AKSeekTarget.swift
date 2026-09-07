@@ -23,8 +23,8 @@
 //  SOFTWARE.
 //
 
-import Foundation
 import CoreMedia
+import Foundation
 
 // MARK: - AKSeekTarget
 
@@ -32,26 +32,25 @@ import CoreMedia
 ///
 /// Percentage values use `0...100` (percent of duration), matching standard AVFoundation/player semantics.
 public enum AKSeekTarget: Equatable, Sendable {
-    
     // MARK: - Cases
-    
+
     /// Absolute media time.
     case time(CMTime)
-    
+
     /// Absolute position in seconds.
     case seconds(Double)
-    
+
     /// Offset from the current playhead in seconds. Negative values seek backward.
     case offset(Double)
-    
+
     /// Position as a percentage of duration in `0...100`.
     case percentage(Double)
-    
+
     /// Absolute wall-clock date (used primarily for live HLS streams).
     case date(Date)
-    
+
     // MARK: - Methods
-    
+
     /// Resolves this target to a valid absolute `CMTime`.
     ///
     /// - Parameters:
@@ -67,46 +66,46 @@ public enum AKSeekTarget: Equatable, Sendable {
         clampToDuration: Bool = true
     ) -> CMTime? {
         let resolvedTime: CMTime?
-        
+
         switch self {
-        case .time(let time):
+        case let .time(time):
             // Return time only if valid; reject .invalid or .indefinite times.
             resolvedTime = time.isValid ? time : nil
-            
-        case .seconds(let seconds):
+
+        case let .seconds(seconds):
             // Guard against NaN or Infinity from calculations/UI controls.
             guard seconds.isFinite else { return nil }
             resolvedTime = CMTime(seconds: seconds, preferredTimescale: preferredTimescale)
-            
-        case .offset(let offset):
+
+        case let .offset(offset):
             // Guard against NaN or Infinity offset inputs.
             guard offset.isFinite, currentTime.isValid else { return nil }
             let offsetTime = CMTime(seconds: offset, preferredTimescale: preferredTimescale)
             resolvedTime = CMTimeAdd(currentTime, offsetTime)
-            
-        case .percentage(let percentage):
+
+        case let .percentage(percentage):
             // Percentage requires a finite input and a valid, numeric, non-zero duration.
             guard percentage.isFinite, duration.isNumeric, duration > .zero else { return nil }
-            
+
             // Clamp percentage input to valid bounds (0%...100%).
             let clampedPercentage = min(max(percentage, 0.0), 100.0)
             let totalSeconds = CMTimeGetSeconds(duration)
             let targetSeconds = totalSeconds * (clampedPercentage / 100.0)
-            
+
             resolvedTime = CMTime(seconds: targetSeconds, preferredTimescale: preferredTimescale)
-            
+
         case .date:
             // Date-based targets cannot be resolved to a relative CMTime and must be dispatched to AVPlayer.seek(to: Date) directly.
             return nil
         }
-        
+
         // Optionally clamp the output time between CMTime.zero and asset duration.
         guard let targetTime = resolvedTime else { return nil }
-        
+
         if clampToDuration, duration.isNumeric, duration > .zero {
             return min(max(targetTime, .zero), duration)
         }
-        
+
         return targetTime
     }
 }

@@ -28,17 +28,18 @@ import AVFoundation
 // MARK: - AVPlayerItem Extensions
 
 public extension AVPlayerItem {
-    
     // MARK: - Capabilities
-    
+
     /// Evaluates whether the player item can step by the specified frame count directionally.
     /// - Parameter count: The frame step count. Positive for forward, negative for backward.
     /// - Returns: A Boolean value indicating whether stepping in the requested direction is supported.
     func canStep(by count: Int) -> Bool {
-        var isForward: Bool { return count.signum() == 1 }
+        var isForward: Bool {
+            return count.signum() == 1
+        }
         return isForward ? canStepForward : canStepBackward
     }
-    
+
     /// Determines whether the player item can play at a given playback speed rate.
     /// - Parameter rate: The target playback speed rate to evaluate.
     /// - Returns: A Boolean value indicating capability to play at the specified rate.
@@ -48,9 +49,9 @@ public extension AVPlayerItem {
             switch rate.rate {
             case 2.0...:
                 return canPlayFastForward
-            case 1.0..<2.0:
+            case 1.0 ..< 2.0:
                 return true
-            case 0.0..<1.0:
+            case 0.0 ..< 1.0:
                 return canPlaySlowForward
             default:
                 return false
@@ -59,7 +60,7 @@ public extension AVPlayerItem {
             switch rate.rate {
             case -1.0:
                 return canPlayReverse
-            case -1.0..<0.0:
+            case -1.0 ..< 0.0:
                 return canPlaySlowReverse
             case ..<(-1.0):
                 return canPlayFastReverse

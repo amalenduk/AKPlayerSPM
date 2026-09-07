@@ -30,17 +30,16 @@ import MediaPlayer
 
 /// A concrete container holding combined static and dynamic metadata payload sources for MPNowPlayingInfoCenter.
 public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol, Sendable {
-    
     // MARK: - Properties
-    
+
     /// The static metadata describing the media asset.
     public var staticMetadata: (any AKNowPlayableStaticMetadataProtocol)?
-    
+
     /// The dynamic metadata reflecting live playback state.
     public var dynamicMetadata: (any AKNowPlayableDynamicMetadataProtocol)?
-    
+
     // MARK: - Init
-    
+
     /// Initializes a combined metadata instance.
     /// - Parameters:
     ///   - staticMetadata: Immutable or rarely changed metadata payload.
@@ -58,47 +57,46 @@ public struct AKNowPlayableMetadata: AKNowPlayableInfoProtocol, Sendable {
 
 /// A concrete struct implementing static metadata properties for Now Playing displays.
 public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol, @unchecked Sendable {
-    
     // MARK: - Properties
-    
+
     /// Destination asset URL.
     public var assetURL: URL
-    
+
     /// Media type classification.
     public var mediaType: MPNowPlayingInfoMediaType
-    
+
     /// Indicates if the item is a live stream.
     public var isLiveStream: Bool
-    
+
     /// The primary title.
     public var title: String
-    
+
     /// The primary artist.
     public var artist: String?
-    
+
     /// Associated media artwork source.
     public var artwork: Artwork?
-    
+
     /// The album artist.
     public var albumArtist: String?
-    
+
     /// The album title.
     public var albumTitle: String?
-    
+
     /// Collection identifier.
     public var collectionIdentifier: String?
-    
+
     /// External content identifier.
     public var externalContentIdentifier: String?
-    
+
     /// External user profile identifier.
     public var externalUserProfileIdentifier: String?
-    
+
     /// Time ranges for advertisements.
     public var adTimeRanges: [MPAdTimeRange]?
-    
+
     // MARK: - Init
-    
+
     /// Initializes a static metadata payload container.
     /// - Parameters:
     ///   - assetURL: Destination asset URL.
@@ -145,54 +143,54 @@ public struct AKNowPlayableStaticMetadata: AKNowPlayableStaticMetadataProtocol, 
 // MARK: - AKNowPlayableDynamicMetadata
 
 /// A concrete struct implementing dynamic metadata properties for Now Playing displays.
-public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol, @unchecked Sendable {
-    
+public struct AKNowPlayableDynamicMetadata: AKNowPlayableDynamicMetadataProtocol, @unchecked
+Sendable {
     // MARK: - Properties
-    
+
     /// Current playback speed multiplier.
     public var rate: Double
-    
+
     /// Default intended playback rate.
     public var defaultRate: Double
-    
+
     /// Elapsed playback time in seconds.
     public var position: Double?
-    
+
     /// Total duration of the media in seconds.
     public var duration: Float?
-    
+
     /// Active language options.
     public var currentLanguageOptions: [MPNowPlayingInfoLanguageOption]?
-    
+
     /// Available language options.
     public var availableLanguageOptionGroups: [MPNowPlayingInfoLanguageOptionGroup]?
-    
+
     /// Total chapter count.
     public var chapterCount: Int?
-    
+
     /// Current chapter index.
     public var chapterNumber: Int?
-    
+
     /// Start offset for credits.
     public var creditsStartTime: Double?
-    
+
     /// Current wall-clock playback timestamp.
     public var currentPlaybackDate: Date?
-    
+
     /// Playback completion percentage.
     public var playbackProgress: Float?
-    
+
     /// Total items in queue.
     public var playbackQueueCount: Int?
-    
+
     /// Current index within queue.
     public var playbackQueueIndex: Int?
-    
+
     /// Unique service identifier.
     public var serviceIdentifier: String?
-    
+
     // MARK: - Init
-    
+
     /// Initializes a dynamic metadata payload container.
     /// - Parameters:
     ///   - rate: Current playback speed multiplier.

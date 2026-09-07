@@ -33,16 +33,15 @@ import Foundation
 /// and handle state-specific behaviors, action validations, and state transitions within the state pattern.
 @MainActor
 public protocol AKPlayerStateControllerProtocol: AKPlayerActionsProtocol {
-    
     /// The underlying player controller driving playback, asset management, and audio state transitions.
     var playerController: any AKPlayerControllerProtocol { get }
-    
+
     /// The current operational state classification represented by this state controller instance.
     var state: AKPlayerState { get }
-    
+
     /// Indicates whether media playback should automatically begin upon asset load completion.
     var autoPlay: Bool { get }
-    
+
     /// Evaluates current state conditions and performs necessary state transition or status evaluation logic.
     func processStateChange()
 }
@@ -50,7 +49,6 @@ public protocol AKPlayerStateControllerProtocol: AKPlayerActionsProtocol {
 // MARK: - Default Implementations
 
 public extension AKPlayerStateControllerProtocol {
-    
     /// Default implementation returning `false` for automatic playback behavior.
     var autoPlay: Bool {
         return false

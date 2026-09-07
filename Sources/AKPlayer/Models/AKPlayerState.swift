@@ -29,9 +29,8 @@ import Foundation
 
 /// Represents the current operational state of the media player.
 public enum AKPlayerState: String, CustomStringConvertible, Sendable, Equatable {
-    
     // MARK: - Cases
-    
+
     /// Initial state when no media is loaded.
     case idle
     /// Media asset is currently being loaded.
@@ -50,9 +49,9 @@ public enum AKPlayerState: String, CustomStringConvertible, Sendable, Equatable 
     case waitingForNetwork
     /// Player encountered an unrecoverable error.
     case failed
-    
+
     // MARK: - Computed Properties
-    
+
     /// A human-readable description of the player state.
     public var description: String {
         switch self {
@@ -62,61 +61,61 @@ public enum AKPlayerState: String, CustomStringConvertible, Sendable, Equatable 
             return rawValue.capitalized
         }
     }
-    
+
     /// Indicates whether the player is currently idle.
     public var isIdle: Bool {
         return self == .idle
     }
-    
+
     /// Indicates whether the player is currently loading media.
     public var isLoading: Bool {
         return self == .loading
     }
-    
+
     /// Indicates whether the media asset is loaded and ready.
     public var isLoaded: Bool {
         return self == .loaded
     }
-    
+
     /// Indicates whether the player is buffering content.
     public var isBuffering: Bool {
         return self == .buffering
     }
-    
+
     /// Indicates whether media is currently playing.
     public var isPlaying: Bool {
         return self == .playing
     }
-    
+
     /// Indicates whether playback is paused.
     public var isPaused: Bool {
         return self == .paused
     }
-    
+
     /// Indicates whether playback has stopped.
     public var isStopped: Bool {
         return self == .stopped
     }
-    
+
     /// Indicates whether the player is waiting for network connectivity.
     public var isWaitingForNetwork: Bool {
         return self == .waitingForNetwork
     }
-    
+
     /// Indicates whether the player is in a failed state.
     public var isFailed: Bool {
         return self == .failed
     }
-    
+
     // MARK: - Helper Methods
-    
+
     /// Checks if the current state matches any of the provided states.
     /// - Parameter states: An array of target states.
     /// - Returns: `true` if the current state matches any state in the list.
     public func isAny(of states: [AKPlayerState]) -> Bool {
         return states.contains(self)
     }
-    
+
     /// Checks if the current state does not match any of the provided states.
     /// - Parameter states: An array of target states.
     /// - Returns: `true` if the current state does not match any state in the list.

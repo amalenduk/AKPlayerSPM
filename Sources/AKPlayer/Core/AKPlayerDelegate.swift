@@ -31,7 +31,6 @@ import Foundation
 /// Delegate protocol for receiving high-level player state changes, playback progress, media updates, and error events.
 @MainActor
 public protocol AKPlayerDelegate: AnyObject {
-    
     /// Called when the player transitions to a new operational state.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -40,7 +39,7 @@ public protocol AKPlayerDelegate: AnyObject {
         _ player: AKPlayer,
         didChangeStateTo state: AKPlayerState
     )
-    
+
     /// Called when the active playable media item changes.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -49,7 +48,7 @@ public protocol AKPlayerDelegate: AnyObject {
         _ player: AKPlayer,
         didChangeMediaTo media: any AKPlayable
     )
-    
+
     /// Called when the player's effective playback rate changes.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -60,7 +59,7 @@ public protocol AKPlayerDelegate: AnyObject {
         didChangePlaybackRateTo newRate: AKPlaybackRate,
         from oldRate: AKPlaybackRate
     )
-    
+
     /// Called periodically as playback progresses to report time updates.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -71,7 +70,7 @@ public protocol AKPlayerDelegate: AnyObject {
         didChangeCurrentTimeTo currentTime: CMTime,
         for media: any AKPlayable
     )
-    
+
     /// Called when media playback reaches a pre-registered boundary time observer milestone.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -82,7 +81,7 @@ public protocol AKPlayerDelegate: AnyObject {
         didInvokeBoundaryTimeObserverAt time: CMTime,
         for media: any AKPlayable
     )
-    
+
     /// Called when media playback reaches the end of its timeline.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -93,7 +92,7 @@ public protocol AKPlayerDelegate: AnyObject {
         didReachEndAt time: CMTime,
         for media: any AKPlayable
     )
-    
+
     /// Called when the player volume is modified.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -102,7 +101,7 @@ public protocol AKPlayerDelegate: AnyObject {
         _ player: AKPlayer,
         didChangeVolumeTo volume: Float
     )
-    
+
     /// Called when the player's audio muted status changes.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -111,7 +110,7 @@ public protocol AKPlayerDelegate: AnyObject {
         _ player: AKPlayer,
         didChangeMutedStatusTo isMuted: Bool
     )
-    
+
     /// Called when a requested player command is blocked by state preflight prerequisites.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -120,7 +119,7 @@ public protocol AKPlayerDelegate: AnyObject {
         _ player: AKPlayer,
         didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason
     )
-    
+
     /// Called when an unrecoverable error occurs within the player pipeline.
     /// - Parameters:
     ///   - player: The issuing player instance.
@@ -134,58 +133,57 @@ public protocol AKPlayerDelegate: AnyObject {
 // MARK: - Default Implementations
 
 public extension AKPlayerDelegate {
-    
     func akPlayer(
-        _ player: AKPlayer,
-        didChangeStateTo state: AKPlayerState
-    ) { }
-    
+        _: AKPlayer,
+        didChangeStateTo _: AKPlayerState
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didChangeMediaTo media: any AKPlayable
-    ) { }
-    
+        _: AKPlayer,
+        didChangeMediaTo _: any AKPlayable
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didChangePlaybackRateTo newRate: AKPlaybackRate,
-        from oldRate: AKPlaybackRate
-    ) { }
-    
+        _: AKPlayer,
+        didChangePlaybackRateTo _: AKPlaybackRate,
+        from _: AKPlaybackRate
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didChangeCurrentTimeTo currentTime: CMTime,
-        for media: any AKPlayable
-    ) { }
-    
+        _: AKPlayer,
+        didChangeCurrentTimeTo _: CMTime,
+        for _: any AKPlayable
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didInvokeBoundaryTimeObserverAt time: CMTime,
-        for media: any AKPlayable
-    ) { }
-    
+        _: AKPlayer,
+        didInvokeBoundaryTimeObserverAt _: CMTime,
+        for _: any AKPlayable
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didReachEndAt time: CMTime,
-        for media: any AKPlayable
-    ) { }
-    
+        _: AKPlayer,
+        didReachEndAt _: CMTime,
+        for _: any AKPlayable
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didChangeVolumeTo volume: Float
-    ) { }
-    
+        _: AKPlayer,
+        didChangeVolumeTo _: Float
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didChangeMutedStatusTo isMuted: Bool
-    ) { }
-    
+        _: AKPlayer,
+        didChangeMutedStatusTo _: Bool
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didEncounterUnavailableAction reason: AKPlayerUnavailableCommandReason
-    ) { }
-    
+        _: AKPlayer,
+        didEncounterUnavailableAction _: AKPlayerUnavailableCommandReason
+    ) {}
+
     func akPlayer(
-        _ player: AKPlayer,
-        didFailWith error: AKPlayerError
-    ) { }
+        _: AKPlayer,
+        didFailWith _: AKPlayerError
+    ) {}
 }

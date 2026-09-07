@@ -29,10 +29,9 @@ import MediaPlayer
 // MARK: - Integration with AKPlayer
 
 /// Extension to AKPlayer for convenient Now Playing session setup.
-extension AKPlayer {
-    
+public extension AKPlayer {
     /// Configures Now Playing with a preset configuration.
-    public func configureNowPlaying(with configuration: AKNowPlayingCommandConfiguration) async {
+    func configureNowPlaying(with configuration: AKNowPlayingCommandConfiguration) async {
         guard let session = nowPlayingSession else { return }
         await session.applyConfiguration(configuration)
     }
@@ -49,18 +48,17 @@ public protocol AKNowPlayingSessionProvider: AnyObject {
 // MARK: - Command Preset Manager
 
 /// Manages predefined command presets for different use cases.
-public struct AKNowPlayingCommandPresets {
-    
+public enum AKNowPlayingCommandPresets {
     /// Preset: Minimal playback controls only
     public static func minimal() -> AKNowPlayingCommandConfiguration {
         return AKNowPlayingCommandConfiguration.minimal()
     }
-    
+
     /// Preset: Standard music streaming
     public static func music() -> AKNowPlayingCommandConfiguration {
         return AKNowPlayingCommandConfiguration.audio()
     }
-    
+
     /// Preset: Podcast with 15-second skip back, 30-second skip forward
     public static func podcast() -> AKNowPlayingCommandConfiguration {
         var config = AKNowPlayingCommandConfiguration.audio()
@@ -69,7 +67,7 @@ public struct AKNowPlayingCommandPresets {
         _ = config.disable(.changeShuffleMode)
         return config
     }
-    
+
     /// Preset: Audiobook with bookmarking
     public static func audiobook() -> AKNowPlayingCommandConfiguration {
         var config = AKNowPlayingCommandConfiguration.audio()
@@ -77,12 +75,12 @@ public struct AKNowPlayingCommandPresets {
         _ = config.disable(.changeShuffleMode)
         return config
     }
-    
+
     /// Preset: Standard video playback
     public static func video() -> AKNowPlayingCommandConfiguration {
         return AKNowPlayingCommandConfiguration.video()
     }
-    
+
     /// Preset: Live stream (no seeking)
     public static func livestream() -> AKNowPlayingCommandConfiguration {
         var config = AKNowPlayingCommandConfiguration.audio()

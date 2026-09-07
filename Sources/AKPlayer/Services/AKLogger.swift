@@ -1,5 +1,5 @@
 //
-//  AKLogCategory.swift
+//  AKLogger.swift
 //  AKPlayer
 //
 //  Copyright (c) 2020 Amalendu Kar
@@ -45,38 +45,37 @@ public enum AKLogCategory: String, Sendable {
 /// receive diagnostics through the system Console app rather than depending
 /// on AKPlayer's internal logging implementation.
 public enum AKLogger: Sendable {
-    
     // MARK: - Subsystem & Static Loggers
-    
+
     private static let subsystem = "com.AKPlayer.framework"
-    
+
     private static let player = Logger(
         subsystem: subsystem,
         category: AKLogCategory.player.rawValue
     )
-    
+
     private static let media = Logger(
         subsystem: subsystem,
         category: AKLogCategory.media.rawValue
     )
-    
+
     private static let session = Logger(
         subsystem: subsystem,
         category: AKLogCategory.session.rawValue
     )
-    
+
     private static let remote = Logger(
         subsystem: subsystem,
         category: AKLogCategory.remote.rawValue
     )
-    
+
     private static let lifecycle = Logger(
         subsystem: subsystem,
         category: AKLogCategory.lifecycle.rawValue
     )
-    
+
     // MARK: - Logger Resolution
-    
+
     private static func logger(for category: AKLogCategory) -> Logger {
         switch category {
         case .player:
@@ -96,9 +95,8 @@ public enum AKLogger: Sendable {
 // MARK: - AKLogger + Autoclosure Logging API
 
 public extension AKLogger {
-    
     // MARK: - Debug
-    
+
     /// Logs a debug-level message.
     ///
     /// - Parameters:
@@ -112,9 +110,9 @@ public extension AKLogger {
             "\(message, privacy: .public)"
         )
     }
-    
+
     // MARK: - Info
-    
+
     /// Logs an info-level message.
     ///
     /// - Parameters:
@@ -128,9 +126,9 @@ public extension AKLogger {
             "\(message, privacy: .public)"
         )
     }
-    
+
     // MARK: - Warning
-    
+
     /// Logs a warning-level message.
     ///
     /// - Parameters:
@@ -144,9 +142,9 @@ public extension AKLogger {
             "\(message, privacy: .public)"
         )
     }
-    
+
     // MARK: - Error
-    
+
     /// Logs an error-level message, optionally including an underlying error.
     ///
     /// - Parameters:

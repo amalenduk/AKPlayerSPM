@@ -28,19 +28,18 @@ import AVFoundation
 // MARK: - AVPlayer.TimeControlStatus Extensions
 
 extension AVPlayer.TimeControlStatus {
-    
     // MARK: - Convenience Properties
-    
+
     /// Indicates whether the player is currently in a paused state.
     var isPaused: Bool {
         return self == .paused
     }
-    
+
     /// Indicates whether the player is actively playing media.
     var isPlaying: Bool {
         return self == .playing
     }
-    
+
     /// Indicates whether the player is waiting for conditions to be met before playing at the specified rate.
     var isWaitingToPlayAtSpecifiedRate: Bool {
         return self == .waitingToPlayAtSpecifiedRate

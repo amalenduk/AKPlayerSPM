@@ -29,31 +29,30 @@ import Foundation
 
 /// An enumeration representing all potential error states encountered during playback, asset loading, track management, or audio session configuration.
 public enum AKPlayerError: Error, Equatable, @unchecked Sendable {
-    
     // MARK: - Cases
-    
+
     case noItemToPlay
     case playerItemNotReady
     case itemFailedToPlayToEndTime
     case playerCanNoLongerPlay(error: Error?)
-    
+
     case assetLoadingFailed(reason: AssetLoadingFailureReason)
     case playerItemLoadingFailed(reason: PlayerItemLoadingFailureReason)
     case playerItemFailedToPlay(reason: PlayerItemFailedToPlayReason)
-    
+
     case audioSessionFailure(reason: AudioSessionFailureReason)
     case nowPlayingSessionFailure
     case trackSelectionFailure(reason: TrackSelectionFailureReason)
-    
+
     // MARK: - Sub-Reason Enumerations
-    
+
     /// Reasons for audio session configuration failures.
     public enum AudioSessionFailureReason: @unchecked Sendable {
         case failedToActivate(error: Error)
         case failedToDeactivate(error: Error)
         case failedToSetCategory(error: Error)
     }
-    
+
     /// Reasons for asset loading failures.
     public enum AssetLoadingFailureReason: @unchecked Sendable {
         case notPlayable
@@ -62,18 +61,18 @@ public enum AKPlayerError: Error, Equatable, @unchecked Sendable {
         case notConnectedToInternet(error: Error)
         case assetInitializationFailed(error: Error)
     }
-    
+
     /// Reasons for player item loading failures.
     public enum PlayerItemLoadingFailureReason: @unchecked Sendable {
         case statusLoadingFailed(error: Error)
         case invalidAsset
     }
-    
+
     /// Reasons for player item execution failures.
     public enum PlayerItemFailedToPlayReason: @unchecked Sendable {
         case failedToPlayToEndTime(error: Error)
     }
-    
+
     /// Reasons for track selection and media group failures.
     public enum TrackSelectionFailureReason: @unchecked Sendable {
         case emptySelectionForbidden(AKTrackType)
@@ -86,32 +85,37 @@ public enum AKPlayerError: Error, Equatable, @unchecked Sendable {
 extension AKPlayerError.AudioSessionFailureReason: LocalizedError {
     public var localizedDescription: String {
         switch self {
-        case .failedToActivate(let error):
+        case let .failedToActivate(error):
             return NSLocalizedString(
                 "Failed to activate audio session with error: \(error.localizedDescription)",
                 comment: "Error description for failedToActivate"
             )
-        case .failedToDeactivate(let error):
+        case let .failedToDeactivate(error):
             return NSLocalizedString(
                 "Failed to deactivate audio session with error: \(error.localizedDescription)",
                 comment: "Error description for failedToDeactivate"
             )
-        case .failedToSetCategory(let error):
+        case let .failedToSetCategory(error):
             return NSLocalizedString(
                 "Failed to set category for audio session with error: \(error.localizedDescription)",
                 comment: "Error description for failedToSetCategory"
             )
         }
     }
-    
-    public var errorDescription: String? { localizedDescription }
-    public var failureReason: String? { localizedDescription }
+
+    public var errorDescription: String? {
+        localizedDescription
+    }
+
+    public var failureReason: String? {
+        localizedDescription
+    }
 }
 
 extension AKPlayerError.PlayerItemLoadingFailureReason: LocalizedError {
     public var localizedDescription: String {
         switch self {
-        case .statusLoadingFailed(let error):
+        case let .statusLoadingFailed(error):
             return NSLocalizedString(
                 "The AVPlayerItem status failed with error: \(error.localizedDescription)",
                 comment: "Error when AVPlayerItem status transitions to .failed"
@@ -123,24 +127,34 @@ extension AKPlayerError.PlayerItemLoadingFailureReason: LocalizedError {
             )
         }
     }
-    
-    public var errorDescription: String? { localizedDescription }
-    public var failureReason: String? { localizedDescription }
+
+    public var errorDescription: String? {
+        localizedDescription
+    }
+
+    public var failureReason: String? {
+        localizedDescription
+    }
 }
 
 extension AKPlayerError.PlayerItemFailedToPlayReason: LocalizedError {
     public var localizedDescription: String {
         switch self {
-        case .failedToPlayToEndTime(let error):
+        case let .failedToPlayToEndTime(error):
             return NSLocalizedString(
                 "AVPlayerItem failed to play to end time with error: \(error.localizedDescription)",
                 comment: "Item failed to finish playing"
             )
         }
     }
-    
-    public var errorDescription: String? { localizedDescription }
-    public var failureReason: String? { localizedDescription }
+
+    public var errorDescription: String? {
+        localizedDescription
+    }
+
+    public var failureReason: String? {
+        localizedDescription
+    }
 }
 
 extension AKPlayerError.AssetLoadingFailureReason: LocalizedError {
@@ -156,37 +170,42 @@ extension AKPlayerError.AssetLoadingFailureReason: LocalizedError {
                 "Asset has protected content",
                 comment: "The asset cannot be played because it is protected by DRM."
             )
-        case .propertyKeyLoadingFailed(let error):
+        case let .propertyKeyLoadingFailed(error):
             return NSLocalizedString(
                 "The asset property key failed to load with error: \(error.localizedDescription)",
                 comment: "Asset key loading failed"
             )
-        case .notConnectedToInternet(let error):
+        case let .notConnectedToInternet(error):
             return NSLocalizedString(
                 "The asset failed to load due to network connection error: \(error.localizedDescription)",
                 comment: "Asset network failure"
             )
-        case .assetInitializationFailed(let error):
+        case let .assetInitializationFailed(error):
             return NSLocalizedString(
                 "The asset initialization failed with error: \(error.localizedDescription)",
                 comment: "Asset initialization failed"
             )
         }
     }
-    
-    public var errorDescription: String? { localizedDescription }
-    public var failureReason: String? { localizedDescription }
+
+    public var errorDescription: String? {
+        localizedDescription
+    }
+
+    public var failureReason: String? {
+        localizedDescription
+    }
 }
 
 extension AKPlayerError.TrackSelectionFailureReason: LocalizedError {
     public var localizedDescription: String {
         switch self {
-        case .emptySelectionForbidden(let type):
+        case let .emptySelectionForbidden(type):
             return NSLocalizedString(
                 "Attempted to clear selection for \(type), but the media content forbids empty selection.",
                 comment: "Error description for emptySelectionForbidden"
             )
-        case .groupLoadFailed(let type, let error):
+        case let .groupLoadFailed(type, error):
             let details = error?.localizedDescription ?? "Unknown error"
             return NSLocalizedString(
                 "Failed to load media selection group for \(type): \(details)",
@@ -194,9 +213,14 @@ extension AKPlayerError.TrackSelectionFailureReason: LocalizedError {
             )
         }
     }
-    
-    public var errorDescription: String? { localizedDescription }
-    public var failureReason: String? { localizedDescription }
+
+    public var errorDescription: String? {
+        localizedDescription
+    }
+
+    public var failureReason: String? {
+        localizedDescription
+    }
 }
 
 extension AKPlayerError: LocalizedError {
@@ -217,32 +241,37 @@ extension AKPlayerError: LocalizedError {
                 "Unable to play the item to end, possibly due to network issues",
                 comment: "Item failed to reach end time"
             )
-        case .playerCanNoLongerPlay(let error):
+        case let .playerCanNoLongerPlay(error):
             let details = error?.localizedDescription ?? "No reason available"
             return NSLocalizedString(
                 "Player can no longer play media due to an error: \(details)",
                 comment: "Player unrecoverable state"
             )
-        case .assetLoadingFailed(let reason):
+        case let .assetLoadingFailed(reason):
             return reason.localizedDescription
-        case .playerItemLoadingFailed(let reason):
+        case let .playerItemLoadingFailed(reason):
             return reason.localizedDescription
-        case .playerItemFailedToPlay(let reason):
+        case let .playerItemFailedToPlay(reason):
             return reason.localizedDescription
-        case .audioSessionFailure(let reason):
+        case let .audioSessionFailure(reason):
             return reason.localizedDescription
         case .nowPlayingSessionFailure:
             return NSLocalizedString(
                 "Failed to activate Now Playing session",
                 comment: "Now Playing session error"
             )
-        case .trackSelectionFailure(let reason):
+        case let .trackSelectionFailure(reason):
             return reason.localizedDescription
         }
     }
-    
-    public var errorDescription: String? { localizedDescription }
-    public var failureReason: String? { localizedDescription }
+
+    public var errorDescription: String? {
+        localizedDescription
+    }
+
+    public var failureReason: String? {
+        localizedDescription
+    }
 }
 
 // MARK: - Underlying Errors
@@ -250,9 +279,9 @@ extension AKPlayerError: LocalizedError {
 public extension AKPlayerError.AudioSessionFailureReason {
     var underlyingError: Error? {
         switch self {
-        case .failedToActivate(let error),
-             .failedToDeactivate(let error),
-             .failedToSetCategory(let error):
+        case let .failedToActivate(error),
+             let .failedToDeactivate(error),
+             let .failedToSetCategory(error):
             return error
         }
     }
@@ -263,9 +292,9 @@ public extension AKPlayerError.AssetLoadingFailureReason {
         switch self {
         case .notPlayable, .protectedContent:
             return nil
-        case .propertyKeyLoadingFailed(let error),
-             .notConnectedToInternet(let error),
-             .assetInitializationFailed(let error):
+        case let .propertyKeyLoadingFailed(error),
+             let .notConnectedToInternet(error),
+             let .assetInitializationFailed(error):
             return error
         }
     }
@@ -274,7 +303,7 @@ public extension AKPlayerError.AssetLoadingFailureReason {
 public extension AKPlayerError.PlayerItemLoadingFailureReason {
     var underlyingError: Error? {
         switch self {
-        case .statusLoadingFailed(let error):
+        case let .statusLoadingFailed(error):
             return error
         case .invalidAsset:
             return nil
@@ -285,7 +314,7 @@ public extension AKPlayerError.PlayerItemLoadingFailureReason {
 public extension AKPlayerError.PlayerItemFailedToPlayReason {
     var underlyingError: Error? {
         switch self {
-        case .failedToPlayToEndTime(let error):
+        case let .failedToPlayToEndTime(error):
             return error
         }
     }
@@ -296,7 +325,7 @@ public extension AKPlayerError.TrackSelectionFailureReason {
         switch self {
         case .emptySelectionForbidden:
             return nil
-        case .groupLoadFailed(_, let error):
+        case let .groupLoadFailed(_, error):
             return error
         }
     }
@@ -307,17 +336,17 @@ public extension AKPlayerError {
         switch self {
         case .noItemToPlay, .playerItemNotReady, .itemFailedToPlayToEndTime, .nowPlayingSessionFailure:
             return nil
-        case .playerCanNoLongerPlay(let error):
+        case let .playerCanNoLongerPlay(error):
             return error
-        case .assetLoadingFailed(let reason):
+        case let .assetLoadingFailed(reason):
             return reason.underlyingError
-        case .playerItemLoadingFailed(let reason):
+        case let .playerItemLoadingFailed(reason):
             return reason.underlyingError
-        case .playerItemFailedToPlay(let reason):
+        case let .playerItemFailedToPlay(reason):
             return reason.underlyingError
-        case .audioSessionFailure(let reason):
+        case let .audioSessionFailure(reason):
             return reason.underlyingError
-        case .trackSelectionFailure(let reason):
+        case let .trackSelectionFailure(reason):
             return reason.underlyingError
         }
     }
@@ -332,25 +361,25 @@ public func == (lhs: AKPlayerError, rhs: AKPlayerError) -> Bool {
          (.itemFailedToPlayToEndTime, .itemFailedToPlayToEndTime),
          (.nowPlayingSessionFailure, .nowPlayingSessionFailure):
         return true
-        
+
     case (.playerCanNoLongerPlay, .playerCanNoLongerPlay):
         return true
-        
-    case (.assetLoadingFailed(let lReason), .assetLoadingFailed(let rReason)):
+
+    case let (.assetLoadingFailed(lReason), .assetLoadingFailed(rReason)):
         return lReason == rReason
-        
-    case (.playerItemLoadingFailed(let lReason), .playerItemLoadingFailed(let rReason)):
+
+    case let (.playerItemLoadingFailed(lReason), .playerItemLoadingFailed(rReason)):
         return lReason == rReason
-        
-    case (.playerItemFailedToPlay(let lReason), .playerItemFailedToPlay(let rReason)):
+
+    case let (.playerItemFailedToPlay(lReason), .playerItemFailedToPlay(rReason)):
         return lReason == rReason
-        
-    case (.audioSessionFailure(let lReason), .audioSessionFailure(let rReason)):
+
+    case let (.audioSessionFailure(lReason), .audioSessionFailure(rReason)):
         return lReason == rReason
-        
-    case (.trackSelectionFailure(let lReason), .trackSelectionFailure(let rReason)):
+
+    case let (.trackSelectionFailure(lReason), .trackSelectionFailure(rReason)):
         return lReason == rReason
-        
+
     default:
         return false
     }
@@ -408,12 +437,12 @@ extension AKPlayerError.PlayerItemFailedToPlayReason: Equatable {
 extension AKPlayerError.TrackSelectionFailureReason: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
-        case (.emptySelectionForbidden(let lType), .emptySelectionForbidden(let rType)):
+        case let (.emptySelectionForbidden(lType), .emptySelectionForbidden(rType)):
             return lType == rType
-            
-        case (.groupLoadFailed(let lType, _), .groupLoadFailed(let rType, _)):
+
+        case let (.groupLoadFailed(lType, _), .groupLoadFailed(rType, _)):
             return lType == rType
-            
+
         default:
             return false
         }

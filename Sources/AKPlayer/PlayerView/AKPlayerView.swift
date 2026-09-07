@@ -28,23 +28,22 @@ import UIKit
 
 /// A simple `UIView` subclass backed by an `AVPlayerLayer` layer.
 open class AKPlayerView: UIView {
-    
     /// The player from which to source the media content for the view controller.
     open var player: AVPlayer? {
         get { return playerLayer.player }
         set { playerLayer.player = newValue }
     }
-    
+
     open var playerLayer: AVPlayerLayer {
         return layer as! AVPlayerLayer
     }
-    
-    // Override UIView property
+
+    /// Override UIView property
     override public static var layerClass: AnyClass {
         return AVPlayerLayer.self
     }
-    
-    /* Specifies how the video is displayed within a player layer’s bounds.
+
+    /** Specifies how the video is displayed within a player layer’s bounds.
      (AVLayerVideoGravityResizeAspect is default) */
     open func setVideoFillMode(_ fillMode: String) {
         playerLayer.videoGravity = AVLayerVideoGravity(rawValue: fillMode)

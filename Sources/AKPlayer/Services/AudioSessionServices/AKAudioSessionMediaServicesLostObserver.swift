@@ -29,7 +29,6 @@ import AVFoundation
 
 /// A delegate protocol for receiving callbacks when the system audio media services are lost.
 public protocol AKAudioSessionMediaServicesLostObserverDelegate: AnyObject {
-    
     /// Informs the delegate that the audio media services were lost for the specified audio session.
     /// - Parameters:
     ///   - observer: The media services lost observer reporting the event.
@@ -44,16 +43,15 @@ public protocol AKAudioSessionMediaServicesLostObserverDelegate: AnyObject {
 
 /// A protocol defining requirements for observing audio media services loss events.
 public protocol AKAudioSessionMediaServicesLostObserverProtocol: AnyObject {
-    
     /// The target `AVAudioSession` instance being monitored.
     var audioSession: AVAudioSession { get }
-    
+
     /// The delegate object notified when media services are lost.
     var delegate: AKAudioSessionMediaServicesLostObserverDelegate? { get set }
-    
+
     /// Begins observing system-level media services lost notifications.
     func startObserving()
-    
+
     /// Stops monitoring media services lost notifications and removes active observers.
     func stopObserving()
 }
@@ -61,67 +59,69 @@ public protocol AKAudioSessionMediaServicesLostObserverProtocol: AnyObject {
 // MARK: - AKAudioSessionMediaServicesLostObserver
 
 /// A concrete implementation of `AKAudioSessionMediaServicesLostObserverProtocol` that monitors `AVAudioSession.mediaServicesWereLostNotification`.
-open class AKAudioSessionMediaServicesLostObserver: AKAudioSessionMediaServicesLostObserverProtocol {
-    
+public class AKAudioSessionMediaServicesLostObserver:
+    AKAudioSessionMediaServicesLostObserverProtocol
+{
     // MARK: - Properties
-    
+
     /// The `AVAudioSession` instance managed by this observer.
     public let audioSession: AVAudioSession
-    
+
     /// The delegate object notified of media services loss callbacks.
     public weak var delegate: AKAudioSessionMediaServicesLostObserverDelegate?
-    
+
     /// A Boolean flag tracking whether notification observation is currently active.
     private var isObserving = false
-    
+
     // MARK: - Init & Deinit
-    
+
     /// Initializes a new observer with a target audio session.
     /// - Parameter audioSession: The `AVAudioSession` instance to observe.
     public init(audioSession: AVAudioSession) {
         self.audioSession = audioSession
     }
-    
+
     deinit {
         stopObserving()
     }
-    
+
     // MARK: - Observation Lifecycle
-    
+
     /// Starts observing system audio media services lost notifications.
-    open func startObserving() {
+    public func startObserving() {
         guard !isObserving else { return }
-         
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleMediaServicesWereLostNotification(_:)),
             name: AVAudioSession.mediaServicesWereLostNotification,
             object: audioSession
         )
-         
+
         isObserving = true
     }
-    
+
     /// Stops observing media services lost notifications and removes the notification observer.
-    open func stopObserving() {
+    public func stopObserving() {
         guard isObserving else { return }
-         
+
         NotificationCenter.default.removeObserver(
             self,
             name: AVAudioSession.mediaServicesWereLostNotification,
             object: audioSession
         )
-         
+
         isObserving = false
     }
-    
+
     // MARK: - Handlers
-    
+
     /// Processes incoming media services were lost notifications and notifies the delegate.
     /// - Parameter notification: The `Notification` object posted by the system.
-    @objc open func handleMediaServicesWereLostNotification(_ notification: Notification) {
-        guard let _ = notification.object as? AVAudioSession,
-              let delegate = delegate else { return }
+    @objc public func handleMediaServicesWereLostNotification(_ notification: Notification) {
+        guard notification.object as? AVAudioSession != nil,
+              let delegate = delegate
+        else { return }
         delegate.audioSessionMediaServicesLostObserver(
             self,
             for: audioSession

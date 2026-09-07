@@ -29,22 +29,21 @@ import Foundation
 
 /// Represents the lifecycle loading state of a playable media item.
 @objc public enum AKPlayableState: Int, CustomStringConvertible, Sendable {
-    
     /// Initial uninitialized state before asset loading begins.
     case idle = 0
-    
+
     /// The underlying `AVURLAsset` has been successfully created and validated.
     case assetLoaded
-    
+
     /// The `AVPlayerItem` has been instantiated from the media asset.
     case playerItemLoaded
-    
+
     /// The player item status has transitioned to ready for playback.
     case readyToPlay
-    
+
     /// Media initialization or asset loading encountered a fatal error.
     case failed
-    
+
     /// A textual description of the state.
     public var description: String {
         switch self {
@@ -60,27 +59,27 @@ import Foundation
             return "Failed"
         }
     }
-    
+
     /// Returns `true` if the state is ``idle``.
     var isIdle: Bool {
         return self == .idle
     }
-    
+
     /// Returns `true` if the state is ``assetLoaded``.
     var isAssetLoaded: Bool {
         return self == .assetLoaded
     }
-    
+
     /// Returns `true` if the state is ``playerItemLoaded``.
     var isPlayerItemLoaded: Bool {
         return self == .playerItemLoaded
     }
-    
+
     /// Returns `true` if the state is ``readyToPlay``.
     var isReadyToPlay: Bool {
         return self == .readyToPlay
     }
-    
+
     /// Returns `true` if the state is ``failed``.
     var isFailed: Bool {
         return self == .failed

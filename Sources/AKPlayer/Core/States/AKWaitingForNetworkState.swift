@@ -31,26 +31,25 @@ import Combine
 /// Concrete state representing a period where playback is paused while waiting for network connectivity to restore.
 @MainActor
 public class AKWaitingForNetworkState: AKBaseState {
-    
     // MARK: - Properties
-    
+
     /// Optional target playback speed multiplier to apply once network connection recovers.
     private var rate: AKPlaybackRate?
-    
+
     /// Indicates whether playback should resume automatically when network connectivity is re-established.
     public private(set) var autoPlay: Bool = false
-    
+
     /// The player state to transition into after buffering resolves following network restoration.
     private var stateToNavigateAfterBuffering: AKPlayerState?
-    
+
     /// Optional pending seek command to preserve across network waiting state.
     private var targetSeek: AKSeek?
-    
+
     /// Container holding reactive Combine event subscriptions.
     private var subscriptions = Set<AnyCancellable>()
-    
+
     // MARK: - Initialization & Deinitialization
-    
+
     /// Initializes a waiting-for-network state instance.
     /// - Parameters:
     ///   - playerController: The underlying player controller driving execution.
@@ -71,58 +70,59 @@ public class AKWaitingForNetworkState: AKBaseState {
         self.targetSeek = targetSeek
         super.init(playerController: playerController, state: .waitingForNetwork)
     }
-    
-    deinit { }
-    
+
+    deinit {}
+
     // MARK: - Lifecycle Hooks
-    
+
     /// Entry point for state setup. Ensures player is paused, starts observer pipelines, and monitors network changes.
-    public override func processStateChange() {
+    override public func processStateChange() {
         startObservingPlayerStatus()
-        
+
         if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
         }
-        
+
         startObservingPlayerItemNotifications()
         observeNetworkChanges()
     }
-    
+
     /// Cleans up Combine observation pipelines before transitioning to another state.
-    public override func beforeStateChange() {
+    override public func beforeStateChange() {
         subscriptions.removeAll()
     }
-    
+
     // MARK: - Commands
-    
+
     /// Commands the player to play, updating the autoplay flag or notifying delegate if already attempting to play.
-    public override func play() {
+    override public func play() {
         if autoPlay {
             playerController.emit(.commandUnavailable(reason: .alreadyTryingToPlay))
         } else {
-            self.autoPlay = true
+            autoPlay = true
         }
     }
-    
+
     /// Commands the player to play at a target rate once network is established.
     /// - Parameter rate: The targeted playback rate.
-    public override func play(at rate: AKPlaybackRate) {
+    override public func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
-              currentMedia.canPlay(at: rate) else {
+              currentMedia.canPlay(at: rate)
+        else {
             playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
         self.rate = rate
         autoPlay = true
     }
-    
+
     // MARK: - Seeking Through Media
-    
+
     /// Stores target seek configuration to perform once network connectivity resumes.
     /// - Parameters:
     ///   - target: The destination target position.
     ///   - completionHandler: Callback closure invoked when seek executes post-reconnection.
-    public override func seek(
+    override public func seek(
         to target: AKSeekTarget,
         completionHandler: @escaping @Sendable (Bool) -> Void
     ) {
@@ -131,14 +131,14 @@ public class AKWaitingForNetworkState: AKBaseState {
             completionHandler: completionHandler
         )
     }
-    
+
     /// Stores target seek configuration with custom bounds to perform once network connectivity resumes.
     /// - Parameters:
     ///   - target: The destination target position.
     ///   - toleranceBefore: The allowable tolerance before the target time.
     ///   - toleranceAfter: The allowable tolerance after the target time.
     ///   - completionHandler: Callback closure invoked when seek executes post-reconnection.
-    public override func seek(
+    override public func seek(
         to target: AKSeekTarget,
         toleranceBefore: CMTime,
         toleranceAfter: CMTime,
@@ -151,9 +151,9 @@ public class AKWaitingForNetworkState: AKBaseState {
             completionHandler: completionHandler
         )
     }
-    
+
     // MARK: - Private Helper Functions
-    
+
     /// Observes status changes and missing current items on AVPlayer while waiting for network.
     private func startObservingPlayerStatus() {
         playerController.player.publisher(for: \.status)
@@ -168,7 +168,7 @@ public class AKWaitingForNetworkState: AKBaseState {
                 self.change(controller)
             }
             .store(in: &subscriptions)
-        
+
         playerController.player.publisher(for: \.timeControlStatus)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -178,11 +178,11 @@ public class AKWaitingForNetworkState: AKBaseState {
             }
             .store(in: &subscriptions)
     }
-    
+
     /// Registers notification center listeners for player item playback failure notifications.
     private func startObservingPlayerItemNotifications() {
         guard let playerItem = playerController.currentMedia?.playerItem else { return }
-        
+
         NotificationCenter.default.publisher(
             for: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem
@@ -190,8 +190,9 @@ public class AKWaitingForNetworkState: AKBaseState {
         .receive(on: DispatchQueue.main)
         .sink { [weak self] notification in
             guard let self,
-                  let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? NSError else { return }
-            
+                  let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? NSError
+            else { return }
+
             guard error is URLError else {
                 let controller = AKFailedState(
                     playerController: self.playerController,
@@ -199,19 +200,19 @@ public class AKWaitingForNetworkState: AKBaseState {
                 )
                 return self.change(controller)
             }
-            
+
             /*
              If playback failed for internet issue will wait till internet gets activated
              */
         }
         .store(in: &subscriptions)
     }
-    
+
     /// Monitors system network state changes and transitions to buffering state when connection is satisfied.
     private func observeNetworkChanges() {
         observeNetworkStatus(in: &subscriptions) { [weak self] status in
             guard let self, status == .satisfied else { return }
-            
+
             // Context and targetSeek are restored cleanly into buffering state
             let controller = AKBufferingState(
                 playerController: self.playerController,
@@ -223,13 +224,15 @@ public class AKWaitingForNetworkState: AKBaseState {
             self.change(controller)
         }
     }
-    
+
     // MARK: - Availability Overrides
-    
+
     /// Evaluates preflight permission and unavailable reasons for a given player action when waiting for network.
     /// - Parameter action: The candidate action to evaluate.
     /// - Returns: A tuple returning `false` and `.waitingForEstablishedNetwork` for step action; base availability otherwise.
-    public override func availability(for action: AKPlayerAction) -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
+    override public func availability(for action: AKPlayerAction) -> (
+        allowed: Bool, reason: AKPlayerUnavailableCommandReason?
+    ) {
         switch action {
         case .step:
             return (false, .waitingForEstablishedNetwork)

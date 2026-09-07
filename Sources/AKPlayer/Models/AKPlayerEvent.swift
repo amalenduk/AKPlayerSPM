@@ -32,42 +32,41 @@ import CoreMedia
 /// Subscribe with `for await event in player.events`. The existing
 /// ``AKPlayerDelegate`` remains supported as a compatibility adapter.
 public enum AKPlayerEvent: Sendable {
-    
     // MARK: - State & Media
-    
+
     /// The player's operational state transitioned (e.g., from buffering to playing).
     case stateDidChange(AKPlayerState)
-    
+
     /// The active playable media item was swapped or updated.
     case mediaDidChange(any AKPlayable)
-    
+
     // MARK: - Playback Progress
-    
+
     /// Playback time progressed.
     case timeDidChange(CMTime)
-    
+
     /// Media reached its natural end of timeline.
     case didReachEnd(at: CMTime)
-    
+
     /// Playback crossed a registered boundary time milestone.
     case boundaryReached(at: CMTime)
-    
+
     // MARK: - Playback Settings
-    
+
     /// Playback speed rate changed.
     case playbackRateDidChange(new: AKPlaybackRate, previous: AKPlaybackRate)
-    
+
     /// Output volume level changed.
     case volumeDidChange(Float)
-    
+
     /// Audio mute toggle state changed.
     case muteStatusDidChange(isMuted: Bool)
-    
+
     // MARK: - Warnings & Errors
-    
+
     /// A requested action was blocked because current state preconditions were not met.
     case commandUnavailable(reason: AKPlayerUnavailableCommandReason)
-    
+
     /// An unrecoverable pipeline failure occurred.
     case didFail(with: AKPlayerError)
 }
@@ -75,30 +74,28 @@ public enum AKPlayerEvent: Sendable {
 // MARK: - Equatable Conformance
 
 extension AKPlayerEvent: Equatable {
-    
     /// Compares two `AKPlayerEvent` instances for equality.
     public static func == (lhs: AKPlayerEvent, rhs: AKPlayerEvent) -> Bool {
         switch (lhs, rhs) {
-        case (.mediaDidChange(let l), .mediaDidChange(let r)):
+        case let (.mediaDidChange(l), .mediaDidChange(r)):
             return l.isEqual(to: r)
-            
-        case (.stateDidChange(let l), .stateDidChange(let r)):
+        case let (.stateDidChange(l), .stateDidChange(r)):
             return l == r
-        case (.timeDidChange(let l), .timeDidChange(let r)):
+        case let (.timeDidChange(l), .timeDidChange(r)):
             return l == r
-        case (.didReachEnd(let l), .didReachEnd(let r)):
+        case let (.didReachEnd(l), .didReachEnd(r)):
             return l == r
-        case (.boundaryReached(let l), .boundaryReached(let r)):
+        case let (.boundaryReached(l), .boundaryReached(r)):
             return l == r
-        case (.playbackRateDidChange(let lNew, let lOld), .playbackRateDidChange(let rNew, let rOld)):
+        case let (.playbackRateDidChange(lNew, lOld), .playbackRateDidChange(rNew, rOld)):
             return lNew == rNew && lOld == rOld
-        case (.volumeDidChange(let l), .volumeDidChange(let r)):
+        case let (.volumeDidChange(l), .volumeDidChange(r)):
             return l == r
-        case (.muteStatusDidChange(let l), .muteStatusDidChange(let r)):
+        case let (.muteStatusDidChange(l), .muteStatusDidChange(r)):
             return l == r
-        case (.commandUnavailable(let l), .commandUnavailable(let r)):
+        case let (.commandUnavailable(l), .commandUnavailable(r)):
             return l == r
-        case (.didFail(let l), .didFail(let r)):
+        case let (.didFail(l), .didFail(r)):
             return l == r
         default:
             return false

@@ -27,8 +27,8 @@
  https://developer.apple.com/documentation/avfoundation/avurlasset
  */
 
-import Foundation
 import AVFoundation
+import Foundation
 import MediaPlayer
 
 // MARK: - AKPlayable Protocol
@@ -37,28 +37,28 @@ import MediaPlayer
 public protocol AKPlayable: AnyObject, Equatable, Sendable {
     /// The media asset's destination URL (file path or remote stream).
     var url: URL { get }
-    
+
     /// The type classification of the media item (e.g., audio, video, stream).
     var type: AKMediaType { get }
-    
+
     @MainActor
     var asset: AVURLAsset? { get }
-    
+
     @MainActor
     var playerItem: AVPlayerItem? { get }
-    
+
     /// Optional dictionary options used when initializing the underlying `AVURLAsset`.
     var assetInitializationOptions: [String: Any]? { get }
-    
+
     /// Optional asset properties to automatically load asynchronously prior to playback.
     var automaticallyLoadedAssetKeys: [AVPartialAsyncProperty<AVAsset>]? { get }
-    
+
     /// Optional static Now Playing metadata associated with the media.
     var staticMetadata: (any AKNowPlayableStaticMetadataProtocol)? { get }
-    
+
     /// Indicates whether the media item is a live stream.
     func isLive() -> Bool
-    
+
     /// Updates the static Now Playing metadata for the media item.
     /// - Parameter staticMetadata: The new metadata payload conforming to `AKNowPlayableStaticMetadataProtocol`.
     func updateMetadata(_ staticMetadata: any AKNowPlayableStaticMetadataProtocol)
@@ -75,12 +75,12 @@ public extension AKPlayable {
     static func == (lhs: Self, rhs: Self) -> Bool {
         return lhs === rhs || (lhs.url == rhs.url && lhs.type == rhs.type)
     }
-    
+
     /// Compares two existential instances (`any AKPlayable`) by reference or properties.
     /// - Parameter other: The target `AKPlayable` instance to compare against.
     /// - Returns: A Boolean value indicating whether the current instance matches the target.
     func isEqual(to other: any AKPlayable) -> Bool {
-        return self === other || (self.url == other.url && self.type == other.type)
+        return self === other || (url == other.url && type == other.type)
     }
 }
 
@@ -112,7 +112,7 @@ public extension AKPlayable {
     func isLocal() -> Bool {
         return url.isFileURL
     }
-    
+
     /// Returns `true` if the URL scheme points to a remote network resource (HTTP, HTTPS, RTSP, RTMP, etc.).
     /// - Returns: A Boolean value indicating if the asset requires a network connection to play.
     func isOverNetwork() -> Bool {

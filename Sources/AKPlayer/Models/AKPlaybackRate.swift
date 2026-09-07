@@ -47,12 +47,12 @@ public enum AKPlaybackRate: CaseIterable, Sendable {
     case paused
     /// Custom playback rate multiplier.
     case custom(Float)
-    
+
     /// A collection of standard predefined playback speed presets excluding `.paused` and `.custom`.
     public static let allCases: [AKPlaybackRate] = [
-        .slowest, .slower, .slow, .normal, .fast, .faster, .fastest, .superfast
+        .slowest, .slower, .slow, .normal, .fast, .faster, .fastest, .superfast,
     ]
-    
+
     /// Initializes a playback rate matching a floating-point multiplier value.
     /// - Parameter rate: The float value representing speed (e.g., `1.0` for normal).
     public init(rate: Float) {
@@ -69,7 +69,7 @@ public enum AKPlaybackRate: CaseIterable, Sendable {
         default: self = .custom(rate)
         }
     }
-    
+
     /// The numeric floating-point playback speed value.
     public var rate: Float {
         switch self {
@@ -82,13 +82,15 @@ public enum AKPlaybackRate: CaseIterable, Sendable {
         case .fastest: return 1.75
         case .superfast: return 2.00
         case .paused: return 0
-        case .custom(let value): return value
+        case let .custom(value): return value
         }
     }
-    
+
     /// A string representation of the numeric rate formatted with a 'x' multiplier suffix (e.g., "1.5x").
-    public var rateTitle: String { "\(rate)x" }
-    
+    public var rateTitle: String {
+        "\(rate)x"
+    }
+
     /// A human-readable title describing the current rate preset.
     public var title: String {
         switch self {
@@ -101,10 +103,10 @@ public enum AKPlaybackRate: CaseIterable, Sendable {
         case .fastest: return "Fastest"
         case .superfast: return "Super Fast"
         case .paused: return "Paused"
-        case .custom(let value): return "\(value)x"
+        case let .custom(value): return "\(value)x"
         }
     }
-    
+
     /// Returns the next sequential playback rate in the rotation sequence, wrapping around at max speed.
     public var next: AKPlaybackRate {
         switch self {
@@ -129,16 +131,16 @@ extension AKPlaybackRate: Equatable {
     public static func == (lhs: AKPlaybackRate, rhs: AKPlaybackRate) -> Bool {
         switch (lhs, rhs) {
         case (.slowest, .slowest),
-            (.slower, .slower),
-            (.slow, .slow),
-            (.normal, .normal),
-            (.fast, .fast),
-            (.faster, .faster),
-            (.fastest, .fastest),
-            (.superfast, .superfast),
-            (.paused, .paused):
+             (.slower, .slower),
+             (.slow, .slow),
+             (.normal, .normal),
+             (.fast, .fast),
+             (.faster, .faster),
+             (.fastest, .fastest),
+             (.superfast, .superfast),
+             (.paused, .paused):
             return true
-        case (.custom(let lhs), .custom(let rhs)):
+        case let (.custom(lhs), .custom(rhs)):
             return lhs == rhs
         default:
             return false

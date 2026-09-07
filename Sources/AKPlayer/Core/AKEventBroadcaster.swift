@@ -9,33 +9,32 @@ import Foundation
 
 /// Internal multicast broadcaster managing multiple `AsyncStream` subscribers.
 final class AKEventBroadcaster<Event: Sendable>: @unchecked Sendable {
-    
     // MARK: - Properties
-    
+
     private let lock = NSLock()
     private var continuations: [UUID: AsyncStream<Event>.Continuation] = [:]
-    
+
     // MARK: - Init & Deinit
-    
-    init() { }
-    
+
+    init() {}
+
     deinit {
         finish()
     }
-    
+
     // MARK: - API
-    
+
     /// Emits an event to all active streams.
     func send(_ event: Event) {
         lock.lock()
         let active = Array(continuations.values)
         lock.unlock()
-        
+
         for continuation in active {
             continuation.yield(event)
         }
     }
-    
+
     /// Creates a new subscription for a caller.
     func makeStream(
         bufferingPolicy: AsyncStream<Event>.Continuation.BufferingPolicy = .bufferingNewest(100)
@@ -45,7 +44,7 @@ final class AKEventBroadcaster<Event: Sendable>: @unchecked Sendable {
             lock.lock()
             continuations[id] = continuation
             lock.unlock()
-            
+
             continuation.onTermination = { [weak self] _ in
                 guard let self else { return }
                 self.lock.lock()
@@ -54,14 +53,14 @@ final class AKEventBroadcaster<Event: Sendable>: @unchecked Sendable {
             }
         }
     }
-    
+
     /// Terminates all open streams. Safe to call from any context or deinit.
     func finish() {
         lock.lock()
         let active = Array(continuations.values)
         continuations.removeAll()
         lock.unlock()
-        
+
         for continuation in active {
             continuation.finish()
         }

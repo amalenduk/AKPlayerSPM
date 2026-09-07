@@ -213,7 +213,7 @@ extension SimpleVideoPlayerViewModel: AKMediaDelegate {
         case .assetLoaded:
             break
         case .playerItemLoaded:
-            // break
+            media.playerItemNotifications?.startObserving()
         case .readyToPlay:
             break
         case .failed:

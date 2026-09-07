@@ -29,23 +29,22 @@ import AVFoundation
 
 /// A lightweight representation of a media selection option (such as audio or subtitle tracks).
 public struct AKMediaSelectionOption {
-    
     // MARK: - Properties
-    
+
     /// The localized display name of the media option.
     public var displayName: String
-    
+
     /// A Boolean value indicating whether the option is playable.
     public var isPlayable: Bool
-    
+
     /// The locale associated with the media option, if available.
     public var locale: Locale?
-    
+
     /// The descriptive title of the media option, if available.
     public var title: String?
-    
+
     // MARK: - Initialization
-    
+
     /// Initializes a media selection option instance.
     /// - Parameters:
     ///   - displayName: The localized display name of the option.

@@ -1,5 +1,5 @@
 //
-//  Dictionary+Extension.swift
+//  Dictionary+Extensions.swift
 //  AKPlayer
 //
 //  Copyright (c) 2020 Amalendu Kar
@@ -28,9 +28,8 @@ import Foundation
 // MARK: - Dictionary Extensions
 
 extension Dictionary {
-    
     // MARK: - Operations
-    
+
     /// Merges the key-value pairs of the given dictionary into this dictionary, overwriting existing values for duplicate keys.
     /// - Parameter dict: The dictionary containing key-value pairs to merge.
     /// - Returns: A new dictionary containing the combined key-value pairs.

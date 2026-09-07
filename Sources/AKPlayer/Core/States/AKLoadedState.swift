@@ -31,23 +31,22 @@ import Combine
 /// Concrete state representing a state where media has been loaded into the pipeline and is ready for playback or seeking.
 @MainActor
 public class AKLoadedState: AKBaseState {
-    
     // MARK: - Properties
-    
+
     /// Indicates whether autoplay should trigger automatically once preparation finishes.
     public private(set) var autoPlay: Bool
-    
+
     /// Optional target position to navigate to upon loading.
     private let position: AKSeekTarget?
-    
+
     /// Optional target playback speed multiplier to apply on play.
     private var rate: AKPlaybackRate?
-    
+
     /// Storage set for managing reactive Combine event subscriptions.
     private var subscriptions = Set<AnyCancellable>()
-    
+
     // MARK: - Initialization & Deinitialization
-    
+
     /// Initializes a loaded state instance associated with the specified player controller.
     /// - Parameters:
     ///   - playerController: The target player controller executing playback commands.
@@ -65,19 +64,19 @@ public class AKLoadedState: AKBaseState {
         self.rate = rate
         super.init(playerController: playerController, state: .loaded)
     }
-    
-    deinit { }
-    
+
+    deinit {}
+
     // MARK: - Lifecycle Hooks
-    
+
     /// Processes state updates, sets up KVO observations, and handles automatic seek or playback triggers.
-    public override func processStateChange() {
+    override public func processStateChange() {
         startObservingPlayerProperties()
-        
+
         if let currentMedia = playerController.currentMedia {
             playerController.emit(.timeDidChange(playerController.currentTime))
         }
-        
+
         if autoPlay {
             play()
         } else if let position, let currentMedia = playerController.currentMedia {
@@ -88,22 +87,22 @@ public class AKLoadedState: AKBaseState {
                 }
                 return
             }
-            
+
             Task {
                 await seek(to: position)
             }
         }
     }
-    
+
     /// Cleans up Combine observation pipelines before transitioning to another state.
-    public override func beforeStateChange() {
+    override public func beforeStateChange() {
         subscriptions.removeAll()
     }
-    
+
     // MARK: - Commands
-    
+
     /// Commands the player to unpause and enter the buffering state prior to active playback.
-    public override func play() {
+    override public func play() {
         let controller = AKBufferingState(
             playerController: playerController,
             autoPlay: true,
@@ -116,16 +115,17 @@ public class AKLoadedState: AKBaseState {
         }
         change(controller)
     }
-    
+
     /// Commands the player to unpause and play at a specific target rate multiplier.
     /// - Parameter rate: Target playback rate multiplier.
-    public override func play(at rate: AKPlaybackRate) {
+    override public func play(at rate: AKPlaybackRate) {
         guard let currentMedia = playerController.currentMedia,
-              currentMedia.canPlay(at: rate) else {
+              currentMedia.canPlay(at: rate)
+        else {
             playerController.emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
-        
+
         let controller = AKBufferingState(
             playerController: playerController,
             autoPlay: true,
@@ -138,18 +138,18 @@ public class AKLoadedState: AKBaseState {
         }
         change(controller)
     }
-    
+
     /// Commands the player to pause. Disables `autoPlay` if queued, or emits an `.alreadyPaused` unavailability warning.
-    public override func pause() {
+    override public func pause() {
         if autoPlay {
             autoPlay = false
         } else {
             playerController.emit(.commandUnavailable(reason: .alreadyPaused))
         }
     }
-    
+
     // MARK: - Private Pipeline Helpers
-    
+
     /// Binds KVO status publishers to monitor player status and missing current items.
     private func startObservingPlayerProperties() {
         playerController.player.publisher(for: \.status)
@@ -164,7 +164,7 @@ public class AKLoadedState: AKBaseState {
                 change(controller)
             }
             .store(in: &subscriptions)
-        
+
         playerController.player.publisher(for: \.timeControlStatus)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in

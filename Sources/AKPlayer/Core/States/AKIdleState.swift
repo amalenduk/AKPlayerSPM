@@ -30,25 +30,26 @@ import AVFoundation
 /// Concrete state representing an idle player machine before any media item has been initialized or loaded.
 @MainActor
 public class AKIdleState: AKBaseState {
-    
     // MARK: - Initialization & Deinitialization
-    
+
     /// Initializes an idle state instance associated with the specified player controller.
     /// - Parameter playerController: The target player controller executing playback commands.
     public init(playerController: any AKPlayerControllerProtocol) {
         super.init(playerController: playerController, state: .idle)
     }
-    
+
     deinit {
         // Cleanup routine if needed when state memory is released
     }
-    
+
     // MARK: - Preflight Checks
-    
+
     /// Evaluates preflight permission and unavailable reasons for a given player action when in the idle state.
     /// - Parameter action: The candidate action to evaluate.
     /// - Returns: A tuple returning `false` and `.loadMediaFirst` for all actions in idle state.
-    public override func availability(for action: AKPlayerAction) -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?) {
+    override public func availability(for _: AKPlayerAction) -> (
+        allowed: Bool, reason: AKPlayerUnavailableCommandReason?
+    ) {
         return (allowed: false, reason: .loadMediaFirst)
     }
 }
