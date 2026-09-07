@@ -112,6 +112,8 @@ public protocol AKPlayerConfigurationProtocol: Sendable {
 
     /// The default speed multiplier used when rewinding playback.
     var rewindRate: AKPlaybackRate { get set }
+    
+    var cacheManager: (any AKMediaCacheProtocol)? { get }
 }
 
 // MARK: - Protocol Extension

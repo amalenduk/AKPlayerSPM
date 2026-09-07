@@ -33,34 +33,34 @@ struct AKMediaOptionBox: @unchecked Sendable {
 /// caption).
 public struct AKMediaTrackOption: Identifiable, Hashable, Sendable {
     // MARK: - Public Properties
-
+    
     /// Unique identifier representing the media track option.
     public let id: String
-
+    
     /// Display title for the media track.
     public let title: String
-
+    
     /// Language code associated with the media track (e.g., ISO or BCP-47
     /// identifier).
     public let languageCode: String
-
+    
     /// Flag indicating whether this option is marked as default in the
     /// underlying asset.
     public let isDefault: Bool
-
+    
     // MARK: - Internal Properties
-
+    
     /// Internal wrapper housing the system selection option.
     private let optionBox: AKMediaOptionBox
-
+    
     /// The underlying system selection option. `nil` for the static `.off`
     /// option.
     var option: AVMediaSelectionOption? {
         optionBox.option
     }
-
+    
     // MARK: - Initializers
-
+    
     /// Initializes a track option wrapper from an `AVMediaSelectionOption`.
     /// - Parameters:
     ///   - option: The backing system option.
@@ -69,16 +69,14 @@ public struct AKMediaTrackOption: Identifiable, Hashable, Sendable {
     public init(option: AVMediaSelectionOption, isDefault: Bool) {
         optionBox = AKMediaOptionBox(option: option)
         title = option.displayName
-        languageCode =
-            option.extendedLanguageTag ?? option.locale?
-                .identifier ?? ""
+        languageCode = option.extendedLanguageTag ?? option.locale?.identifier ?? ""
         self.isDefault = isDefault
-
+        
         // Derive a stable, non-negative in-memory identifier
         let memoryAddress = UInt(bitPattern: ObjectIdentifier(option))
         id = String(memoryAddress, radix: 16)
     }
-
+    
     /// Private initializer for representing the disabled/off state.
     private init(title: String = "Off", id: String = "__off__") {
         optionBox = AKMediaOptionBox(option: nil)
@@ -87,54 +85,46 @@ public struct AKMediaTrackOption: Identifiable, Hashable, Sendable {
         isDefault = false
         self.id = id
     }
-
+    
     // MARK: - Static Constants
-
+    
     /// Represents a disabled track selection state (e.g., Subtitles Off).
     public static let off = AKMediaTrackOption()
-
+    
     // MARK: - Hashable & Equatable
-
+    
     public static func == (
         lhs: AKMediaTrackOption,
         rhs: AKMediaTrackOption
     ) -> Bool {
         lhs.id == rhs.id
     }
-
+    
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
 }
 
-// MARK: - AKTrackSelectionInfo
-
-/// Describes the available options and selection constraints for a target track
-/// type.
-public struct AKTrackSelectionInfo: Sendable, Hashable {
-    /// List of available track options for the specified track type.
+/// Domain model representing a group of tracks for a given characteristic,
+/// along with its options, current selection, default option, and empty selection rules.
+public struct AKMediaTrackGroup: Sendable, Equatable {
+    public let type: AKTrackType
     public let options: [AKMediaTrackOption]
-
-    /// Currently selected track option, or `nil` if none selected.
-    public let selected: AKMediaTrackOption?
-
-    /// Flag indicating whether the system permits an empty selection (e.g.,
-    /// turning subtitles off).
+    public let selectedOption: AKMediaTrackOption?
+    public let defaultOption: AKMediaTrackOption?
     public let allowsEmptySelection: Bool
-
-    /// Initializes a track selection info payload.
-    /// - Parameters:
-    ///   - options: List of available track options.
-    ///   - selected: Currently selected track option.
-    ///   - allowsEmptySelection: Flag indicating if empty selection is
-    /// permitted.
+    
     public init(
+        type: AKTrackType,
         options: [AKMediaTrackOption],
-        selected: AKMediaTrackOption?,
+        selectedOption: AKMediaTrackOption?,
+        defaultOption: AKMediaTrackOption?,
         allowsEmptySelection: Bool
     ) {
+        self.type = type
         self.options = options
-        self.selected = selected
+        self.selectedOption = selectedOption
+        self.defaultOption = defaultOption
         self.allowsEmptySelection = allowsEmptySelection
     }
 }

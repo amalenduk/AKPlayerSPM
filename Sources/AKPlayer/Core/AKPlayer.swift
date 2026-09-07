@@ -99,6 +99,10 @@ public class AKPlayer: NSObject, AKPlayerProtocol {
     public var player: AVPlayer {
         manager.player
     }
+    
+    public var configuration: any AKPlayerConfigurationProtocol {
+        manager.configuration
+    }
 
     /// Asynchronous stream of player events for Swift Concurrency.
     public var events: AsyncStream<AKPlayerEvent> {
@@ -107,7 +111,7 @@ public class AKPlayer: NSObject, AKPlayerProtocol {
 
     /// The player manager instance handling core state machine lifecycle and
     /// engine operations.
-    public var manager: AKPlayerManagerProtocol
+    private var manager: AKPlayerManagerProtocol
 
     /// The active Now Playing info and remote command center session.
     public var nowPlayingSession: AKNowPlayingSession? {

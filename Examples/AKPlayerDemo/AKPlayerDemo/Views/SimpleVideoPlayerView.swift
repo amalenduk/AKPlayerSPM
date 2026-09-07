@@ -18,6 +18,10 @@ struct AKPlayerUIView: UIViewRepresentable {
     func makeUIView(context: Context) -> AKPlayerView {
         let v = AKPlayerView()
         v.player = viewModel.player.player
+        
+        // Setup Picture-in-Picture controller using the AKPlayerView layer[cite: 3, 4]
+        viewModel.setupPip(with: v.playerLayer)
+        
         return v
     }
     
@@ -507,6 +511,8 @@ public struct SimpleVideoPlayerView: View {
     private func closeButton() -> some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button {
+                viewModel.stop()
+                viewModel.player.stop()
                 dismiss()
             } label: {
                 Image(systemName: "xmark")

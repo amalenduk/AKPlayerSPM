@@ -181,8 +181,7 @@ public class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
             AKAudioSessionMediaServicesWereResetObserver(
                 audioSession: audioSessionService.audioSession
             )
-        applicationLifeCycleEventsObserver =
-            AKApplicationLifeCycleEventsObserver()
+        applicationLifeCycleEventsObserver = AKApplicationLifeCycleEventsObserver()
 
         audioSessionInterruptionObserver.delegate = self
         audioSessionRouteChangesObserver.delegate = self
@@ -273,7 +272,7 @@ public class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
             defaultRate: Double(defaultRate.rate),
             position: position,
             duration: duration,
-            currentLanguageOptions: nil,
+            currentLanguageOptions: currentMedia.trackSelection.selectedTrack(for: .),
             availableLanguageOptionGroups: nil,
             chapterCount: nil,
             chapterNumber: nil,
@@ -536,10 +535,8 @@ public class AKPlayerManager: NSObject, AKPlayerManagerProtocol {
             .add(.pause).enable(.pause)
             .add(.togglePlayPause).enable(.togglePlayPause)
             .add(.changePlaybackPosition).enable(.changePlaybackPosition)
-            .add(.skipForward(preferredIntervals: [10]))
-            .enable(.skipForward(preferredIntervals: [10]))
-            .add(.skipBackward(preferredIntervals: [15]))
-            .enable(.skipBackward(preferredIntervals: [15]))
+            .add(.skipForward(preferredIntervals: [15])).enable(.skipForward(preferredIntervals: [15]))
+            .add(.skipBackward(preferredIntervals: [15])).enable(.skipBackward(preferredIntervals: [15]))
 
         Task { [weak self] in await self?.setupNowPlayingCommandHandlers() }
 

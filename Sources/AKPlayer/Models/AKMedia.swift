@@ -13,44 +13,47 @@ import Foundation
 
 /// A thread-safe concrete representation of a playable media item.
 public class AKMedia: NSObject, AKPlayable, @unchecked Sendable {
+    
     // MARK: - Properties
-
+    
     /// The media asset's destination URL (file path or remote stream).
     public let url: URL
-
+    
     /// The type classification of the media item (e.g., audio, video, stream).
     public let type: AKMediaType
-
+    
     @MainActor
     public var asset: AVURLAsset? {
         manager.asset ?? customAsset
     }
-
+    
     @MainActor
     public var playerItem: AVPlayerItem? {
         manager.playerItem ?? customPlayerItem
     }
-
+    
     /// Optional dictionary options used when initializing the underlying
     /// `AVURLAsset`.
     public let assetInitializationOptions: [String: Any]?
-
+    
     /// Optional asset properties to automatically load asynchronously prior to
     /// playback.
     public let automaticallyLoadedAssetKeys: [AVPartialAsyncProperty<AVAsset>]?
-
+    
     /// Optional static Now Playing metadata associated with the media.
     public private(set) var staticMetadata:
-        (
-            any AKNowPlayableStaticMetadataProtocol
-        )?
-
+    (
+        any AKNowPlayableStaticMetadataProtocol
+    )?
+    
+    public var cachePolicy: AKMediaCachePolicy = .useCacheIfAvailable
+    
     // Internal seed inputs passed by the developer
     let customAsset: AVURLAsset?
     let customPlayerItem: AVPlayerItem?
-
+    
     // MARK: - Initialization
-
+    
     /// Initializes a new media item with playback properties and optional
     /// metadata.
     /// - Parameters:
@@ -75,7 +78,7 @@ public class AKMedia: NSObject, AKPlayable, @unchecked Sendable {
         customAsset = nil
         customPlayerItem = nil
     }
-
+    
     /// Custom Asset Initializer (For FairPlay DRM / Custom Headers /
     /// ResourceLoader)
     public init(
@@ -92,7 +95,7 @@ public class AKMedia: NSObject, AKPlayable, @unchecked Sendable {
         customAsset = asset
         customPlayerItem = nil
     }
-
+    
     /// Pre-configured Player Item Initializer (For Video Compositions / Custom
     /// Audio Mix)
     @MainActor
@@ -113,13 +116,13 @@ public class AKMedia: NSObject, AKPlayable, @unchecked Sendable {
         automaticallyLoadedAssetKeys = nil
         customPlayerItem = playerItem
     }
-
+    
     deinit {
         print("Deinit called from AKMedia 👌🏼")
     }
-
+    
     // MARK: - Public Methods
-
+    
     /// Updates the static Now Playing metadata for the media item.
     /// - Parameter staticMetadata: The new metadata payload conforming to
     /// `AKNowPlayableStaticMetadataProtocol`.

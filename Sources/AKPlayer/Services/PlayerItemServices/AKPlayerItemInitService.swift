@@ -30,6 +30,8 @@ public protocol AKPlayerItemInitServiceProtocol: AnyObject {
     /// The instantiated player item created from the validated asset.
     var playerItem: AVPlayerItem? { get }
 
+    var cacheManager: (any AKMediaCacheProtocol)? { get set }
+
     // MARK: - Fine-Grained Setup Steps
 
     /// Instantiates the underlying `AVURLAsset` for the assigned media.
@@ -80,13 +82,17 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     /// The instantiated player item created from the validated asset.
     public private(set) var playerItem: AVPlayerItem?
 
+    public var cacheManager: (any AKMediaCacheProtocol)?
+
     // MARK: - Initialization & Deinitialization
 
     /// Initializes an asset initialization service instance for a specific
     /// media item.
     /// - Parameter media: The target playable media context.
-    public init(with media: any AKPlayable) {
+    public init(with media: any AKPlayable,
+    cacheManager: (any AKMediaCacheProtocol)? = nil) {
         self.media = media
+        self.cacheManager = cacheManager
     }
 
     deinit {

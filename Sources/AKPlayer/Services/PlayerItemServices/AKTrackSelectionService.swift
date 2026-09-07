@@ -16,55 +16,33 @@ import MediaAccessibility
 /// (audio, subtitles, captions).
 @MainActor
 public protocol AKTrackSelectionServiceProtocol {
-    /// Retrieves all available media track options for a specific track type.
-    /// - Parameter type: The target `AKTrackType` (audio, subtitle, closed
-    /// caption, etc.).
-    /// - Returns: An `AKTrackSelectionInfo` model containing available options
-    /// and current selection.
-    /// - Throws: `AKPlayerError.noItemToPlay` if no player item is loaded or
-    /// `AKPlayerError.trackSelectionFailure` if loading media selection groups
-    /// fails.
-    func availableTracks(for type: AKTrackType) async throws
-        -> AKTrackSelectionInfo
-
+    /// Retrieves all available track options for a specific track type.
+    /// Includes `.off` at index 0 if empty selection is allowed for the type.
+    func availableTracks(for type: AKTrackType) async throws -> [AKMediaTrackOption]
+    
     /// Fetches the currently selected track option for a given track type.
-    /// - Parameter type: The target `AKTrackType`.
-    /// - Returns: The currently active `AKMediaTrackOption`, or `nil` if none
-    /// is selected.
-    /// - Throws: An `AKPlayerError.trackSelectionFailure` if loading the
-    /// underlying asset group fails.
-    func selectedTrack(for type: AKTrackType) async throws
-        -> AKMediaTrackOption?
-
+    func selectedTrack(for type: AKTrackType) async throws -> AKMediaTrackOption?
+    
     /// Selects a specific track option for a given track type.
-    /// - Parameters:
-    ///   - option: The option to select, or `nil` / `.off` to disable.
-    ///   - type: The target `AKTrackType`.
-    /// - Throws: `AKPlayerError.noItemToPlay` if no active item exists, or
-    /// `AKPlayerError.trackSelectionFailure` if selection fails or empty
-    /// selection is disallowed.
-    func select(
-        _ option: AKMediaTrackOption?,
-        for type: AKTrackType
-    ) async throws
-
-    /// Selects the best track option based on user locale preferences or
-    /// default settings.
-    /// - Parameter type: The target `AKTrackType`.
-    /// - Throws: An `AKPlayerError` if querying tracks or performing the
-    /// selection fails.
+    func select(_ option: AKMediaTrackOption?, for type: AKTrackType) async throws
+    
+    /// Selects the best track option based on user locale preferences or default settings.
     func selectPreferredTrack(for type: AKTrackType) async throws
-
+    
+    /// Retrieves the domain-level media group details (options, selected, default) for a given track type.
+    func trackGroup(for type: AKTrackType) async throws -> AKMediaTrackGroup?
+    
+    /// Retrieves domain-level media groups for multiple track types.
+    func trackGroups(for types: [AKTrackType]) async throws -> [AKMediaTrackGroup]
+    
+    /// Fetches currently selected track options across multiple track types.
+    func selectedTracks(for types: [AKTrackType]) async throws -> [AKMediaTrackOption]
+    
     /// Clears track selection caches, observers, and resets session tracking.
     func resetSession() async
-
-    /// Creates an `AsyncStream` emitting track selection updates whenever the
-    /// active track changes.
-    /// - Parameter type: The target `AKTrackType`.
-    /// - Returns: An `AsyncStream` yielding optional `AKMediaTrackOption`
-    /// updates.
-    func selectionChanges(for type: AKTrackType)
-        -> AsyncStream<AKMediaTrackOption?>
+    
+    /// Creates an `AsyncStream` emitting track selection updates whenever the active track changes.
+    func selectionChanges(for type: AKTrackType) -> AsyncStream<AKMediaTrackOption?>
 }
 
 // MARK: - AKTrackSelectionService
@@ -74,91 +52,60 @@ public protocol AKTrackSelectionServiceProtocol {
 @MainActor
 public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
     // MARK: - Properties
-
+    
     /// A weak reference to the parent media manager providing actor-safe access
     /// to the active `AVPlayerItem`.
     private weak var mediaManager: (any AKMediaManagerProtocol)?
-
+    
     /// Cached `AVMediaSelectionGroup` objects mapped by asset item key and
     /// track type.
     private var groupCache: [String: AVMediaSelectionGroup] = [:]
-
+    
     /// Active continuation listeners for streaming selection updates.
     private var continuations:
-        [AKTrackType: [UUID: AsyncStream<AKMediaTrackOption?>
-                .Continuation]] =
-        [:]
-
+    [AKTrackType: [UUID: AsyncStream<AKMediaTrackOption?>
+        .Continuation]] =
+    [:]
+    
     /// Last known track selections used to deduplicate broadcast updates.
     private var lastKnownSelection: [AKTrackType: AKMediaTrackOption?] = [:]
-
+    
     /// Notification center token for external media selection observer.
     private var externalChangeObserver: NSObjectProtocol?
-
+    
     /// Convenience non-throwing accessor for the active `AVPlayerItem`.
     private var playerItem: AVPlayerItem? {
         mediaManager?.playerItem
     }
-
+    
     // MARK: - Initialization & Cleanup
-
+    
     /// Initializes a new track selection service bound to a parent media
     /// manager.
     /// - Parameter mediaManager: The parent media manager instance.
     public init(mediaManager: any AKMediaManagerProtocol) {
         self.mediaManager = mediaManager
-
+        
         // Start observing external track selection updates (e.g., system
         // AVPlayerViewController changes)
         startObservingExternalChanges()
     }
-
+    
     deinit {}
-
+    
     // MARK: - Public API
-
-    /// Retrieves all available media track options for a specific track type.
-    /// - Parameter type: The target `AKTrackType` (audio, subtitle, closed
-    /// caption, etc.).
-    /// - Returns: An `AKTrackSelectionInfo` model containing available options
-    /// and current selection.
-    /// - Throws: `AKPlayerError.noItemToPlay` if no active player item exists,
-    /// or `AKPlayerError.trackSelectionFailure` if fetching media groups fails.
-    public func availableTracks(for type: AKTrackType) async throws
-        -> AKTrackSelectionInfo
-    {
-        guard let playerItem else {
-            throw AKPlayerError.noItemToPlay
+    
+    /// Retrieves all available track options for a specific track type,
+    /// prepending `.off` if empty selection is permitted.
+    public func availableTracks(for type: AKTrackType) async throws -> [AKMediaTrackOption] {
+        guard let group = try await trackGroup(for: type) else {
+            return (type == .subtitle || type == .closedCaption) ? [.off] : []
         }
-
-        guard let group = try await mediaGroup(for: type, in: playerItem.asset)
-        else {
-            return AKTrackSelectionInfo(
-                options: [],
-                selected: nil,
-                allowsEmptySelection: true
-            )
-        }
-
-        let filtered = filterSpecialized(group.options, for: type)
-        let defaultOption = group.defaultOption
-
-        var trackOptions = filtered.map {
-            AKMediaTrackOption(option: $0, isDefault: $0 == defaultOption)
-        }
-
-        let allowsEmpty = group.allowsEmptySelection
-        if type == .subtitle || type == .closedCaption, allowsEmpty {
-            trackOptions.insert(.off, at: 0)
-        }
-
-        let selected = try await selectedTrack(for: type)
-        return AKTrackSelectionInfo(
-            options: trackOptions, selected: selected,
-            allowsEmptySelection: allowsEmpty
-        )
+        
+        var options = group.options
+        return options
     }
-
+    
     /// Fetches the currently selected track option for a given track type.
     /// - Parameter type: The target `AKTrackType`.
     /// - Returns: The currently active `AKMediaTrackOption`, or `nil` if none
@@ -166,30 +113,30 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
     /// - Throws: An `AKPlayerError.trackSelectionFailure` if media selection
     /// group fetching fails.
     public func selectedTrack(for type: AKTrackType) async throws
-        -> AKMediaTrackOption?
+    -> AKMediaTrackOption?
     {
         guard let playerItem else {
             return offIfApplicable(type)
         }
-
+        
         guard let group = try await mediaGroup(for: type, in: playerItem.asset)
         else {
             return offIfApplicable(type)
         }
-
+        
         guard
             let selectedOption = playerItem.currentMediaSelection
-            .selectedMediaOption(in: group)
+                .selectedMediaOption(in: group)
         else {
             return offIfApplicable(type)
         }
-
+        
         return AKMediaTrackOption(
             option: selectedOption,
             isDefault: selectedOption == group.defaultOption
         )
     }
-
+    
     /// Selects a specific track option for a given track type.
     /// - Parameters:
     ///   - option: The option to select, or `nil` / `.off` to disable.
@@ -203,110 +150,165 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
         guard let playerItem else {
             throw AKPlayerError.noItemToPlay
         }
-
+        
         guard let group = try await mediaGroup(for: type, in: playerItem.asset)
         else { return }
-
+        
         let targetOption = option?.option
-
+        
         if targetOption == nil, !group.allowsEmptySelection {
             throw
-                AKPlayerError
+            AKPlayerError
                 .trackSelectionFailure(reason: .emptySelectionForbidden(type))
         }
-
+        
         // AVPlayerItem selection updates execute directly on MainActor
         if let mediaOption = targetOption {
             playerItem.select(mediaOption, in: group)
         } else {
             playerItem.select(nil, in: group)
         }
-
+        
         let resolved = try await selectedTrack(for: type)
         recordAndBroadcastIfChanged(resolved, for: type)
     }
-
+    
     /// Selects the best track option based on user locale preferences or
     /// default settings.
     /// - Parameter type: The target `AKTrackType`.
     /// - Throws: An `AKPlayerError` if querying tracks or performing selection
     /// encounters an error.
     public func selectPreferredTrack(for type: AKTrackType) async throws {
-        let info = try await availableTracks(for: type)
-        guard !info.options.isEmpty else { return }
-
+        guard let group = try await trackGroup(for: type) else {
+            return
+        }
+        
+        guard !group.options.isEmpty else { return }
+        
         if type == .subtitle || type == .closedCaption,
            !systemCaptioningEnabled()
         {
-            if info.allowsEmptySelection {
+            if group.allowsEmptySelection {
                 try await select(.off, for: type)
             }
             return
         }
-
-        guard let playerItem else { return }
-        let asset = playerItem.asset
-
-        guard let group = try await mediaGroup(for: type, in: asset)
-        else { return }
-
+        
+        
         let preferredLocale =
-            Locale.preferredLanguages.first
-                .map(Locale.init(identifier:)) ?? Locale.current
-        let matches = AVMediaSelectionGroup.mediaSelectionOptions(
-            from: group.options, with: preferredLocale
-        )
-
+        Locale.preferredLanguages.first
+            .map(Locale.init(identifier:)) ?? Locale.current
+        let matches = AVMediaSelectionGroup.mediaSelectionOptions(from: group.options.flatMap({ $0.option }), with: preferredLocale)
+        
         if let best = matches.first,
-           let match = info.options.first(where: { $0.option == best })
+           let match = group.options.first(where: { $0.option == best })
         {
             try await select(match, for: type)
-        } else if let fallback = info.options.first(where: { $0.isDefault }) {
+        } else if let fallback = group.options.first(where: { $0.isDefault }) {
             try await select(fallback, for: type)
         }
     }
-
+    
+    
+    
+    /// Retrieves domain-level media group details for a single track type.
+    public func trackGroup(for type: AKTrackType) async throws -> AKMediaTrackGroup? {
+        guard let playerItem else {
+            throw AKPlayerError.noItemToPlay
+        }
+        
+        guard let group = try await mediaGroup(for: type, in: playerItem.asset) else {
+            return nil
+        }
+        
+        let filteredOptions = filterSpecialized(group.options, for: type)
+        let defaultAVOption = group.defaultOption
+        
+        
+        var trackOptions = filteredOptions.map {
+            AKMediaTrackOption(option: $0, isDefault: $0 == defaultAVOption)
+        }
+        
+        let selected = try await selectedTrack(for: type)
+        let defaultTrackOption = trackOptions.first(where: { $0.isDefault })
+        
+        let allowsEmpty = group.allowsEmptySelection
+        if type == .subtitle || type == .closedCaption, allowsEmpty {
+            trackOptions.insert(.off, at: 0)
+        }
+        
+        return AKMediaTrackGroup(
+            type: type,
+            options: trackOptions,
+            selectedOption: selected,
+            defaultOption: defaultTrackOption,
+            allowsEmptySelection: group.allowsEmptySelection && allowsEmptySelection(type)
+        )
+    }
+    
+    /// Retrieves domain-level media groups for multiple track types.
+    public func trackGroups(for types: [AKTrackType]) async throws -> [AKMediaTrackGroup] {
+        var groups: [AKMediaTrackGroup] = []
+        for type in types {
+            if let group = try await trackGroup(for: type) {
+                groups.append(group)
+            }
+        }
+        return groups
+    }
+    
+    /// Fetches currently selected track options across multiple track types.
+    public func selectedTracks(for types: [AKTrackType]) async throws -> [AKMediaTrackOption] {
+        var selections: [AKMediaTrackOption] = []
+        for type in types {
+            if let selected = try await selectedTrack(for: type) {
+                selections.append(selected)
+            }
+        }
+        return selections
+    }
+    
     /// Clears track selection caches, observers, and resets session tracking.
     public func resetSession() async {
         // 1. Clear cached AVMediaSelectionGroup instances
         groupCache.removeAll()
-
+        
         // 2. Clear stale track selection states
         lastKnownSelection.removeAll()
-
+        
         // 3. Remove existing notification observer if active
         if let externalChangeObserver {
             NotificationCenter.default.removeObserver(externalChangeObserver)
             self.externalChangeObserver = nil
         }
-
+        
         // 4. Re-bind external change observation with the current player item
         startObservingExternalChanges()
     }
-
+    
     /// Creates an `AsyncStream` emitting track selection updates whenever the
     /// active track changes.
     /// - Parameter type: The target `AKTrackType`.
     /// - Returns: An `AsyncStream` yielding optional `AKMediaTrackOption`
     /// updates.
     public nonisolated func selectionChanges(for type: AKTrackType)
-        -> AsyncStream<
-            AKMediaTrackOption?
-        >
+    -> AsyncStream<
+        AKMediaTrackOption?
+    >
     {
         AsyncStream { continuation in
             let id = UUID()
-
+            
             Task { @MainActor in
                 self.addContinuation(continuation, with: id, for: type)
-
+                
                 // Seed stream with initial selection value
                 if let current = try? await self.selectedTrack(for: type) {
                     continuation.yield(current)
                     self.recordSelection(current, for: type)
                 }
             }
-
+            
             // Clean up when subscriber cancels stream
             continuation.onTermination = { [weak self] _ in
                 Task { @MainActor in
@@ -315,13 +317,13 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
             }
         }
     }
-
+    
     // MARK: - External Change Observation
-
+    
     /// Starts observing external notifications for media selection changes.
     private func startObservingExternalChanges() {
         guard let playerItem else { return }
-
+        
         externalChangeObserver = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.mediaSelectionDidChangeNotification,
             object: playerItem,
@@ -333,7 +335,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
             }
         }
     }
-
+    
     /// Handles media selection changes triggered externally by updating stream
     /// continuations.
     private func handleExternalChangeNotification() async {
@@ -343,24 +345,24 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
             recordAndBroadcastIfChanged(resolved, for: type)
         }
     }
-
+    
     // MARK: - Private Helpers
-
+    
     /// Checks whether captioning preferences are enabled in system settings.
     /// - Returns: A Boolean indicating if system captioning is turned on.
     private func systemCaptioningEnabled() -> Bool {
         guard
             let characteristics =
-            MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics(
-                .user
-            )
-            .takeRetainedValue() as? [AVMediaCharacteristic]
+                MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics(
+                    .user
+                )
+                .takeRetainedValue() as? [AVMediaCharacteristic]
         else {
             return false
         }
         return !characteristics.isEmpty
     }
-
+    
     /// Helper method returning the default `.off` option for caption and
     /// subtitle track types.
     /// - Parameter type: The target `AKTrackType`.
@@ -369,12 +371,16 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
     private func offIfApplicable(_ type: AKTrackType) -> AKMediaTrackOption? {
         (type == .subtitle || type == .closedCaption) ? .off : nil
     }
-
+    
+    private func allowsEmptySelection(_ type: AKTrackType) -> Bool {
+        return (type == .subtitle || type == .closedCaption)
+    }
+    
     /// Maps an `AKTrackType` to its corresponding `AVMediaCharacteristic`.
     /// - Parameter type: The target `AKTrackType`.
     /// - Returns: The matching `AVMediaCharacteristic`.
     private func mediaCharacteristic(for type: AKTrackType)
-        -> AVMediaCharacteristic
+    -> AVMediaCharacteristic
     {
         switch type {
         case .audio, .audioDescription: .audible
@@ -382,7 +388,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
         case .videoAlternative: .visual
         }
     }
-
+    
     /// Filters media options to isolate specialized tracks (e.g.
     /// accessibility/closed captions vs standard subtitles).
     /// - Parameters:
@@ -394,7 +400,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
         _ options: [AVMediaSelectionOption],
         for type: AKTrackType
     )
-        -> [AVMediaSelectionOption]
+    -> [AVMediaSelectionOption]
     {
         switch type {
         case .closedCaption:
@@ -425,7 +431,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
             options
         }
     }
-
+    
     /// Loads or returns the cached `AVMediaSelectionGroup` for a specific track
     /// type in an asset.
     /// - Parameters:
@@ -439,21 +445,21 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
         for type: AKTrackType,
         in asset: AVAsset
     ) async throws
-        -> AVMediaSelectionGroup?
+    -> AVMediaSelectionGroup?
     {
         guard let playerItem else { return nil }
         let key = "\(ObjectIdentifier(playerItem).hashValue)-\(type)"
         if let cached = groupCache[key] {
             return cached
         }
-
+        
         let characteristic = mediaCharacteristic(for: type)
         do {
             // Explicitly isolate or ensure the compiler knows this stays within
             // actor boundaries
             let group =
-                try await asset
-                    .loadMediaSelectionGroup(for: characteristic)
+            try await asset
+                .loadMediaSelectionGroup(for: characteristic)
             guard let group else { return nil }
             groupCache[key] = group
             return group
@@ -466,7 +472,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
             )
         }
     }
-
+    
     /// Updates the local dictionary of active track selections.
     /// - Parameters:
     ///   - option: The newly selected track option.
@@ -477,7 +483,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
     ) {
         lastKnownSelection[type] = option
     }
-
+    
     /// Records track changes and broadcasts updates to stream listeners if the
     /// selection changed.
     /// - Parameters:
@@ -492,11 +498,11 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
         {
             return
         }
-
+        
         lastKnownSelection[type] = option
         continuations[type]?.values.forEach { $0.yield(option) }
     }
-
+    
     /// Registers an active continuation stream for track selection broadcasts.
     /// - Parameters:
     ///   - continuation: The stream continuation to append.
@@ -509,7 +515,7 @@ public final class AKTrackSelectionService: AKTrackSelectionServiceProtocol {
     ) {
         continuations[type, default: [:]][id] = continuation
     }
-
+    
     /// Removes a registered continuation stream subscriber.
     /// - Parameters:
     ///   - id: Unique subscriber identifier.

@@ -33,9 +33,22 @@
 		04E8CB5C30488DAF0067ACC6 /* AKPlayerDemoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AKPlayerDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		04F858D5304EDE55006D5575 /* Exceptions for "AKPlayerDemo" folder in "AKPlayerDemo" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 04E8CB4430488DAC0067ACC6 /* AKPlayerDemo */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		04E8CB4730488DAC0067ACC6 /* AKPlayerDemo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				04F858D5304EDE55006D5575 /* Exceptions for "AKPlayerDemo" folder in "AKPlayerDemo" target */,
+			);
 			path = AKPlayerDemo;
 			sourceTree = "<group>";
 		};
@@ -202,7 +215,7 @@
 			mainGroup = 04E8CB3C30488DAC0067ACC6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../" */,
+				04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../.." */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 04E8CB4630488DAC0067ACC6 /* Products */;
@@ -409,6 +422,7 @@
 				DEVELOPMENT_TEAM = C96D8ZQ5VQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AKPlayerDemo/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -438,6 +452,7 @@
 				DEVELOPMENT_TEAM = C96D8ZQ5VQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AKPlayerDemo/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -571,7 +586,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../" */ = {
+		04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../.." */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../..;
 		};
@@ -580,7 +595,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		04E6D9F2304B2401009B6503 /* AKPlayer */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../../" */;
+			package = 04E6D9EF304B23DC009B6503 /* XCLocalSwiftPackageReference "../.." */;
 			productName = AKPlayer;
 		};
 /* End XCSwiftPackageProductDependency section */

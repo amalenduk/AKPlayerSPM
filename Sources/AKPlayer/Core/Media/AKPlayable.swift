@@ -41,6 +41,8 @@ public protocol AKPlayable: AnyObject, Equatable, Sendable {
 
     /// Optional static Now Playing metadata associated with the media.
     var staticMetadata: (any AKNowPlayableStaticMetadataProtocol)? { get }
+    
+    var cachePolicy: AKMediaCachePolicy { get }
 
     /// Indicates whether the media item is a live stream.
     func isLive() -> Bool

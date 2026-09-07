@@ -66,6 +66,8 @@ public protocol AKPlayerProtocol: AnyObject, AKPlayerActionsProtocol {
     /// Contains error details if a failure occurs during initialization or
     /// playback.
     var error: AKPlayerError? { get }
+    
+    var configuration: AKPlayerConfigurationProtocol { get }
 
     /// An asynchronous sequence of player lifecycle and playback events.
     var events: AsyncStream<AKPlayerEvent> { get }

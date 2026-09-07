@@ -27,6 +27,10 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     static let session = AVAudioSession.sharedInstance()
     let audioSession = AKAudioSessionService(audioSession: session)
     
+    @Published public var isPipPossible: Bool = false
+    @Published public var isPipActive: Bool = false
+    
+    
     @Published public var stateDescription: String = ""
     @Published public var currentTime: Double = 0
     @Published public var duration: Double = 0
@@ -48,6 +52,7 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     private nonisolated(unsafe) var timeObserverToken: Any?
     private var cancellables = Set<AnyCancellable>()
     private var clearUnavailableWorkItem: DispatchWorkItem?
+    public private(set) var pipController: AKPictureInPictureController?
     
     // MARK: - Models for Selection Sheet
     
@@ -167,6 +172,45 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
         }
     }
     
+    
+    // MARK: - Setup PiP
+    
+    public func setupPip(with playerLayer: AVPlayerLayer) {
+        // Initialize AKPictureInPictureController with the player layer[cite: 3]
+        guard let controller = AKPictureInPictureController(playerLayer: playerLayer) else { return }
+        
+        controller.delegate = self
+        controller.canStartAutomatically = true // Allows automatic PiP when swiping home[cite: 3]
+        self.pipController = controller
+        self.isPipPossible = controller.isPictureInPicturePossible
+        
+        // Listen to AsyncStream events from AKPictureInPictureController[cite: 3]
+        Task { [weak self] in
+            for await event in controller.events {
+                guard let self else { return }
+                switch event {
+                case .willStart:
+                    break
+                case .didStart:
+                    self.isPipActive = true
+                case .failedToStart(let reason):
+                    print("PiP failed: \(reason)")
+                    self.isPipActive = false
+                case .willStop:
+                    break
+                case .didStop:
+                    self.isPipActive = false
+                case .restoreUserInterface:
+                    break
+                }
+            }
+        }
+    }
+    
+    public func togglePip() {
+        pipController?.toggle()
+    }
+    
     deinit {
         //if let token = timeObserverToken { player.player.removeTimeObserver(token) }
     }
@@ -227,5 +271,17 @@ extension SimpleVideoPlayerViewModel: AKMediaDelegate {
                 self.duration = itemDuration.seconds
             }
         }
+    }
+}
+
+// MARK: - AKPictureInPictureDelegate
+
+extension SimpleVideoPlayerViewModel: AKPictureInPictureDelegate {
+    public func pictureInPicture(
+        _ controller: AKPictureInPictureController,
+        restoreUserInterfaceForPictureInPictureStopWith completionHandler: @escaping @Sendable (Bool) -> Void
+    ) {
+        // Handle UI restoration if necessary when user taps restore button in PiP window[cite: 1]
+        completionHandler(true)
     }
 }
