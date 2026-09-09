@@ -17,22 +17,22 @@ import Foundation
 @MainActor
 public class AKPlayerController: AKPlayerControllerProtocol {
     // MARK: - Properties
-
+    
     /// The underlying `AVPlayer` engine executing system media playback.
     public private(set) var player: AVPlayer
-
+    
     /// The current concrete playback state exposed by the state controller.
     public var state: AKPlayerState {
         controller.state
     }
-
+    
     /// The default playback speed multiplier configured on the underlying
     /// player engine.
     public var defaultRate: AKPlaybackRate {
         get { AKPlaybackRate(rate: player.defaultRate) }
         set { player.defaultRate = newValue.rate }
     }
-
+    
     /// The current playback speed multiplier. Modifying this triggers play or
     /// pause actions accordingly.
     public var rate: AKPlaybackRate {
@@ -45,113 +45,115 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             }
         }
     }
-
+    
     /// The active playable media item loaded into the controller.
     public private(set) var currentMedia: (any AKPlayable)?
-
+    
     /// The active `AVPlayerItem` associated with current media execution.
     public var currentItem: AVPlayerItem? {
         player.currentItem
     }
-
+    
     /// The duration of the currently active player item.
     public var currentItemDuration: CMTime {
         currentItem?.duration ?? .indefinite
     }
-
+    
     /// The current playback position time of the player.
     public var currentTime: CMTime {
         player.currentTime()
     }
-
+    
     /// The remaining playback time duration for the active media item, if
     /// available.
     public var remainingTime: CMTime? {
         guard currentItemDuration.isValid else { return nil }
         return CMTimeSubtract(currentItemDuration, currentTime)
     }
-
+    
     /// A boolean flag indicating whether playback will automatically start upon
     /// completing loading/buffering.
     public var autoPlay: Bool {
         controller.autoPlay
     }
-
+    
     /// Indicates whether a seek operation is currently being performed by the
     /// seeking service.
     public var isSeeking: Bool {
         playerSeekingThroughMediaService.isSeeking
     }
-
+    
     /// The target position of the last requested seek operation.
     public var lastRequestedSeekPosition: AKSeekTarget? {
         playerSeekingThroughMediaService.lastRequestedSeekTarget
     }
-
+    
     /// The audio output playback volume level, ranging from 0.0 to 1.0.
     public var volume: Float {
         get { player.volume }
         set { player.volume = newValue }
     }
-
+    
     /// A boolean flag indicating whether player audio output is muted.
     public var isMuted: Bool {
         get { player.isMuted }
         set { player.isMuted = newValue }
     }
-
+    
     /// The current error object if the controller is in a failed state.
     public var error: AKPlayerError? {
         (controller as? AKFailedState)?.error
     }
-
+    
     /// Asynchronous stream of player events for Swift Concurrency.
     public var events: AsyncStream<AKPlayerEvent> {
         eventBroadcaster.makeStream()
     }
-
+    
     /// Configuration options driving player behavior and timing defaults.
     public private(set) var configuration: AKPlayerConfigurationProtocol
-
+    
     /// The active state controller instance representing current player state
     /// logic.
     public private(set) var controller: AKPlayerStateControllerProtocol {
         get { _controller ?? AKIdleState(playerController: self) }
         set {
+            let oldController = _controller
             _controller = newValue
+                        
             newValue.processStateChange()
             processStateChange()
             emit(.stateDidChange(newValue.state))
         }
     }
-
+    
     private var _controller: AKPlayerStateControllerProtocol?
-
+    
     private let eventBroadcaster = AKEventBroadcaster<AKPlayerEvent>()
-
+    
     /// Service managing seek operation queuing and execution against
     /// `AVPlayer`.
     public var playerSeekingThroughMediaService: AKPlayerSeekingThroughMediaServiceProtocol
-
+    
     /// Service monitoring network availability and reachability changes.
     public var networkStatusMonitor: AKNetworkStatusMonitorProtocol
-
+    
     /// Observer service tracking periodic and boundary time playback events.
     private var playerPlaybackTimeObserver: AKPlayerPlaybackTimeObserverProtocol
-
+    
     /// Observer service tracking player rate change updates.
     private var playerRateObserver: AKPlayerRateObserverProtocol
-
+    
     /// Combine cancellable storage for active KVO and notification
     /// subscriptions.
     private var subscriptions = Set<AnyCancellable>()
-
+    
     /// Task responsible for asynchronously consuming and processing rate change
     /// events from the player stream.
     private nonisolated(unsafe) var rateObservationTask: Task<Void, Never>?
-
+    
     // MARK: - Initialization & Teardown
-
+    
     /// Initializes a new `AKPlayerController` instance with a target player
     /// engine and configuration options.
     /// - Parameters:
@@ -162,25 +164,34 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         player: AVPlayer,
         configuration: AKPlayerConfigurationProtocol
     ) {
+        defer {
+            AKLogger.logInit(self)
+        }
         self.player = player
         self.configuration = configuration
-
+        
         playerRateObserver = AKPlayerRateObserver(with: player)
         playerPlaybackTimeObserver = AKPlayerPlaybackTimeObserver(with: player)
-        playerSeekingThroughMediaService =
-            AKPlayerSeekingThroughMediaService(with: player)
+        playerSeekingThroughMediaService = AKPlayerSeekingThroughMediaService(with: player)
         networkStatusMonitor = AKNetworkStatusMonitor()
+        
+        
     }
-
+    
     deinit {
-        print("AKPlayerController: Deinit called from the AKPlayerController ✌🏼")
+        defer {
+            AKLogger.logDeinit(
+                String(describing: Self.self),
+                pointer: Unmanaged.passUnretained(self)
+            )
+        }
         rateObservationTask?.cancel()
         rateObservationTask = nil
         eventBroadcaster.finish()
     }
-
+    
     // MARK: - Time Observers
-
+    
     /// Registers boundary time points to trigger observer delegate callbacks
     /// during playback.
     /// - Parameter times: An array of target boundary times represented as
@@ -188,14 +199,14 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     public func addBoundaryTimeObserver(for times: [CMTime]) {
         playerPlaybackTimeObserver.startObservingBoundaryTime(for: times)
     }
-
+    
     /// Removes active boundary time observers from the playback pipeline.
     public func removeBoundaryTimeObserver() {
         playerPlaybackTimeObserver.stopObservingBoundaryTime()
     }
-
+    
     // MARK: - Playback Commands
-
+    
     /// Loads a playable media item into the state pipeline.
     /// - Parameters:
     ///   - media: The target media item conforming to `AKPlayable`.
@@ -214,38 +225,38 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         currentMedia = media
         controller.load(media: media, autoPlay: autoPlay, at: position)
     }
-
+    
     /// Commands the current state controller to initiate or resume playback.
     public func play() {
         controller.play()
     }
-
+    
     /// Commands the current state controller to initiate playback at a specific
     /// speed multiplier.
     /// - Parameter rate: The target playback rate multiplier.
     public func play(at rate: AKPlaybackRate) {
         controller.play(at: rate)
     }
-
+    
     /// Commands the current state controller to pause active media playback.
     public func pause() {
         controller.pause()
     }
-
+    
     /// Commands the current state controller to toggle between play and pause
     /// states.
     public func togglePlayPause() {
         controller.togglePlayPause()
     }
-
+    
     /// Commands the current state controller to stop media playback and reset
     /// position.
     public func stop() {
         controller.stop()
     }
-
+    
     // MARK: - Seeking Commands
-
+    
     /// Asynchronously seeks to a designated target position within current
     /// media.
     /// - Parameter target: The target position (`.time`, `.seconds`, `.offset`,
@@ -259,7 +270,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             }
         }
     }
-
+    
     /// Asynchronously seeks to a designated target position with explicit
     /// tolerance bounds.
     /// - Parameters:
@@ -276,7 +287,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         toleranceBefore: CMTime,
         toleranceAfter: CMTime
     ) async
-        -> Bool
+    -> Bool
     {
         await withCheckedContinuation { continuation in
             seek(
@@ -289,7 +300,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             }
         }
     }
-
+    
     /// Seeks to a designated target position with a completion callback.
     /// - Parameters:
     ///   - target: The target position (`.time`, `.seconds`, `.offset`,
@@ -302,7 +313,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     ) {
         controller.seek(to: target, completionHandler: completionHandler)
     }
-
+    
     /// Seeks to a designated target position with custom tolerance bounds and a
     /// completion callback.
     /// - Parameters:
@@ -325,42 +336,42 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             completionHandler: completionHandler
         )
     }
-
+    
     // MARK: - Media Navigation
-
+    
     /// Steps frame-by-frame through video media by a specified frame offset.
     /// - Parameter count: The frame offset count (positive for forward,
     /// negative for reverse).
     public func step(by count: Int) {
         controller.step(by: count)
     }
-
+    
     /// Fast-forwards playback using the default fast-forward speed defined in
     /// configuration.
     public func fastForward() {
         controller.fastForward()
     }
-
+    
     /// Fast-forwards playback at a specified custom speed multiplier rate.
     /// - Parameter rate: The target fast-forward playback speed multiplier.
     public func fastForward(at rate: AKPlaybackRate) {
         controller.fastForward(at: rate)
     }
-
+    
     /// Rewinds playback using the default rewind speed defined in
     /// configuration.
     public func rewind() {
         controller.rewind()
     }
-
+    
     /// Rewinds playback at a specified custom speed multiplier rate.
     /// - Parameter rate: The target rewind playback speed multiplier.
     public func rewind(at rate: AKPlaybackRate) {
         controller.rewind(at: rate)
     }
-
+    
     // MARK: - Helper & Pipeline Management Functions
-
+    
     /// Prepares the controller pipeline, initializes idle state, starts network
     /// monitoring, and attaches observers.
     /// - Throws: An error if setting up active pipeline components fails.
@@ -369,7 +380,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         networkStatusMonitor.startObserving()
         startPlayerObservers()
     }
-
+    
     /// Transitions the current state controller to a new state controller
     /// instance.
     /// - Parameter controller: The target state controller conforming to
@@ -377,30 +388,31 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     public func change(_ controller: AKPlayerStateControllerProtocol) {
         self.controller = controller
     }
-
+    
     /// Hook called whenever state changes to execute custom side effects based
     /// on active state.
     public func processStateChange() {
         switch state {
         case .idle, .loading, .loaded, .buffering, .paused, .playing, .stopped,
-             .waitingForNetwork,
-             .failed:
+                .waitingForNetwork,
+                .failed:
             break
         }
     }
-
+    
     /// Begins observing player rates, volume, mute state, and time changes via
     /// Combine publishers.
     private func startPlayerObservers() {
         playerRateObserver.startObserving()
-        playerPlaybackTimeObserver.startObservingPeriodicTime(
-            for: configuration.getPeriodicTimeInterval()
-        )
-
+        playerPlaybackTimeObserver.startObservingPeriodicTime(for: configuration.getPeriodicTimeInterval())
+        
+        rateObservationTask?.cancel()
         rateObservationTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            for await change in playerRateObserver.rateChanges {
-                eventBroadcaster.send(
+            guard let stream = self?.playerRateObserver.rateChanges else { return }
+            
+            for await change in stream {
+                guard !Task.isCancelled, let self else { break }
+                self.eventBroadcaster.send(
                     .playbackRateDidChange(
                         new: change.currentRate,
                         previous: change.previousRate
@@ -408,40 +420,53 @@ public class AKPlayerController: AKPlayerControllerProtocol {
                 )
             }
         }
-
+        
         player.publisher(for: \.volume)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] volume in
+            .sink { @MainActor [weak self] volume in
                 guard let self else { return }
-                eventBroadcaster.send(.volumeDidChange(volume))
+                self.eventBroadcaster.send(.volumeDidChange(volume))
             }
             .store(in: &subscriptions)
-
+        
         player.publisher(for: \.isMuted)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] isMuted in
+            .sink { @MainActor [weak self] isMuted in
                 guard let self else { return }
-                eventBroadcaster.send(.muteStatusDidChange(isMuted: isMuted))
+                self.eventBroadcaster.send(.muteStatusDidChange(isMuted: isMuted))
             }
             .store(in: &subscriptions)
-
+        
         playerPlaybackTimeObserver.periodicTimePublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] time in
-                guard let self, let currentMedia else { return }
-                eventBroadcaster.send(.timeDidChange(time))
+            .sink { @MainActor [weak self] time in
+                guard let self, self.currentMedia != nil else { return }
+                self.eventBroadcaster.send(.timeDidChange(time))
             }
             .store(in: &subscriptions)
-
+        
         playerPlaybackTimeObserver.boundaryTimePublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] time in
-                guard let self, let currentMedia else { return }
-                eventBroadcaster.send(.boundaryReached(at: time))
+            .sink { @MainActor [weak self] time in
+                guard let self, self.currentMedia != nil else { return }
+                self.eventBroadcaster.send(.boundaryReached(at: time))
+            }
+            .store(in: &subscriptions)
+        
+        player.publisher(for: \.status)
+            .dropFirst()
+            .sink { @MainActor [weak self] status in
+                guard let self else { return }
+                self.controller.handlePlayerStatusChange(status)
+            }
+            .store(in: &subscriptions)
+        
+        player.publisher(for: \.timeControlStatus)
+            .dropFirst()
+            .sink { @MainActor [weak self] status in
+                guard let self else { return }
+                self.controller.handleTimeControlStatusChange(status)
             }
             .store(in: &subscriptions)
     }
-
+    
+    
     /// Stops time and rate observers attached to the underlying player
     /// instance.
     private func stopPlayerObservers() {
@@ -449,9 +474,9 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         playerPlaybackTimeObserver.stopObservingPeriodicTime()
         playerPlaybackTimeObserver.stopObservingBoundaryTime()
     }
-
+    
     // MARK: - Event Dispatcher
-
+    
     /// Single entry point for dispatching all player events across the
     /// framework.
     /// Broadcasts the event to the delegate and forwards it to event listeners
@@ -464,43 +489,48 @@ public class AKPlayerController: AKPlayerControllerProtocol {
 
 // MARK: - Direct Action Implementations
 
-public extension AKPlayerController {
+extension AKPlayerController {
     /// Directly issues a `play()` command to the underlying `AVPlayer`.
-    func performPlay() {
+    public func performPlay() {
         player.play()
     }
-
+    
     /// Directly sets the playback rate on the underlying `AVPlayer`.
     /// - Parameter rate: The target playback speed rate multiplier.
-    func performPlay(at rate: AKPlaybackRate) {
+    public func performPlay(at rate: AKPlaybackRate) {
         player.rate = rate.rate
     }
-
+    
     /// Directly issues a `pause()` command to the underlying `AVPlayer`.
-    func performPause() {
+    public func performPause() {
         player.pause()
     }
-
+    
     /// Directly pauses playback, resets position to time zero, and cancels
     /// pending seek requests.
-    func performStop() {
-        player.pause()
+    public func performStop() {
+        if !player.timeControlStatus.isPaused {
+            player.pause()
+        }
         player.seek(to: .zero)
+        player.replaceCurrentItem(with: nil)
+        currentMedia?.playerItem?.cancelPendingSeeks()
+        currentMedia = nil
         playerSeekingThroughMediaService.cancelAll()
     }
-
+    
     /// Submits a target seek token directly to the seek service for execution.
     /// - Parameter targetSeek: The seek payload object containing target
     /// parameters and completion callbacks.
-    func performSeek(to targetSeek: AKSeek) {
+    public func performSeek(to targetSeek: AKSeek) {
         playerSeekingThroughMediaService.seek(to: targetSeek)
     }
-
+    
     /// Directly steps the current player item forward or backward by a specific
     /// frame count.
     /// - Parameter count: The frame offset count (positive for forward,
     /// negative for reverse).
-    func performStep(by count: Int) {
+    public func performStep(by count: Int) {
         player.currentItem?.step(byCount: count)
     }
 }

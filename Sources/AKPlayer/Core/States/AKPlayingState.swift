@@ -15,16 +15,18 @@ import Combine
 @MainActor
 public class AKPlayingState: AKBaseState {
     // MARK: - Properties
-
+    
     /// The target playback speed multiplier requested when entering the playing
     /// state.
     private var rate: AKPlaybackRate?
-
+    
     /// Container holding reactive Combine event subscriptions.
     private var subscriptions = Set<AnyCancellable>()
-
+    
+    private var hasStartedPlaying = false
+    
     // MARK: - Initialization & Deinitialization
-
+    
     /// Initializes a playing state instance associated with the specified
     /// player controller.
     /// - Parameters:
@@ -35,37 +37,48 @@ public class AKPlayingState: AKBaseState {
         playerController: any AKPlayerControllerProtocol,
         rate: AKPlaybackRate? = nil
     ) {
+        defer {
+            AKLogger.logInit(self)
+        }
         self.rate = rate
         super.init(playerController: playerController, state: .playing)
     }
-
-    deinit {}
-
+    
+    deinit {
+        defer {
+            AKLogger.logDeinit(
+                String(describing: Self.self),
+                pointer: Unmanaged.passUnretained(self)
+            )
+        }
+    }
+    
     // MARK: - Lifecycle Hooks
-
+    
     /// Entry point for playing state setup. Begins observing player status and
     /// item notifications, triggers playback, and applies targeted playback
     /// rate.
     override public func processStateChange() {
-        startObservingPlayerStatus()
         startObservingPlayerItemNotifications()
-
-        playerController.performPlay()
-
-        guard let rate,
-              playerController.player.rate != rate.rate
-        else { return }
-        play(at: rate)
+        
+        hasStartedPlaying = (playerController.player.timeControlStatus == .playing || playerController.player.timeControlStatus == .waitingToPlayAtSpecifiedRate)
+        
+        if let rate, playerController.player.rate != rate.rate {
+            play(at: rate)
+        } else {
+            playerController.performPlay()
+        }
     }
-
+    
     /// Cleans up Combine observation pipelines before transitioning to another
     /// state.
     override public func beforeStateChange() {
+        subscriptions.forEach({ $0.cancel() })
         subscriptions.removeAll()
     }
-
+    
     // MARK: - Commands
-
+    
     /// Adjusts playback rate when supported by the current media item.
     /// - Parameter rate: The targeted playback speed multiplier.
     override public func play(at rate: AKPlaybackRate) {
@@ -76,66 +89,78 @@ public class AKPlayingState: AKBaseState {
                 .emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
-
+        
         self.rate = rate
         playerController.performPlay(at: rate)
     }
-
+    
     /// Toggles playback state by pausing the active media playback.
     override public func togglePlayPause() {
         pause()
     }
-
+    
     // MARK: - Private Helper Functions
-
-    /// Observes status updates and empty current item conditions on AVPlayer
-    /// while actively playing.
-    private func startObservingPlayerStatus() {
-        playerController.player.publisher(for: \.status)
-            .prepend(playerController.player.status)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in
-                guard let self, status == .failed else { return }
-                let controller = AKFailedState(
-                    playerController: playerController,
-                    error: .playerCanNoLongerPlay(
-                        error: playerController.player
-                            .error
-                    )
-                )
-                change(controller)
-            }
-            .store(in: &subscriptions)
-
-        playerController.player.publisher(for: \.timeControlStatus)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                guard playerController.player.currentItem == nil else { return }
-                stop()
-            }
-            .store(in: &subscriptions)
+    
+    public override func handlePlayerStatusChange(_ status: AVPlayer.Status) {
+        guard status == .failed else { return }
+        let controller = AKFailedState(
+            playerController: playerController,
+            error: .playerCanNoLongerPlay(
+                error: playerController.player
+                    .error
+            )
+        )
+        change(controller)
     }
-
+    
+    public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
+        switch status {
+        case .playing:
+            hasStartedPlaying = true
+        case .waitingToPlayAtSpecifiedRate:
+            if hasStartedPlaying {
+                guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
+                switch reasonForWaitingToPlay {
+                case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
+                    let controller = AKBufferingState(
+                        playerController: playerController,
+                        autoPlay: true,
+                        rate: rate
+                    )
+                    change(controller)
+                case .noItemToPlay:
+                    stop()
+                default:
+                    break
+                }
+            }
+        case .paused:
+            if hasStartedPlaying {
+                pause()
+            }
+        default:
+            break
+        }
+    }
+    
     /// Registers notification listeners for player item playback completion,
     /// failure, and buffering stall conditions.
     private func startObservingPlayerItemNotifications() {
         guard let playerItem = playerController.currentMedia?.playerItem
         else { return }
-
+        
         NotificationCenter.default.publisher(
             for: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem
         )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] notification in
+        .sink { @MainActor [weak self] notification in
             guard let self,
                   let error = notification
-                  .userInfo?[
-                      AVPlayerItemFailedToPlayToEndTimeErrorKey
-                  ] as? NSError
+                .userInfo?[
+                    AVPlayerItemFailedToPlayToEndTimeErrorKey
+                ] as? NSError
             else { return }
-
+            
             guard error is URLError else {
                 let controller = AKFailedState(
                     playerController: playerController,
@@ -143,7 +168,7 @@ public class AKPlayingState: AKBaseState {
                 )
                 return change(controller)
             }
-
+            
             let controller = AKWaitingForNetworkState(
                 playerController: playerController,
                 autoPlay: true,
@@ -152,13 +177,12 @@ public class AKPlayingState: AKBaseState {
             change(controller)
         }
         .store(in: &subscriptions)
-
+        
         NotificationCenter.default.publisher(
             for: AVPlayerItem.didPlayToEndTimeNotification,
             object: playerItem
         )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] _ in
+        .sink { @MainActor [weak self] _ in
             guard let self else { return }
             let controller = AKPausedState(
                 playerController: playerController,
@@ -167,13 +191,12 @@ public class AKPlayingState: AKBaseState {
             change(controller)
         }
         .store(in: &subscriptions)
-
+        
         NotificationCenter.default.publisher(
             for: AVPlayerItem.playbackStalledNotification,
             object: playerItem
         )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] _ in
+        .sink { @MainActor [weak self] _ in
             guard let self else { return }
             let controller = AKBufferingState(
                 playerController: playerController,
@@ -184,9 +207,9 @@ public class AKPlayingState: AKBaseState {
         }
         .store(in: &subscriptions)
     }
-
+    
     // MARK: - Availability Overrides
-
+    
     /// Evaluates preflight permission and unavailable reasons for a given
     /// player action when actively playing.
     /// - Parameter action: The candidate action to evaluate.

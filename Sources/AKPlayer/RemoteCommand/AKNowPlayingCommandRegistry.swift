@@ -47,7 +47,11 @@ public actor AKNowPlayingCommandRegistry {
     // MARK: - Initialization
 
     /// Creates a new isolated actor instance of `AKNowPlayingCommandRegistry`.
-    public init() {}
+    public init() {
+        defer {
+            AKLogger.logInit(self)
+        }
+    }
 
     /// Creates a new isolated actor instance initialized with a given
     /// `AKNowPlayingCommandConfiguration`.
@@ -56,6 +60,15 @@ public actor AKNowPlayingCommandRegistry {
     public init(configuration: AKNowPlayingCommandConfiguration) async {
         self.init()
         await apply(configuration: configuration)
+    }
+    
+    deinit {
+        defer {
+            AKLogger.logDeinit(
+                String(describing: Self.self),
+                pointer: Unmanaged.passUnretained(self)
+            )
+        }
     }
 
     // MARK: - Registration

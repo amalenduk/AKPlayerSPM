@@ -28,12 +28,12 @@ public extension AKPlayable {
         setRetainedAssociatedObject(self, &managerKey, newManager)
         return newManager
     }
-
+    
     /// Publisher emitting updates when the media state transitions.
     var statePublisher: AnyPublisher<AKPlayableState, Never> {
         manager.statePublisher
     }
-
+    
     /// Observes key-path updates on the underlying `AVPlayerItem` on the Main
     /// Actor.
     /// - Parameters:
@@ -54,7 +54,7 @@ public extension AKPlayable {
         ) -> Void
     ) -> AnyCancellable? {
         guard let item = manager.playerItem else { return nil }
-
+        
         return item.publisher(for: keyPath, options: options)
             .receive(on: DispatchQueue.main)
             .sink { [weak manager] value in
@@ -72,15 +72,19 @@ public extension AKPlayable {
     var state: AKPlayableState {
         manager.state
     }
-
+    
     /// The current player error, if media loading or playback failed.
     var error: AKPlayerError? {
         manager.error
     }
-
+    
     var delegate: AKMediaDelegate? {
         get { manager.delegate }
         set { manager.delegate = newValue }
+    }
+    
+    var events: AsyncStream<AKMediaEvent> {
+        get { manager.events }
     }
 }
 
@@ -92,18 +96,18 @@ public extension AKPlayable {
     func createAsset() {
         manager.createAsset()
     }
-
+    
     /// Asynchronously validates key asset properties.
     /// - Throws: An error if asset playability validation fails.
     func validateAssetPlayability() async throws {
         try await manager.validateAssetPlayability()
     }
-
+    
     /// Constructs an `AVPlayerItem` from the initialized `AVURLAsset`.
     func createPlayerItemFromAsset() {
         manager.createPlayerItemFromAsset()
     }
-
+    
     /// Aborts active asset property loading and cancels pending asynchronous
     /// tasks.
     func abortAssetInitialization() {
@@ -124,7 +128,7 @@ public extension AKPlayable {
     func canStep(by count: Int) -> Bool {
         manager.canStep(by: count)
     }
-
+    
     /// Evaluates whether the player item supports playback at a specified rate.
     /// - Parameter rate: The target playback rate value.
     /// - Returns: A Boolean value indicating whether playback at the specified
@@ -132,7 +136,7 @@ public extension AKPlayable {
     func canPlay(at rate: AKPlaybackRate) -> Bool {
         manager.canPlay(at: rate)
     }
-
+    
     /// Evaluates whether seeking to a target position is permitted.
     /// - Parameter target: The target seek position.
     /// - Returns: A Boolean value indicating whether the seek target can be
@@ -150,12 +154,12 @@ public extension AKPlayable {
     var trackSelection: any AKTrackSelectionServiceProtocol {
         manager.trackSelectionService
     }
-
+    
     /// Seek feasibility checks and execution service.
     var seekingThroughMedia: any AKSeekingThroughMediaServiceProtocol {
         manager.seekingThroughMediaService
     }
-
+    
     /// Notification observer for player item playback lifecycle events.
     ///
     /// Available once `createPlayerItemFromAsset()` initializes the

@@ -25,7 +25,12 @@ public class AKIdleState: AKBaseState {
     }
 
     deinit {
-        // Cleanup routine if needed when state memory is released
+        defer {
+            AKLogger.logDeinit(
+                String(describing: Self.self),
+                pointer: Unmanaged.passUnretained(self)
+            )
+        }
     }
 
     // MARK: - Preflight Checks

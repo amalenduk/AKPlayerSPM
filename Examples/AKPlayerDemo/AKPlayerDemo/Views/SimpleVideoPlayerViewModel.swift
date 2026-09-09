@@ -17,7 +17,7 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     
     public lazy var player: AKPlayer = {
         var configuration = AKPlayerConfiguration()
-        configuration.isNowPlayingEnabled = true
+        configuration.isNowPlayingEnabled = false
         let p = AKPlayer(player: aVplayer, configuration: configuration, audioSessionService: audioSession)
         p.player.appliesMediaSelectionCriteriaAutomatically = true
         p.delegate = self
@@ -66,13 +66,17 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
         public var id: String { title }
         public let type: AKTrackType
         public let title: String
-        public let info: AKTrackSelectionInfo
+        public let info: AKMediaTrackGroup
         public var options: [SelectionOption]
     }
     
     override public init() {
         super.init()
         try? player.prepare()
+    }
+    
+    deinit {
+        print("Deinit called from ", #file)
     }
     
     public func load(media: AKMedia, autoPlay: Bool) {
@@ -103,17 +107,17 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
             
             for (type, title) in trackTypes {
                 do {
-                    let info = try await trackService.availableTracks(for: type)
-                    guard !info.options.isEmpty else { continue }
+                    guard let group = try await trackService.trackGroup(for: type),
+                          !group.options.isEmpty else { return }
                     
-                    let options = info.options.map { trackOption in
+                    let options = group.options.map { trackOption in
                         SelectionOption(
                             option: trackOption,
-                            isSelected: trackOption == info.selected
+                            isSelected: trackOption == group.selectedOption
                         )
                     }
                     
-                    groups.append(SelectionGroup(type: type, title: title, info: info, options: options))
+                    groups.append(SelectionGroup(type: type, title: title, info: group, options: options))
                 } catch {
                     print("Failed to load tracks for \(title): \(error)")
                 }
@@ -178,11 +182,12 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     public func setupPip(with playerLayer: AVPlayerLayer) {
         // Initialize AKPictureInPictureController with the player layer[cite: 3]
         guard let controller = AKPictureInPictureController(playerLayer: playerLayer) else { return }
-        
-        controller.delegate = self
-        controller.canStartAutomatically = true // Allows automatic PiP when swiping home[cite: 3]
-        self.pipController = controller
-        self.isPipPossible = controller.isPictureInPicturePossible
+        Task { @MainActor in
+            controller.delegate = self
+            controller.canStartAutomatically = true // Allows automatic PiP when swiping home[cite: 3]
+            self.pipController = controller
+            self.isPipPossible = controller.isPictureInPicturePossible
+        }
         
         // Listen to AsyncStream events from AKPictureInPictureController[cite: 3]
         Task { [weak self] in
@@ -209,10 +214,6 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     
     public func togglePip() {
         pipController?.toggle()
-    }
-    
-    deinit {
-        //if let token = timeObserverToken { player.player.removeTimeObserver(token) }
     }
 }
 

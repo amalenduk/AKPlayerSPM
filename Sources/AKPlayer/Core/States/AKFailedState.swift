@@ -31,12 +31,20 @@ public class AKFailedState: AKBaseState {
         playerController: any AKPlayerControllerProtocol,
         error: AKPlayerError
     ) {
+        defer {
+            AKLogger.logInit(self)
+        }
         self.error = error
         super.init(playerController: playerController, state: .failed)
     }
 
     deinit {
-        // Cleanup routine if needed when state memory is released
+        defer {
+            AKLogger.logDeinit(
+                String(describing: Self.self),
+                pointer: Unmanaged.passUnretained(self)
+            )
+        }
     }
 
     // MARK: - Lifecycle Hooks

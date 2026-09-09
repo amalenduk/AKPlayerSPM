@@ -21,8 +21,6 @@ import AVFoundation
 /// AVPlayerItem construction routines.
 @MainActor
 public protocol AKPlayerItemInitServiceProtocol: AnyObject {
-    /// The target playable media item backing this initialization pipeline.
-    var media: any AKPlayable { get }
 
     /// The loaded URL asset backing the current initialization process.
     var asset: AVURLAsset? { get }
@@ -74,7 +72,7 @@ public final class AKPlayerItemInitService: AKPlayerItemInitServiceProtocol {
     // MARK: - Properties
 
     /// The target playable media item backing this initialization pipeline.
-    public let media: any AKPlayable
+    private unowned let media: AKPlayable
 
     /// The loaded URL asset backing the current initialization process.
     public private(set) var asset: AVURLAsset?

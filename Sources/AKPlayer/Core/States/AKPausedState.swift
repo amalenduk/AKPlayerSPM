@@ -15,16 +15,18 @@ import Combine
 @MainActor
 public class AKPausedState: AKBaseState {
     // MARK: - Properties
-
+    
     /// Flag indicating whether playback paused naturally because the media
     /// reached its end time.
     private let playerItemDidPlayToEndTime: Bool
-
+    
     /// Container holding reactive Combine event subscriptions.
-    private var subscriptions = Set<AnyCancellable>()
-
+    private var subscriptions: Set<AnyCancellable> = Set<AnyCancellable>()
+    
+    private var hasBeenPaused = false
+    
     // MARK: - Init
-
+    
     /// Initializes a paused state instance.
     /// - Parameters:
     ///   - playerController: The underlying player controller driving
@@ -35,24 +37,35 @@ public class AKPausedState: AKBaseState {
         playerController: any AKPlayerControllerProtocol,
         playerItemDidPlayToEndTime: Bool = false
     ) {
+        defer {
+            AKLogger.logInit(self)
+        }
         self.playerItemDidPlayToEndTime = playerItemDidPlayToEndTime
         super.init(playerController: playerController, state: .paused)
     }
-
-    deinit {}
-
+    
+    deinit {
+        defer {
+            AKLogger.logDeinit(
+                String(describing: Self.self),
+                pointer: Unmanaged.passUnretained(self)
+            )
+        }
+    }
+    
     // MARK: - Lifecycle Hooks
-
+    
     /// Entry point for paused state processing. Ensures playback pauses and
     /// fires delegate notifications if end-of-media was reached.
     override public func processStateChange() {
-        startObservingPlayerStatus()
         startObservingPlayerItemNotifications()
-
+        
+        hasBeenPaused = (playerController.player.timeControlStatus == .paused)
+        
         if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
         }
-
+        
         if playerItemDidPlayToEndTime,
            let currentMedia = playerController.currentMedia
         {
@@ -60,9 +73,9 @@ public class AKPausedState: AKBaseState {
                 .emit(.didReachEnd(at: playerController.currentTime))
         }
     }
-
+    
     // MARK: - Commands
-
+    
     /// Resumes playback. Transitions to loading state if media is not ready, or
     /// buffering state if ready.
     override public func play() {
@@ -74,15 +87,15 @@ public class AKPausedState: AKBaseState {
             }
             return
         }
-
+        
         let initialSeek: AKSeek? =
-            playerItemDidPlayToEndTime
-                ? AKSeek(
-                    target: .time(.zero),
-                    toleranceBefore: .zero,
-                    toleranceAfter: .zero
-                ) : nil
-
+        playerItemDidPlayToEndTime
+        ? AKSeek(
+            target: .time(.zero),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) : nil
+        
         let controller = AKBufferingState(
             playerController: playerController,
             autoPlay: true,
@@ -90,7 +103,7 @@ public class AKPausedState: AKBaseState {
         )
         change(controller)
     }
-
+    
     /// Resumes playback at a target rate. Validates capability or requests
     /// loading if unready.
     /// - Parameter rate: The target playback speed.
@@ -109,21 +122,21 @@ public class AKPausedState: AKBaseState {
             }
             return
         }
-
+        
         guard currentMedia.canPlay(at: rate) else {
             playerController
                 .emit(.commandUnavailable(reason: .canNotPlayAtSpecifiedRate))
             return
         }
-
+        
         let initialSeek: AKSeek? =
-            playerItemDidPlayToEndTime
-                ? AKSeek(
-                    target: .time(.zero),
-                    toleranceBefore: .zero,
-                    toleranceAfter: .zero
-                ) : nil
-
+        playerItemDidPlayToEndTime
+        ? AKSeek(
+            target: .time(.zero),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) : nil
+        
         let controller = AKBufferingState(
             playerController: playerController,
             autoPlay: true,
@@ -132,38 +145,47 @@ public class AKPausedState: AKBaseState {
         )
         change(controller)
     }
-
+    
     // MARK: - Additional Helper Functions
-
-    /// Observes status changes and empty item scenarios on AVPlayer while in
-    /// paused state.
-    private func startObservingPlayerStatus() {
-        playerController.player.publisher(for: \.status)
-            .prepend(playerController.player.status)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in
-                guard let self, status == .failed else { return }
-                let controller = AKFailedState(
-                    playerController: playerController,
-                    error: .playerCanNoLongerPlay(
-                        error: playerController.player
-                            .error
-                    )
-                )
-                change(controller)
-            }
-            .store(in: &subscriptions)
-
-        playerController.player.publisher(for: \.timeControlStatus)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                guard playerController.player.currentItem == nil else { return }
-                stop()
-            }
-            .store(in: &subscriptions)
+    
+    public override func handlePlayerStatusChange(_ status: AVPlayer.Status) {
+        guard status == .failed else { return }
+        let controller = AKFailedState(
+            playerController: playerController,
+            error: .playerCanNoLongerPlay(
+                error: playerController.player
+                    .error
+            )
+        )
+        change(controller)
     }
-
+    
+    public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
+        switch status {
+        case .playing:
+            if hasBeenPaused {
+                play()
+            }
+        case .waitingToPlayAtSpecifiedRate:
+            if hasBeenPaused {
+                guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
+                switch reasonForWaitingToPlay {
+                case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
+                    play()
+                case .noItemToPlay:
+                    stop()
+                default:
+                    break
+                }
+            }
+        case .paused:
+            hasBeenPaused = true
+        default:
+            break
+        }
+    }
+    
+    
     /// Registers notification center listeners for player item playback failure
     /// notifications.
     private func startObservingPlayerItemNotifications() {
@@ -173,15 +195,14 @@ public class AKPausedState: AKBaseState {
             for: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem
         )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] notification in
+        .sink { @MainActor [weak self] notification in
             guard let self,
                   let error = notification
-                  .userInfo?[
-                      AVPlayerItemFailedToPlayToEndTimeErrorKey
-                  ] as? NSError
+                .userInfo?[
+                    AVPlayerItemFailedToPlayToEndTimeErrorKey
+                ] as? NSError
             else { return }
-
+            
             guard error is URLError else {
                 let controller = AKFailedState(
                     playerController: playerController,
@@ -189,7 +210,7 @@ public class AKPausedState: AKBaseState {
                 )
                 return change(controller)
             }
-
+            
             let controller = AKWaitingForNetworkState(
                 playerController: playerController,
                 autoPlay: true
@@ -198,12 +219,12 @@ public class AKPausedState: AKBaseState {
         }
         .store(in: &subscriptions)
     }
-
+    
     // MARK: - Availability Overrides
-
+    
     /// Checks action availability in paused state.
     override public func availability(for action: AKPlayerAction)
-        -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?)
+    -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?)
     {
         switch action {
         case .pause:
@@ -212,9 +233,10 @@ public class AKPausedState: AKBaseState {
             super.availability(for: action)
         }
     }
-
+    
     /// Cleans active Combine observers prior to state transition.
     override public func beforeStateChange() {
+        subscriptions.forEach({ $0.cancel() })
         subscriptions.removeAll()
     }
 }

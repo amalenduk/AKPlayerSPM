@@ -8,6 +8,7 @@
 
 import AVFoundation
 import Foundation
+import MediaPlayer
 
 @MainActor
 public class AKQueuePlayer: AKPlayer, AKQueuePlayerProtocol {
@@ -62,6 +63,7 @@ public class AKQueuePlayer: AKPlayer, AKQueuePlayerProtocol {
             audioSessionService: audioSessionService
         )
         startObservingQueueEvents()
+        setupQueueNowPlayingCommands()
     }
     
     deinit {
@@ -198,6 +200,75 @@ public class AKQueuePlayer: AKPlayer, AKQueuePlayerProtocol {
             next()
         } else {
             stop()
+        }
+    }
+}
+
+// Conformance to AKNowPlayingQueueInfoProvider
+extension AKQueuePlayer: AKNowPlayingQueueInfoProvider {
+    public var queueCount: Int {
+        activeItems.count
+    }
+    
+    public var currentQueueIndex: Int? {
+        currentIndex
+    }
+}
+private extension AKQueuePlayer {
+    func setupQueueNowPlayingCommands() {
+        guard let nowPlayingManager else { return }
+        
+        Task { [weak self, weak nowPlayingManager] in
+            guard let self, let nowPlayingManager else { return }
+            
+            // Enable queue commands in session
+            await nowPlayingManager.enable(commands: [
+                .nextTrack,
+                .previousTrack,
+                .changeRepeatMode,
+                .changeShuffleMode
+            ])
+            
+            // Wire Next Track
+            await nowPlayingManager.setHandler(for: .nextTrack) { [weak self] _ in
+                guard let self else { return .commandFailed }
+                guard self.canPlayNext else { return .noSuchContent }
+                self.next()
+                return .success
+            }
+            
+            // Wire Previous Track
+            await nowPlayingManager.setHandler(for: .previousTrack) { [weak self] _ in
+                guard let self else { return .commandFailed }
+                guard self.canPlayPrevious else { return .noSuchContent }
+                self.previous()
+                return .success
+            }
+            
+            // Wire Repeat Mode Command
+            await nowPlayingManager.setHandler(for: .changeRepeatMode) { [weak self] event in
+                guard let self,
+                      let repeatEvent = event as? MPChangeRepeatModeCommandEvent
+                else { return .commandFailed }
+                
+                switch repeatEvent.repeatType {
+                case .off: self.repeatMode = .off
+                case .one: self.repeatMode = .one
+                case .all: self.repeatMode = .all
+                @unknown default: break
+                }
+                return .success
+            }
+            
+            // Wire Shuffle Mode Command
+            await nowPlayingManager.setHandler(for: .changeShuffleMode) { [weak self] event in
+                guard let self,
+                      let shuffleEvent = event as? MPChangeShuffleModeCommandEvent
+                else { return .commandFailed }
+                
+                self.isShuffleEnabled = (shuffleEvent.shuffleType != .off)
+                return .success
+            }
         }
     }
 }

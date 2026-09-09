@@ -17,7 +17,7 @@ public extension AKPlayer {
     func configureNowPlaying(
         with configuration: AKNowPlayingCommandConfiguration
     ) async {
-        guard let session = nowPlayingSession else { return }
+        guard let session = nowPlayingManager?.session else { return }
         await session.applyConfiguration(configuration)
     }
 }
@@ -38,12 +38,12 @@ public enum AKNowPlayingCommandPresets {
     public static func minimal() -> AKNowPlayingCommandConfiguration {
         AKNowPlayingCommandConfiguration.minimal()
     }
-
+    
     /// Preset: Standard music streaming
     public static func music() -> AKNowPlayingCommandConfiguration {
         AKNowPlayingCommandConfiguration.audio()
     }
-
+    
     /// Preset: Podcast with 15-second skip back, 30-second skip forward
     public static func podcast() -> AKNowPlayingCommandConfiguration {
         var config = AKNowPlayingCommandConfiguration.audio()
@@ -52,7 +52,7 @@ public enum AKNowPlayingCommandPresets {
         _ = config.disable(.changeShuffleMode)
         return config
     }
-
+    
     /// Preset: Audiobook with bookmarking
     public static func audiobook() -> AKNowPlayingCommandConfiguration {
         var config = AKNowPlayingCommandConfiguration.audio()
@@ -60,12 +60,12 @@ public enum AKNowPlayingCommandPresets {
         _ = config.disable(.changeShuffleMode)
         return config
     }
-
+    
     /// Preset: Standard video playback
     public static func video() -> AKNowPlayingCommandConfiguration {
         AKNowPlayingCommandConfiguration.video()
     }
-
+    
     /// Preset: Live stream (no seeking)
     public static func livestream() -> AKNowPlayingCommandConfiguration {
         var config = AKNowPlayingCommandConfiguration.audio()

@@ -16,8 +16,7 @@ import MediaPlayer
 /// now-playing integration.
 @MainActor
 public protocol AKPlayerManagerProtocol: AKPlayerProtocol,
-    AKPlayerActionsProtocol,
-    AKNowPlayingSessionProvider
+    AKPlayerActionsProtocol
 {
     /// The underlying controller managing AVPlayer state machine operations and
     /// commands.
@@ -34,29 +33,14 @@ public protocol AKPlayerManagerProtocol: AKPlayerProtocol,
     /// Service interface handling system `AVAudioSession` categories, modes,
     /// and activation logic.
     var audioSessionService: AKAudioSessionServiceProtocol { get }
+    
+    var nowPlayingManager: (any AKNowPlayingManagerProtocol)? { get }
 
     /// Configures the audio session, registers observers, and prepares the
     /// player for immediate use.
     /// - Throws: `AKPlayerError` or `AVAudioSession` initialization failures if
     /// preparation fails.
     func prepare() throws
-
-    /// Updates lock screen and Control Center media metadata using
-    /// `MPNowPlayingInfoCenter`.
-    func setNowPlayingInfo()
-
-    /// Retrieves current static and dynamic metadata payload used for system
-    /// Now Playing integration.
-    /// - Returns: Built `AKNowPlayableMetadata` container, or `nil` if no
-    /// active item is loaded.
-    func currentNowPlayingMetadata() -> AKNowPlayableMetadata?
-
-    /// Generates current dynamic state metadata like playback position,
-    /// duration, and rate.
-    /// - Returns: Protocol implementation containing active dynamic values, or
-    /// `nil`.
-    func getNowPlayableDynamicMetadata()
-        -> (any AKNowPlayableDynamicMetadataProtocol)?
 }
 
 // MARK: - AKPlayerStateSnapshot
