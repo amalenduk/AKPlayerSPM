@@ -227,8 +227,11 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         if !state.isAny(of: [.idle, .stopped]) {
             stop()
         }
-        currentMedia = media
-        controller.load(media: media, autoPlay: autoPlay, at: position)
+        if currentMedia == nil {
+            currentMedia = media
+            controller.load(media: media, autoPlay: autoPlay, at: position)
+        }
+        
     }
     
     /// Commands the current state controller to initiate or resume playback.
@@ -541,16 +544,22 @@ extension AKPlayerController {
     /// Directly pauses playback, resets position to time zero, and cancels
     /// pending seek requests.
     public func performStop() {
+        playerPlaybackTimeObserver.stopObservingPeriodicTime()
+        playerPlaybackTimeObserver.stopObservingBoundaryTime()
+        
+        currentMedia?.playerItem?.cancelPendingSeeks()
+        playerItemNotificationObservationTask?.cancel()
+        playerItemNotificationObservationTask = nil
+        playerSeekingThroughMediaService.cancelAll()
+        
         if !player.timeControlStatus.isPaused {
             player.pause()
         }
-        player.seek(to: .zero)
+        
         player.replaceCurrentItem(with: nil)
-        currentMedia?.playerItem?.cancelPendingSeeks()
+        player.seek(to: .zero)
+        
         currentMedia = nil
-        playerSeekingThroughMediaService.cancelAll()
-        playerItemNotificationObservationTask?.cancel()
-        playerItemNotificationObservationTask = nil
     }
     
     /// Submits a target seek token directly to the seek service for execution.

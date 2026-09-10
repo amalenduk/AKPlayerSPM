@@ -143,9 +143,8 @@ public class AKPlayingState: AKBaseState {
                 }
             }
         case .paused:
-            if hasStartedPlaying {
-                pause()
-            }
+            guard hasStartedPlaying else { return }
+            pause()
         default:
             break
         }
