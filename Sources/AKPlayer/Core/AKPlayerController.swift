@@ -118,14 +118,9 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     public private(set) var controller: AKPlayerStateControllerProtocol {
         get { _controller ?? AKIdleState(playerController: self) }
         set {
-            let oldController = _controller
             _controller = newValue
-            
-            emit(.stateDidChange(newValue.state))
-            
-            Task { @MainActor in
-                newValue.processStateChange()
-            }
+            eventBroadcaster.send(.stateDidChange(newValue.state))
+            newValue.processStateChange()
             processStateChange()
         }
     }
@@ -177,10 +172,10 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         
         playerRateObserver = AKPlayerRateObserver(with: player)
         playerPlaybackTimeObserver = AKPlayerPlaybackTimeObserver(with: player)
-        playerSeekingThroughMediaService = AKPlayerSeekingThroughMediaService(with: player)
+        playerSeekingThroughMediaService = AKPlayerSeekingThroughMediaService(
+            with: player
+        )
         networkStatusMonitor = AKNetworkStatusMonitor()
-        
-        
     }
     
     deinit {
@@ -227,11 +222,11 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         if !state.isAny(of: [.idle, .stopped]) {
             stop()
         }
-        if currentMedia == nil {
-            currentMedia = media
-            controller.load(media: media, autoPlay: autoPlay, at: position)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.currentMedia = media
+            self.controller.load(media: media, autoPlay: autoPlay, at: position)
         }
-        
     }
     
     /// Commands the current state controller to initiate or resume playback.
@@ -426,11 +421,16 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     /// Combine publishers.
     private func startPlayerObservers() {
         playerRateObserver.startObserving()
-        playerPlaybackTimeObserver.startObservingPeriodicTime(for: configuration.getPeriodicTimeInterval())
+        playerPlaybackTimeObserver
+            .startObservingPeriodicTime(
+                for: configuration.getPeriodicTimeInterval()
+            )
         
         rateObservationTask?.cancel()
         rateObservationTask = Task { @MainActor [weak self] in
-            guard let stream = self?.playerRateObserver.rateChanges else { return }
+            guard let stream = self?.playerRateObserver.rateChanges else {
+                return
+            }
             
             for await change in stream {
                 guard !Task.isCancelled, let self else { break }
@@ -453,7 +453,8 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         player.publisher(for: \.isMuted)
             .sink { @MainActor [weak self] isMuted in
                 guard let self else { return }
-                self.eventBroadcaster.send(.muteStatusDidChange(isMuted: isMuted))
+                self.eventBroadcaster
+                    .send(.muteStatusDidChange(isMuted: isMuted))
             }
             .store(in: &subscriptions)
         
@@ -492,7 +493,9 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         playerItemNotificationObservationTask?.cancel()
         
         playerItemNotificationObservationTask = Task { @MainActor [weak self] in
-            guard let events = self?.currentMedia?.playerItemNotifications?.events else { return }
+            guard let events = self?.currentMedia?.playerItemNotifications?.events else {
+                return
+            }
             
             for await event in events {
                 guard !Task.isCancelled, let self else { break }
@@ -547,19 +550,19 @@ extension AKPlayerController {
         playerPlaybackTimeObserver.stopObservingPeriodicTime()
         playerPlaybackTimeObserver.stopObservingBoundaryTime()
         
-        currentMedia?.playerItem?.cancelPendingSeeks()
         playerItemNotificationObservationTask?.cancel()
         playerItemNotificationObservationTask = nil
-        playerSeekingThroughMediaService.cancelAll()
         
         if !player.timeControlStatus.isPaused {
             player.pause()
         }
         
-        player.replaceCurrentItem(with: nil)
+        playerSeekingThroughMediaService.cancelAll()
+        currentMedia?.playerItem?.cancelPendingSeeks()
         player.seek(to: .zero)
         
         currentMedia = nil
+        player.replaceCurrentItem(with: nil)
     }
     
     /// Submits a target seek token directly to the seek service for execution.
