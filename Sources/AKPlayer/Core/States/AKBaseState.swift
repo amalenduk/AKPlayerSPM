@@ -579,6 +579,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     public func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
         
     }
-    public func handlePlayerItemDidPlayToEnd() {}
-    public func handlePlayerItemPlaybackStalled() {}
+    
+    public func handle(_ event: AKPlayerItemNotificationEvent) {
+        
+    }
 }

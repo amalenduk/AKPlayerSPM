@@ -54,9 +54,7 @@ public protocol AKPlayerControllerProtocol: AnyObject, AKPlayerProtocol, AKPlaye
     var controller: any AKPlayerStateControllerProtocol { get }
     
     /// Internal service handling media seek calculations and boundaries.
-    var playerSeekingThroughMediaService: any AKPlayerSeekingThroughMediaServiceProtocol {
-        get
-    }
+    var playerSeekingThroughMediaService: any AKPlayerSeekingThroughMediaServiceProtocol { get }
     
     /// Network monitor monitoring active connectivity status for media
     /// streaming.

@@ -295,15 +295,15 @@ extension SimpleVideoPlayerViewModel: AKPictureInPictureDelegate {
 
 extension SimpleVideoPlayerViewModel: @preconcurrency AKPlayerInterstitialDelegate {
     public func player(_ monitor: AVPlayerInterstitialEventMonitor, didStartInterstitial event: AVPlayerInterstitialEvent) {
-        print(event.description)
+       // print(event.description)
     }
     
     public func player(_ monitor: AVPlayerInterstitialEventMonitor, didUpdateInterstitialProgress progress: AKPlayerInterstitialProgress) {
-        print(progress)
+       // print(progress)
     }
     
     public func player(_ monitor: AVPlayerInterstitialEventMonitor, didFinishInterstitial event: AVPlayerInterstitialEvent) {
-        print(event.description)
+       // print(event.description)
     }
     
     

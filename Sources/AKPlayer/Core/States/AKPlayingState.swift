@@ -119,19 +119,22 @@ public class AKPlayingState: AKBaseState {
             hasStartedPlaying = true
         case .waitingToPlayAtSpecifiedRate:
             if hasStartedPlaying {
-                guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
+                guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay,
+                      let currentItem = playerController.currentItem else { return }
                 switch reasonForWaitingToPlay {
                 case .evaluatingBufferingRate, .toMinimizeStalls, .waitingForCoordinatedPlayback:
-                    let controller = AKBufferingState(
-                        playerController: playerController,
-                        autoPlay: true,
-                        rate: rate
-                    )
-                    change(controller)
-                    print("Playing video")
+                    guard let currentItem = playerController.currentItem,
+                          currentItem.isPlaybackBufferFull && currentItem.isPlaybackLikelyToKeepUp else {
+                        
+                        let controller = AKBufferingState(
+                            playerController: playerController,
+                            autoPlay: true,
+                            rate: rate
+                        )
+                        return change(controller)
+                    }
                 case .interstitialEvent:
                     // MARK: - Playing ADD, Will think letter what to do here
-                    print("Playing add")
                     break
                 case .noItemToPlay:
                     stop()
@@ -189,6 +192,7 @@ public class AKPlayingState: AKBaseState {
         )
         .sink { @MainActor [weak self] _ in
             guard let self else { return }
+            
             let controller = AKPausedState(
                 playerController: playerController,
                 playerItemDidPlayToEndTime: true

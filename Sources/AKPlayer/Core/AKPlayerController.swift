@@ -155,6 +155,8 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     /// events from the player stream.
     private nonisolated(unsafe) var rateObservationTask: Task<Void, Never>?
     
+    private var playerItemNotificationObservationTask: Task<Void, Never>?
+    
     // MARK: - Initialization & Teardown
     
     /// Initializes a new `AKPlayerController` instance with a target player
@@ -222,8 +224,8 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         autoPlay: Bool,
         at position: AKSeekTarget?
     ) {
-        if !state.isAny(of: [.idle, .paused, .stopped, .failed]) {
-            pause()
+        if !state.isAny(of: [.idle, .stopped]) {
+            stop()
         }
         currentMedia = media
         controller.load(media: media, autoPlay: autoPlay, at: position)
@@ -390,6 +392,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     /// `AKPlayerStateControllerProtocol`.
     public func change(_ controller: AKPlayerStateControllerProtocol) {
         // ✅ Dispatch to next runloop tick so the previous state's stack frame can exit and dealloc
+        
         Task { @MainActor [weak self] in
             guard let self else { return }
             self.controller = controller
@@ -404,6 +407,15 @@ public class AKPlayerController: AKPlayerControllerProtocol {
                 .waitingForNetwork,
                 .failed:
             break
+            
+        case .loaded:
+            observePlayerItemNotifications()
+        case .failed:
+            playerItemNotificationObservationTask?.cancel()
+            playerItemNotificationObservationTask = nil
+        case .stopped:
+            playerItemNotificationObservationTask?.cancel()
+            playerItemNotificationObservationTask = nil
         }
     }
     
@@ -473,6 +485,19 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             .store(in: &subscriptions)
     }
     
+    private func observePlayerItemNotifications() {
+        playerItemNotificationObservationTask?.cancel()
+        
+        playerItemNotificationObservationTask = Task { @MainActor [weak self] in
+            guard let events = self?.currentMedia?.playerItemNotifications?.events else { return }
+            
+            for await event in events {
+                guard !Task.isCancelled, let self else { break }
+                controller.handle(event)
+            }
+        }
+    }
+    
     
     /// Stops time and rate observers attached to the underlying player
     /// instance.
@@ -524,6 +549,8 @@ extension AKPlayerController {
         currentMedia?.playerItem?.cancelPendingSeeks()
         currentMedia = nil
         playerSeekingThroughMediaService.cancelAll()
+        playerItemNotificationObservationTask?.cancel()
+        playerItemNotificationObservationTask = nil
     }
     
     /// Submits a target seek token directly to the seek service for execution.

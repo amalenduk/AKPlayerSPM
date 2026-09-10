@@ -100,7 +100,7 @@ public class AKBufferingState: AKBaseState {
         
         isActiveState = true
         
-        if !playerController.player.timeControlStatus.isPaused {
+        if !playerController.player.timeControlStatus.isPaused && !autoPlay {
             playerController.performPause()
         }
         
@@ -434,6 +434,7 @@ public class AKBufferingState: AKBaseState {
             )
             change(controller)
         case .paused:
+            print("Bufferng paused")
             let controller = AKPausedState(playerController: playerController)
             change(controller)
         default:

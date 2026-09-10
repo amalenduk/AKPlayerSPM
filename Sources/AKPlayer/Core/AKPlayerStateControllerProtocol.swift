@@ -38,8 +38,8 @@ public protocol AKPlayerStateControllerProtocol: AKPlayerActionsProtocol {
     
     func handlePlayerStatusChange(_ status: AVPlayer.Status)
     func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus)
-    func handlePlayerItemDidPlayToEnd()
-    func handlePlayerItemPlaybackStalled()
+    
+    func handle(_ event: AKPlayerItemNotificationEvent)
 }
 
 // MARK: - Default Implementations
