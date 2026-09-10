@@ -24,6 +24,11 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
         return p
     }()
     
+    public lazy var interstitialService: AKPlayerInterstitialService = {
+        var service = AKPlayerInterstitialService(player: aVplayer)
+        return service
+    }()
+
     static let session = AVAudioSession.sharedInstance()
     let audioSession = AKAudioSessionService(audioSession: session)
     
@@ -73,6 +78,7 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     override public init() {
         super.init()
         try? player.prepare()
+        interstitialService.delegate = self
     }
     
     deinit {
@@ -285,4 +291,20 @@ extension SimpleVideoPlayerViewModel: AKPictureInPictureDelegate {
         // Handle UI restoration if necessary when user taps restore button in PiP window[cite: 1]
         completionHandler(true)
     }
+}
+
+extension SimpleVideoPlayerViewModel: @preconcurrency AKPlayerInterstitialDelegate {
+    public func player(_ monitor: AVPlayerInterstitialEventMonitor, didStartInterstitial event: AVPlayerInterstitialEvent) {
+        print(event.description)
+    }
+    
+    public func player(_ monitor: AVPlayerInterstitialEventMonitor, didUpdateInterstitialProgress progress: AKPlayerInterstitialProgress) {
+        print(progress)
+    }
+    
+    public func player(_ monitor: AVPlayerInterstitialEventMonitor, didFinishInterstitial event: AVPlayerInterstitialEvent) {
+        print(event.description)
+    }
+    
+    
 }
