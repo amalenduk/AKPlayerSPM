@@ -295,8 +295,8 @@ public final class AKNowPlayingManager: AKNowPlayingManagerProtocol {
     // MARK: - Default Remote Commands Setup
     
     private func setupDefaultRemoteCommands() {
-        Task { [weak self, weak playerManager] in
-            guard let self, let playerManager else { return }
+        Task { [weak self] in
+            guard let self else { return }
             
             let defaultConfig = AKNowPlayingCommandConfiguration()
                 .add(.play).enable(.play)
@@ -310,31 +310,31 @@ public final class AKNowPlayingManager: AKNowPlayingManagerProtocol {
             await session.applyConfiguration(defaultConfig)
             
             await session.setHandler(for: .play) { @MainActor [weak playerManager] _ in
-                guard let playerManager else { return .commandFailed }
+                guard let playerManager = playerManager else { return .commandFailed }
                 playerManager.play()
                 return playerManager.state.isPlaying || playerManager.autoPlay ? .success : .commandFailed
             }
             
             await session.setHandler(for: .pause) { @MainActor [weak playerManager] _ in
-                guard let playerManager else { return .commandFailed }
+                guard let playerManager = playerManager else { return .commandFailed }
                 playerManager.pause()
                 return playerManager.state.isPaused ? .success : .commandFailed
             }
             
             await session.setHandler(for: .stop) { @MainActor [weak playerManager] _ in
-                guard let playerManager else { return .commandFailed }
+                guard let playerManager = playerManager else { return .commandFailed }
                 playerManager.stop()
                 return playerManager.state.isStopped ? .success : .commandFailed
             }
             
             await session.setHandler(for: .togglePlayPause) { @MainActor [weak playerManager] _ in
-                guard let playerManager else { return .commandFailed }
+                guard let playerManager = playerManager else { return .commandFailed }
                 playerManager.togglePlayPause()
                 return .success
             }
             
             await session.setHandler(for: .changePlaybackPosition) { @MainActor [weak playerManager] event in
-                guard let playerManager,
+                guard let playerManager = playerManager,
                       let positionEvent = event as? MPChangePlaybackPositionCommandEvent
                 else { return .commandFailed }
                 
@@ -350,8 +350,8 @@ public final class AKNowPlayingManager: AKNowPlayingManagerProtocol {
                     supportedPlaybackRates: AKPlaybackRate
                         .allCases.map(\.rate)
                 )
-            ) { @MainActor [weak self] event in
-                guard let self,
+            ) { @MainActor [weak playerManager] event in
+                guard let playerManager = playerManager,
                       let currentMedia = playerManager.currentMedia,
                       let rateEvent = event as? MPChangePlaybackRateCommandEvent,
                       currentMedia
@@ -365,8 +365,8 @@ public final class AKNowPlayingManager: AKNowPlayingManagerProtocol {
             }
             
             await session
-                .setHandler(for: .seekForward) { @MainActor [weak self] event in
-                    guard let self,
+                .setHandler(for: .seekForward) { @MainActor [weak playerManager] event in
+                    guard let playerManager = playerManager,
                           let currentMedia = playerManager.currentMedia,
                           let seekEvent = event as? MPSeekCommandEvent,
                           currentMedia.canPlay(at: AKPlaybackRate.fastest)
@@ -386,8 +386,8 @@ public final class AKNowPlayingManager: AKNowPlayingManagerProtocol {
                 }
             
             await session
-                .setHandler(for: .seekBackward) { @MainActor [weak self] event in
-                    guard let self,
+                .setHandler(for: .seekBackward) { @MainActor [weak playerManager] event in
+                    guard let playerManager = playerManager,
                           let currentMedia = playerManager.currentMedia,
                           let seekEvent = event as? MPSeekCommandEvent,
                           currentMedia.canPlay(at: AKPlaybackRate.slowest)
@@ -407,7 +407,7 @@ public final class AKNowPlayingManager: AKNowPlayingManagerProtocol {
                 }
             
             await session.setHandler(for: .skipForward(preferredIntervals: [15])) { @MainActor [weak playerManager] event in
-                guard let playerManager,
+                guard let playerManager = playerManager,
                       let skipEvent = event as? MPSkipIntervalCommandEvent
                 else { return .commandFailed }
                 
@@ -419,7 +419,7 @@ public final class AKNowPlayingManager: AKNowPlayingManagerProtocol {
             }
             
             await session.setHandler(for: .skipBackward(preferredIntervals: [15])) { @MainActor [weak playerManager] event in
-                guard let playerManager,
+                guard let playerManager = playerManager,
                       let skipEvent = event as? MPSkipIntervalCommandEvent
                 else { return .commandFailed }
                 

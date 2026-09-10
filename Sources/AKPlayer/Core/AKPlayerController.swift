@@ -120,10 +120,13 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         set {
             let oldController = _controller
             _controller = newValue
-                        
-            newValue.processStateChange()
-            processStateChange()
+            
             emit(.stateDidChange(newValue.state))
+            
+            Task { @MainActor in
+                newValue.processStateChange()
+            }
+            processStateChange()
         }
     }
     
@@ -386,7 +389,11 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     /// - Parameter controller: The target state controller conforming to
     /// `AKPlayerStateControllerProtocol`.
     public func change(_ controller: AKPlayerStateControllerProtocol) {
-        self.controller = controller
+        // ✅ Dispatch to next runloop tick so the previous state's stack frame can exit and dealloc
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.controller = controller
+        }
     }
     
     /// Hook called whenever state changes to execute custom side effects based

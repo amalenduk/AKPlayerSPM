@@ -73,13 +73,9 @@ public class AKLoadedState: AKBaseState {
         }
         
         if autoPlay {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.play()
-            }
+            play()
         } else if let position, let currentMedia = playerController.currentMedia {
-            let (canSeek, reason) = currentMedia.seekingThroughMedia
-                .canSeek(to: position)
+            let (canSeek, reason) = currentMedia.seekingThroughMedia.canSeek(to: position)
             guard canSeek else {
                 if let reason {
                     playerController.emit(.commandUnavailable(reason: reason))
@@ -87,9 +83,14 @@ public class AKLoadedState: AKBaseState {
                 return
             }
             
-            Task {
-                await seek(to: position)
-            }
+            let controller = AKBufferingState(
+                playerController: playerController,
+                autoPlay: false,
+                rate: rate,
+                targetSeek: AKSeek(target: position)
+            )
+            
+            change(controller)
         }
     }
     
@@ -129,15 +130,21 @@ public class AKLoadedState: AKBaseState {
             return
         }
         
-        let controller = AKBufferingState(
-            playerController: playerController,
-            autoPlay: true,
-            rate: rate
-        )
+        var controller: AKBufferingState
+        
         if let position {
-            Task {
-                await controller.seek(to: position)
-            }
+            controller = AKBufferingState(
+                playerController: playerController,
+                autoPlay: true,
+                rate: rate,
+                targetSeek: AKSeek(target: position)
+            )
+        } else {
+            controller = AKBufferingState(
+                playerController: playerController,
+                autoPlay: true,
+                rate: rate
+            )
         }
         change(controller)
     }

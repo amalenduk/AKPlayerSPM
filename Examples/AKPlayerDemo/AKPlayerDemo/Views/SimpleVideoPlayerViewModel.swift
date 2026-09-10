@@ -17,7 +17,7 @@ public class SimpleVideoPlayerViewModel: NSObject, ObservableObject {
     
     public lazy var player: AKPlayer = {
         var configuration = AKPlayerConfiguration()
-        configuration.isNowPlayingEnabled = false
+        configuration.isNowPlayingEnabled = true
         let p = AKPlayer(player: aVplayer, configuration: configuration, audioSessionService: audioSession)
         p.player.appliesMediaSelectionCriteriaAutomatically = true
         p.delegate = self

@@ -98,7 +98,7 @@ public class AKBufferingState: AKBaseState {
             return
         }
         
-        if !playerController.player.timeControlStatus.isPaused {
+        if !playerController.player.timeControlStatus.isPaused && !autoPlay {
             playerController.performPause()
         }
         
@@ -356,14 +356,12 @@ public class AKBufferingState: AKBaseState {
                 options: [.initial, .new]
             )
         )
-        .receive(on: DispatchQueue.main)
-        .sink { [weak self] _ in
+        .sink { @MainActor [weak self] isPlaybackBufferFull, isPlaybackLikelyToKeepUp in
             guard let self, !self.hasTransitioned else { return }
-            if autoPlay {
-                startPlayingIfPossible()
-            } else {
-                changeToPreviousState()
+            guard isPlaybackBufferFull || isPlaybackLikelyToKeepUp else {
+                return
             }
+            autoPlay ? startPlayingIfPossible() : changeToPreviousState()
         }
         .store(in: &subscriptions)
     }
