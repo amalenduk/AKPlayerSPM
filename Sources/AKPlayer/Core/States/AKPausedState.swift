@@ -164,21 +164,15 @@ public class AKPausedState: AKBaseState {
         switch status {
         case .playing:
             if hasBeenPaused {
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    play()
-                }
+                play()
             }
         case .waitingToPlayAtSpecifiedRate:
             if hasBeenPaused {
                 guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
                 switch reasonForWaitingToPlay {
                 case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        print("How many time will i get called", #file)
-                        play()
-                    }
+                    print("How many time will i get called", #file)
+                    play()
                 case .noItemToPlay:
                     Task { @MainActor [weak self] in
                         guard let self else { return }
