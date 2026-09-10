@@ -98,7 +98,9 @@ public class AKBufferingState: AKBaseState {
             return
         }
         
-        if !playerController.player.timeControlStatus.isPaused && !autoPlay {
+        isActiveState = true
+        
+        if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
         }
         
@@ -113,8 +115,6 @@ public class AKBufferingState: AKBaseState {
         if currentMedia.isOverNetwork() {
             observeNetworkChanges()
         }
-        
-        isActiveState = true
     }
     
     // MARK: - Commands

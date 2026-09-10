@@ -121,13 +121,18 @@ public class AKPlayingState: AKBaseState {
             if hasStartedPlaying {
                 guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
                 switch reasonForWaitingToPlay {
-                case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
+                case .evaluatingBufferingRate, .toMinimizeStalls, .waitingForCoordinatedPlayback:
                     let controller = AKBufferingState(
                         playerController: playerController,
                         autoPlay: true,
                         rate: rate
                     )
                     change(controller)
+                    print("Playing video")
+                case .interstitialEvent:
+                    // MARK: - Playing ADD, Will think letter what to do here
+                    print("Playing add")
+                    break
                 case .noItemToPlay:
                     stop()
                 default:
@@ -197,7 +202,18 @@ public class AKPlayingState: AKBaseState {
             object: playerItem
         )
         .sink { @MainActor [weak self] _ in
-            guard let self else { return }
+            guard let self, let media = playerController.currentMedia else { return }
+            
+            /*
+             he notification’s object is the player item whose playback is unable to continue due to network delays. Streaming-media playback continues after the player item retrieves a sufficient amount of data. File-based playback doesn’t continue.
+             */
+            if media.isLocal()  {
+                let controller = AKFailedState(
+                    playerController: playerController,
+                    error: .itemFailedToPlayToEndTime
+                )
+                return change(controller)
+            }
             let controller = AKBufferingState(
                 playerController: playerController,
                 autoPlay: true,

@@ -84,12 +84,16 @@ public class AKWaitingForNetworkState: AKBaseState {
     /// Entry point for state setup. Ensures player is paused, starts observer
     /// pipelines, and monitors network changes.
     override public func processStateChange() {
+        guard let media = playerController.currentMedia else { return stop() }
         if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
         }
         
         startObservingPlayerItemNotifications()
-        observeNetworkChanges()
+        
+        if media.isOverNetwork() {
+            observeNetworkChanges()
+        }
     }
     
     /// Cleans up Combine observation pipelines before transitioning to another
@@ -241,6 +245,33 @@ public class AKWaitingForNetworkState: AKBaseState {
             /*
              If playback failed for internet issue will wait till internet gets activated
              */
+        }
+        .store(in: &subscriptions)
+        
+        
+        NotificationCenter.default.publisher(
+            for: AVPlayerItem.playbackStalledNotification,
+            object: playerItem
+        )
+        .sink { @MainActor [weak self] _ in
+            guard let self, let media = playerController.currentMedia else { return }
+            
+            /*
+             he notification’s object is the player item whose playback is unable to continue due to network delays. Streaming-media playback continues after the player item retrieves a sufficient amount of data. File-based playback doesn’t continue.
+             */
+            if media.isLocal()  {
+                let controller = AKFailedState(
+                    playerController: playerController,
+                    error: .itemFailedToPlayToEndTime
+                )
+                return change(controller)
+            }
+            let controller = AKBufferingState(
+                playerController: playerController,
+                autoPlay: true,
+                rate: rate
+            )
+            change(controller)
         }
         .store(in: &subscriptions)
     }
