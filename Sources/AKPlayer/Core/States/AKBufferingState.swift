@@ -91,7 +91,7 @@ public class AKBufferingState: AKBaseState {
         }
         super.processStateChange()
         
-        if !playerController.player.timeControlStatus.isPaused && !autoPlay {
+        if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
         }
         

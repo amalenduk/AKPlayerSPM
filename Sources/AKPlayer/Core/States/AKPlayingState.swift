@@ -23,8 +23,6 @@ public class AKPlayingState: AKBaseState {
     /// Container holding reactive Combine event subscriptions.
     private var subscriptions = Set<AnyCancellable>()
     
-    private var hasStartedPlaying = false
-    
     // MARK: - Initialization & Deinitialization
     
     /// Initializes a playing state instance associated with the specified
@@ -59,6 +57,7 @@ public class AKPlayingState: AKBaseState {
     /// item notifications, triggers playback, and applies targeted playback
     /// rate.
     override public func processStateChange() {
+        super.processStateChange()
         startObservingPlayerItemNotifications()
         
         if let rate, playerController.player.rate != rate.rate {
@@ -66,8 +65,6 @@ public class AKPlayingState: AKBaseState {
         } else {
             playerController.performPlay()
         }
-        
-        hasStartedPlaying = true
     }
     
     /// Cleans up Combine observation pipelines before transitioning to another
@@ -94,11 +91,6 @@ public class AKPlayingState: AKBaseState {
         playerController.performPlay(at: rate)
     }
     
-    /// Toggles playback state by pausing the active media playback.
-    override public func togglePlayPause() {
-        pause()
-    }
-    
     // MARK: - Private Helper Functions
     
     public override func handlePlayerStatusChange(_ status: AVPlayer.Status) {
@@ -115,36 +107,32 @@ public class AKPlayingState: AKBaseState {
     
     public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
         switch status {
-        case .playing:
-            hasStartedPlaying = true
         case .waitingToPlayAtSpecifiedRate:
-            if hasStartedPlaying {
-                guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay,
-                      let currentItem = playerController.currentItem else { return }
-                switch reasonForWaitingToPlay {
-                case .evaluatingBufferingRate, .toMinimizeStalls, .waitingForCoordinatedPlayback:
-                    guard let currentItem = playerController.currentItem else { return }
-                    guard currentItem.isPlaybackBufferFull && currentItem.isPlaybackLikelyToKeepUp else {
-                        
-                        let controller = AKBufferingState(
-                            playerController: playerController,
-                            autoPlay: true,
-                            rate: rate
-                        )
-                        return change(controller)
-                    }
-                case .interstitialEvent:
-                    // MARK: - Playing ADD, Will think letter what to do here
-                    break
-                case .noItemToPlay:
-                    stop()
-                default:
-                    break
+            guard isActiveState else { return }
+            guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay,
+                  let currentItem = playerController.currentItem else { return }
+            switch reasonForWaitingToPlay {
+            case .evaluatingBufferingRate, .toMinimizeStalls, .waitingForCoordinatedPlayback:
+                guard let currentItem = playerController.currentItem else { return }
+                guard currentItem.isPlaybackBufferFull && currentItem.isPlaybackLikelyToKeepUp else {
+                    
+                    let controller = AKBufferingState(
+                        playerController: playerController,
+                        autoPlay: true,
+                        rate: rate
+                    )
+                    return change(controller)
                 }
+            case .interstitialEvent:
+                // MARK: - Playing ADD, Will think letter what to do here
+                break
+            case .noItemToPlay:
+                stop()
+            default:
+                break
             }
         case .paused:
-            guard hasStartedPlaying else { return }
-            print("hasStartedPlaying")
+            guard isActiveState else { return }
             pause()
         default:
             break
@@ -161,7 +149,7 @@ public class AKPlayingState: AKBaseState {
             for: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem
         )
-        .sink { @MainActor [weak self] notification in
+        .sink { [weak self] notification in
             guard let self,
                   let error = notification
                 .userInfo?[
@@ -190,7 +178,7 @@ public class AKPlayingState: AKBaseState {
             for: AVPlayerItem.didPlayToEndTimeNotification,
             object: playerItem
         )
-        .sink { @MainActor [weak self] _ in
+        .sink { [weak self] _ in
             guard let self else { return }
             
             let controller = AKPausedState(
@@ -205,7 +193,7 @@ public class AKPlayingState: AKBaseState {
             for: AVPlayerItem.playbackStalledNotification,
             object: playerItem
         )
-        .sink { @MainActor [weak self] _ in
+        .sink { [weak self] _ in
             guard let self, let media = playerController.currentMedia else { return }
             
             /*

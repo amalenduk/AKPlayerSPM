@@ -35,8 +35,6 @@ public class AKWaitingForNetworkState: AKBaseState {
     /// Container holding reactive Combine event subscriptions.
     private var subscriptions = Set<AnyCancellable>()
     
-    private var hasStartedPlaying = false
-    
     // MARK: - Initialization & Deinitialization
     
     /// Initializes a waiting-for-network state instance.
@@ -188,27 +186,29 @@ public class AKWaitingForNetworkState: AKBaseState {
     public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
         switch status {
         case .playing:
-            hasStartedPlaying = true
+            guard isActiveState else { return }
+            play()
         case .waitingToPlayAtSpecifiedRate:
-            if hasStartedPlaying {
-                guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
-                switch reasonForWaitingToPlay {
-                case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
-                    let controller = AKBufferingState(
-                        playerController: playerController,
-                        autoPlay: autoPlay,
-                        rate: rate,
-                        stateToNavigateAfterBuffering: stateToNavigateAfterBuffering ?? .paused,
-                        targetSeek: targetSeek
-                    )
-                    change(controller)
-                case .noItemToPlay:
-                    stop()
-                default:
-                    break
-                }
+            guard isActiveState else { return }
+            guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
+            switch reasonForWaitingToPlay {
+            case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
+                let controller = AKBufferingState(
+                    playerController: playerController,
+                    autoPlay: autoPlay,
+                    rate: rate,
+                    stateToNavigateAfterBuffering: stateToNavigateAfterBuffering ?? .paused,
+                    targetSeek: targetSeek
+                )
+                change(controller)
+            case .noItemToPlay:
+                stop()
+            default:
+                break
+                
             }
         case .paused:
+            guard isActiveState else { return }
             pause()
         default:
             break
@@ -225,7 +225,6 @@ public class AKWaitingForNetworkState: AKBaseState {
             for: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem
         )
-        .receive(on: DispatchQueue.main)
         .sink { [weak self] notification in
             guard let self,
                   let error = notification
@@ -253,7 +252,7 @@ public class AKWaitingForNetworkState: AKBaseState {
             for: AVPlayerItem.playbackStalledNotification,
             object: playerItem
         )
-        .sink { @MainActor [weak self] _ in
+        .sink { [weak self] _ in
             guard let self, let media = playerController.currentMedia else { return }
             
             /*

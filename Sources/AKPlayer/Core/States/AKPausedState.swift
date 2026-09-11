@@ -23,8 +23,6 @@ public class AKPausedState: AKBaseState {
     /// Container holding reactive Combine event subscriptions.
     private var subscriptions: Set<AnyCancellable> = Set<AnyCancellable>()
     
-    private var hasBeenPaused = false
-    
     // MARK: - Init
     
     /// Initializes a paused state instance.
@@ -59,8 +57,7 @@ public class AKPausedState: AKBaseState {
     /// fires delegate notifications if end-of-media was reached.
     override public func processStateChange() {
         startObservingPlayerItemNotifications()
-        
-        hasBeenPaused = (playerController.player.timeControlStatus == .paused)
+        super.processStateChange()
         
         if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
@@ -131,11 +128,7 @@ public class AKPausedState: AKBaseState {
         
         let initialSeek: AKSeek? =
         playerItemDidPlayToEndTime
-        ? AKSeek(
-            target: .time(.zero),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
-        ) : nil
+        ? AKSeek(target: .time(.zero)) : nil
         
         let controller = AKBufferingState(
             playerController: playerController,
@@ -163,28 +156,20 @@ public class AKPausedState: AKBaseState {
     public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
         switch status {
         case .playing:
-            if hasBeenPaused {
-                play()
-            }
+            guard isActiveState else { return }
+            play()
         case .waitingToPlayAtSpecifiedRate:
-            if hasBeenPaused {
-                guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
-                switch reasonForWaitingToPlay {
-                case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
-                    play()
-                case .noItemToPlay:
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        stop()
-                    }
-                default:
-                    break
-                }
+            guard isActiveState else { return }
+            guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
+            switch reasonForWaitingToPlay {
+            case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
+                play()
+            case .noItemToPlay:
+                stop()
+            default:
+                break
             }
-        case .paused:
-            hasBeenPaused = true
-        default:
-            break
+        default: break
         }
     }
     
@@ -198,7 +183,7 @@ public class AKPausedState: AKBaseState {
             for: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem
         )
-        .sink { @MainActor [weak self] notification in
+        .sink { [weak self] notification in
             guard let self,
                   let error = notification
                 .userInfo?[
