@@ -118,15 +118,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     public private(set) var controller: AKPlayerStateControllerProtocol {
         get { _controller ?? AKIdleState(playerController: self) }
         set {
-            // Drop the old state as early as possible
-            let old = _controller
             _controller = newValue
-            
-            // Explicitly release old reference before any further work
-            // (the local `old` will die at the end of this setter)
-            _ = old
-            
-            eventBroadcaster.send(.stateDidChange(newValue.state))
         }
     }
     
@@ -386,16 +378,33 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         networkStatusMonitor.startObserving()
         startPlayerObservers()
     }
-    
+
     /// Transitions the current state controller to a new state controller
     /// instance.
     /// - Parameter controller: The target state controller conforming to
     /// `AKPlayerStateControllerProtocol`.
+    // AKPlayerController
+    
     public func change(_ controller: AKPlayerStateControllerProtocol) {
-        self.controller = controller
+        
+        // 2. Drop the old state completely
+        let old = _controller
+        _controller = nil                    // ← critical: make the controller hold nothing
+        
+        // At this moment the old state has no strong reference from the controller.
+        // If beforeStateChange cancelled all subscriptions, the old state can now die.
+        
+        // 3. Install the new state
+        _controller = controller
+        
+        // 4. Now the controller holds only the new state
+        eventBroadcaster.send(.stateDidChange(controller.state))
+        
+        // 5. Enter the new state (old state is already gone)
         controller.processStateChange()
         processStateChange()
     }
+    
     
     /// Hook called whenever state changes to execute custom side effects based
     /// on active state.

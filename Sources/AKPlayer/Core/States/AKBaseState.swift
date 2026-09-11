@@ -514,7 +514,6 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         autoPlay: Bool,
         at position: AKSeekTarget?
     ) {
-        beforeLoad(media: media, autoPlay: autoPlay, position: position)
         let controller = AKLoadingState(
             playerController: playerController,
             media: media,
@@ -525,28 +524,6 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     }
     
     // MARK: - Lifecycle Hooks
-    
-    /// Hook executed immediately prior to starting media loading.
-    /// - Parameters:
-    ///   - media: The media item being loaded.
-    ///   - autoPlay: Controls whether playback starts automatically upon load
-    /// completion.
-    ///   - position: The optional initial seek target position.
-    public func beforeLoad(
-        media _: any AKPlayable,
-        autoPlay _: Bool,
-        position _: AKSeekTarget?
-    ) {
-        if !playerController.player.timeControlStatus.isPaused {
-            playerController.performPause()
-        }
-        /*
-         It seems to be a good idea to reset player current item
-         Fix side effect when coming from failed state
-         */
-        playerController.currentItem?.cancelPendingSeeks()
-        playerController.player.replaceCurrentItem(with: nil)
-    }
     
     /// Hook executed immediately prior to stopping media playback.
     public func beforeStop() {}

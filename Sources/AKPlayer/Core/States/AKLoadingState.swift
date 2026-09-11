@@ -251,15 +251,6 @@ public class AKLoadingState: AKBaseState {
     
     // MARK: - Transition Overrides
     
-    /// Aborts current load routines prior to processing a new media load
-    /// command.
-    override public func beforeLoad(
-        media _: any AKPlayable, autoPlay _: Bool, position _: AKSeekTarget?
-    ) {
-        super.beforeLoad(media: media, autoPlay: autoPlay, position: position)
-        abortAssetInitialization()
-    }
-    
     /// Cancels asset loads and strips observers prior to stopping the player
     /// controller.
     override public func beforeStop() {
@@ -276,7 +267,6 @@ public class AKLoadingState: AKBaseState {
             super.availability(for: action)
         }
     }
-    
     /// Cleans active Combine observers prior to completing state exit.
     override public func beforeStateChange() {
         task?.cancel()

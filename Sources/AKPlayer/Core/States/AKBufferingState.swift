@@ -96,6 +96,7 @@ public class AKBufferingState: AKBaseState {
         super.processStateChange()
         
         if !playerController.player.timeControlStatus.isPaused {
+            print("Pause called")
             playerController.performPause()
         }
         
@@ -105,8 +106,8 @@ public class AKBufferingState: AKBaseState {
         
         startObservingPlayerItemBufferingStatus()
         startObservingPlayerItemNotifications()
-        // was: startBufferTimeoutWatcher()
-        startProgressAwareBufferTimeoutWatcher()
+        startBufferTimeoutWatcher()
+        //startProgressAwareBufferTimeoutWatcher()
         
         if currentMedia.isOverNetwork() {
             observeNetworkChanges()
