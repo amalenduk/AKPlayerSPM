@@ -33,6 +33,8 @@ public class AKBufferingState: AKBaseState {
     /// buffering.
     private var targetSeek: AKSeek?
     
+    private let retryCount: Int
+    
     /// Task tracking the active buffering timeout countdown loop.
     private var timeoutTask: Task<Void, Never>?
     
@@ -58,7 +60,8 @@ public class AKBufferingState: AKBaseState {
         autoPlay: Bool = false,
         rate: AKPlaybackRate? = nil,
         stateToNavigateAfterBuffering: AKPlayerState? = nil,
-        targetSeek: AKSeek? = nil
+        targetSeek: AKSeek? = nil,
+        retryCount: Int = 0
     ) {
         defer {
             AKLogger.logInit(self)
@@ -67,6 +70,7 @@ public class AKBufferingState: AKBaseState {
         self.autoPlay = autoPlay
         self.rate = rate
         self.targetSeek = targetSeek
+        self.retryCount = retryCount
         super.init(playerController: playerController, state: .buffering)
     }
     
@@ -101,7 +105,8 @@ public class AKBufferingState: AKBaseState {
         
         startObservingPlayerItemBufferingStatus()
         startObservingPlayerItemNotifications()
-        startBufferTimeoutWatcher()
+        // was: startBufferTimeoutWatcher()
+        startProgressAwareBufferTimeoutWatcher()
         
         if currentMedia.isOverNetwork() {
             observeNetworkChanges()
@@ -323,7 +328,9 @@ public class AKBufferingState: AKBaseState {
                 autoPlay: autoPlay,
                 rate: rate,
                 stateToNavigateAfterBuffering: stateToNavigateAfterBuffering,
-                targetSeek: targetSeek
+                targetSeek: targetSeek,
+                reason: .bufferTimeout,
+                retryCount: 0
             )
             change(controller)
         }
@@ -382,12 +389,39 @@ public class AKBufferingState: AKBaseState {
             
             guard let self, !Task.isCancelled else { return }
             
+            // Only actually "wait for network" if the media is over a network at all.
+            guard let media = playerController.currentMedia, media.isOverNetwork() else {
+                // Local media stalling isn't a network problem — fail explicitly instead
+                // of pretending to wait for connectivity that was never the issue.
+                let controller = AKFailedState(
+                    playerController: playerController,
+                    error: .playerItemFailedToPlay(reason: .failedToPlayToEndTime(error:
+                                                                                    NSError(domain: "AKPlayer", code: -2,
+                                                                                            userInfo: [NSLocalizedDescriptionKey: "Local media stalled during buffering."])))
+                )
+                return change(controller)
+            }
+            
+            let maxRetries = playerController.configuration.maxBufferRetryCount   // new config, e.g. 4
+            guard retryCount < maxRetries else {
+                // Give up — this is a genuine "connection too slow" case, not transient.
+                let controller = AKFailedState(
+                    playerController: playerController,
+                    error: .playerCanNoLongerPlay(error:
+                                                    NSError(domain: "AKPlayer", code: -3,
+                                                            userInfo: [NSLocalizedDescriptionKey: "Buffering repeatedly timed out — connection appears too slow to sustain playback."]))
+                )
+                return change(controller)
+            }
+            
             let controller = AKWaitingForNetworkState(
                 playerController: playerController,
                 autoPlay: autoPlay,
                 rate: rate,
                 stateToNavigateAfterBuffering: stateToNavigateAfterBuffering,
-                targetSeek: targetSeek
+                targetSeek: targetSeek,
+                reason: .bufferTimeout,
+                retryCount: retryCount + 1
             )
             change(controller)
         }
@@ -396,7 +430,7 @@ public class AKBufferingState: AKBaseState {
     /// Cancels and restarts the buffer timeout watcher task.
     private func restartBufferTimeoutWatcher() {
         timeoutTask?.cancel()
-        startBufferTimeoutWatcher()
+        startProgressAwareBufferTimeoutWatcher()
     }
     
     /// Transitions back to the designated state prior to buffering if autoplay
@@ -461,7 +495,9 @@ public class AKBufferingState: AKBaseState {
                 autoPlay: autoPlay,
                 rate: rate,
                 stateToNavigateAfterBuffering: stateToNavigateAfterBuffering,
-                targetSeek: targetSeek
+                targetSeek: targetSeek,
+                reason: .disconnected,
+                retryCount: retryCount
             )
             change(controller)
         }
@@ -482,5 +518,138 @@ public class AKBufferingState: AKBaseState {
         subscriptions.removeAll()
         timeoutTask?.cancel()
         timeoutTask = nil
+    }
+}
+
+// MARK: - Progress-Aware Buffer Timeout Watcher
+
+extension AKBufferingState {
+    
+    /// Starts a recurring timer task that monitors buffering readiness AND
+    /// download progress. Distinguishes "slow but making progress" (extends
+    /// patience) from "truly stalled" (fails/escalates quickly) instead of
+    /// relying on a single fixed timeout.
+    fileprivate func startProgressAwareBufferTimeoutWatcher() {
+        let interval = playerController.configuration.bufferObservingTimeInterval
+        // How many consecutive ticks with zero loaded-range growth before we
+        // treat it as a genuine stall, independent of the overall timeout.
+        let stallTickLimit = playerController.configuration.bufferStallTickLimit // e.g. 4
+        // Hard ceiling regardless of progress — never wait forever.
+        let hardTimeout = playerController.configuration.bufferObservingTimeout
+        let hardDeadline = Date().addingTimeInterval(hardTimeout)
+        
+        timeoutTask = Task { [weak self] in
+            guard let self else { return }
+            var lastLoadedDuration: CMTime = .zero
+            var stalledTicks = 0
+            
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                
+                if canPlay() {
+                    if autoPlay {
+                        startPlayingIfPossible()
+                    } else {
+                        changeToPreviousState()
+                    }
+                    return
+                }
+                
+                // Sample progress
+                let currentLoaded = totalLoadedDuration()
+                let madeProgress = currentLoaded.seconds > lastLoadedDuration.seconds + 0.05
+                // small epsilon avoids false "progress" from float/CMTime noise
+                
+                if madeProgress {
+                    stalledTicks = 0
+                } else {
+                    stalledTicks += 1
+                }
+                lastLoadedDuration = currentLoaded
+                
+                let pastHardDeadline = Date() >= hardDeadline
+                let trulyStalled = stalledTicks >= stallTickLimit
+                
+                if trulyStalled || pastHardDeadline {
+                    handleBufferTimeoutExceeded(
+                        madeAnyProgress: currentLoaded.seconds > 0,
+                        reason: trulyStalled ? .stalled : .hardTimeoutExceeded
+                    )
+                    return
+                }
+                // Otherwise: progress is slow but real — loop again and keep waiting.
+            }
+        }
+    }
+    
+    /// Sums the durations of all currently loaded (buffered) time ranges for
+    /// the active player item.
+    private func totalLoadedDuration() -> CMTime {
+        guard let playerItem = playerController.currentMedia?.playerItem else { return .zero }
+        return playerItem.loadedTimeRanges
+            .map(\.timeRangeValue.duration)
+            .reduce(CMTime.zero, CMTimeAdd)
+    }
+    
+    private enum BufferStallReason {
+        case stalled              // zero growth for stallTickLimit consecutive ticks
+        case hardTimeoutExceeded  // total wait exceeded the hard ceiling, even with some progress
+    }
+    
+    private func handleBufferTimeoutExceeded(madeAnyProgress: Bool, reason: BufferStallReason) {
+        guard let media = playerController.currentMedia, media.isOverNetwork() else {
+            // Local media stalling isn't a network problem — fail explicitly.
+            let controller = AKFailedState(
+                playerController: playerController,
+                error: .playerItemFailedToPlay(reason: .failedToPlayToEndTime(error:
+                                                                                NSError(domain: "AKPlayer", code: -2,
+                                                                                        userInfo: [NSLocalizedDescriptionKey: "Local media stalled during buffering."])))
+            )
+            return change(controller)
+        }
+        
+        switch reason {
+        case .stalled where !madeAnyProgress:
+            // Zero bytes loaded at all — likely a real connectivity problem,
+            // not a throughput problem. Go straight to waiting-for-network
+            // with the "disconnected"-style handling.
+            let controller = AKWaitingForNetworkState(
+                playerController: playerController,
+                autoPlay: autoPlay,
+                rate: rate,
+                stateToNavigateAfterBuffering: stateToNavigateAfterBuffering,
+                targetSeek: targetSeek,
+                reason: .disconnected,
+                retryCount: retryCount
+            )
+            change(controller)
+            
+        case .stalled, .hardTimeoutExceeded:
+            // Some progress happened at some point, but it's too slow to
+            // sustain playback (or plateaued). Treat as the throughput-limited
+            // case: backoff + retry via AKWaitingForNetworkState(.bufferTimeout).
+            let maxRetries = playerController.configuration.maxBufferRetryCount
+            guard retryCount < maxRetries else {
+                let controller = AKFailedState(
+                    playerController: playerController,
+                    error: .playerCanNoLongerPlay(error:
+                                                    NSError(domain: "AKPlayer", code: -3,
+                                                            userInfo: [NSLocalizedDescriptionKey: "Buffering repeatedly failed to keep up — connection appears too slow to sustain playback."]))
+                )
+                return change(controller)
+            }
+            
+            let controller = AKWaitingForNetworkState(
+                playerController: playerController,
+                autoPlay: autoPlay,
+                rate: rate,
+                stateToNavigateAfterBuffering: stateToNavigateAfterBuffering,
+                targetSeek: targetSeek,
+                reason: .bufferTimeout,
+                retryCount: retryCount + 1
+            )
+            change(controller)
+        }
     }
 }

@@ -82,6 +82,7 @@ public class AKLoadingState: AKBaseState {
     /// Entry point for state setup. Cleans up prior item observers, emits
     /// initial media change events, and monitors media load state transitions.
     override public func processStateChange() {
+        super.processStateChange()
         playerController.emit(.mediaDidChange(media))
         
         media.statePublisher

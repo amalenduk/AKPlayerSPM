@@ -44,6 +44,7 @@ public class AKStoppedState: AKBaseState {
     /// Entry point for stopped state processing. Halts playback, cancels
     /// pending seeks, and replaces current item with nil.
     override public func processStateChange() {
+        super.processStateChange()
         
         playerController.performStop()
     }

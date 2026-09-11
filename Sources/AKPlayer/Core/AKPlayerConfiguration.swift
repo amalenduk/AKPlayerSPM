@@ -94,6 +94,16 @@ public struct AKPlayerConfiguration: AKPlayerConfigurationProtocol, Sendable {
     /// `.slowest`.
     public var rewindRate: AKPlaybackRate = .slowest
     
+    public var maxBufferRetryCount: Int = 4
+    
+    public var waitingForNetworkBaseCooldown: TimeInterval = 2.0
+    
+    public var backoffMultiplier: Double = 1.8
+    
+    public var maxWaitingForNetworkCooldown: TimeInterval = 20.0
+    
+    public var bufferStallTickLimit: Int = 4
+    
     public var cacheManager: (any AKMediaCacheProtocol)?
     
     // MARK: - Static Default Instance

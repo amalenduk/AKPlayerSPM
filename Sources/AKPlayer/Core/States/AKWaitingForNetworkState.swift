@@ -9,6 +9,11 @@
 import AVFoundation
 import Combine
 
+public enum AKWaitingForNetworkReason {
+    case disconnected   // NWPath actually went unsatisfied
+    case bufferTimeout  // network stayed "satisfied" the whole time; throughput was the issue
+}
+
 // MARK: - AKWaitingForNetworkState
 
 /// Concrete state representing a period where playback is paused while waiting
@@ -32,6 +37,9 @@ public class AKWaitingForNetworkState: AKBaseState {
     /// Optional pending seek command to preserve across network waiting state.
     private var targetSeek: AKSeek?
     
+    private let reason: AKWaitingForNetworkReason
+    private let retryCount: Int
+    
     /// Container holding reactive Combine event subscriptions.
     private var subscriptions = Set<AnyCancellable>()
     
@@ -53,7 +61,9 @@ public class AKWaitingForNetworkState: AKBaseState {
         autoPlay: Bool = false,
         rate: AKPlaybackRate? = nil,
         stateToNavigateAfterBuffering: AKPlayerState? = nil,
-        targetSeek: AKSeek? = nil
+        targetSeek: AKSeek? = nil,
+        reason: AKWaitingForNetworkReason,
+        retryCount: Int
     ) {
         defer {
             AKLogger.logInit(self)
@@ -62,6 +72,8 @@ public class AKWaitingForNetworkState: AKBaseState {
         self.autoPlay = autoPlay
         self.rate = rate
         self.targetSeek = targetSeek
+        self.reason = reason
+        self.retryCount = retryCount
         super.init(
             playerController: playerController,
             state: .waitingForNetwork
@@ -83,14 +95,23 @@ public class AKWaitingForNetworkState: AKBaseState {
     /// pipelines, and monitors network changes.
     override public func processStateChange() {
         guard let media = playerController.currentMedia else { return stop() }
+        super.processStateChange()
+        
         if !playerController.player.timeControlStatus.isPaused {
             playerController.performPause()
         }
         
         startObservingPlayerItemNotifications()
         
-        if media.isOverNetwork() {
-            observeNetworkChanges()
+        switch reason {
+        case .disconnected:
+            // Genuine drop — watch for real reconnect, as today, but debounced (see below).
+            if media.isOverNetwork() { observeNetworkChanges() }
+            
+        case .bufferTimeout:
+            // Network was never actually down. Don't just re-check "satisfied" —
+            // back off, then retry with a longer buffer timeout, capped.
+            scheduleBackoffRetry()
         }
     }
     
@@ -280,17 +301,41 @@ public class AKWaitingForNetworkState: AKBaseState {
     private func observeNetworkChanges() {
         observeNetworkStatus(in: &subscriptions) { [weak self] status in
             guard let self, status == .satisfied else { return }
-            
-            // Context and targetSeek are restored cleanly into buffering state
             let controller = AKBufferingState(
                 playerController: playerController,
                 autoPlay: autoPlay,
                 rate: rate,
                 stateToNavigateAfterBuffering: stateToNavigateAfterBuffering ?? .paused,
                 targetSeek: targetSeek
+                // no retryCount here — a real disconnect/reconnect is a fresh attempt
             )
             change(controller)
         }
+    }
+    
+    private func scheduleBackoffRetry() {
+        let base = playerController.configuration.waitingForNetworkBaseCooldown     // e.g. 2.0s
+        let multiplier = playerController.configuration.backoffMultiplier           // e.g. 1.8
+        let maxCooldown = playerController.configuration.maxWaitingForNetworkCooldown // e.g. 20.0s
+        let cooldown = min(base * pow(multiplier, Double(retryCount)), maxCooldown)
+        
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(cooldown * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            retryBuffering()
+        }
+    }
+    
+    private func retryBuffering() {
+        let controller = AKBufferingState(
+            playerController: playerController,
+            autoPlay: autoPlay,
+            rate: rate,
+            stateToNavigateAfterBuffering: stateToNavigateAfterBuffering ?? .paused,
+            targetSeek: targetSeek,
+            retryCount: retryCount
+        )
+        change(controller)
     }
     
     // MARK: - Availability Overrides

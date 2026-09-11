@@ -67,6 +67,7 @@ public class AKLoadedState: AKBaseState {
     /// Processes state updates, sets up KVO observations, and handles automatic
     /// seek or playback triggers.
     override public func processStateChange() {
+        super.processStateChange()
         
         if let currentMedia = playerController.currentMedia {
             playerController.emit(.timeDidChange(playerController.currentTime))

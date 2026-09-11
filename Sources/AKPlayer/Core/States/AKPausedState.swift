@@ -199,10 +199,7 @@ public class AKPausedState: AKBaseState {
                 return change(controller)
             }
             
-            let controller = AKWaitingForNetworkState(
-                playerController: playerController,
-                autoPlay: true
-            )
+            let controller = AKBufferingState(playerController: playerController, autoPlay: false)
             change(controller)
         }
         .store(in: &subscriptions)

@@ -492,7 +492,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         }
         
         playerController.networkStatusMonitor.networkStatusPublisher
-            .receive(on: DispatchQueue.main)
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .sink { status in
                 handler(status)
             }
