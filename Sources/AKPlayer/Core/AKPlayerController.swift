@@ -118,12 +118,20 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     public private(set) var controller: AKPlayerStateControllerProtocol {
         get { _controller ?? AKIdleState(playerController: self) }
         set {
+            // Drop the old state as early as possible
+            let old = _controller
             _controller = newValue
+            
+            // Explicitly release old reference before any further work
+            // (the local `old` will die at the end of this setter)
+            _ = old
+            
             eventBroadcaster.send(.stateDidChange(newValue.state))
-            newValue.processStateChange()
-            processStateChange()
         }
     }
+
+    private var isTransitioning = false
+    private var pendingController: AKPlayerStateControllerProtocol?
     
     private var _controller: AKPlayerStateControllerProtocol?
     
@@ -222,11 +230,9 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         if !state.isAny(of: [.idle, .stopped]) {
             stop()
         }
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.currentMedia = media
-            self.controller.load(media: media, autoPlay: autoPlay, at: position)
-        }
+        
+        currentMedia = media
+        controller.load(media: media, autoPlay: autoPlay, at: position)
     }
     
     /// Commands the current state controller to initiate or resume playback.
@@ -389,11 +395,36 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     /// - Parameter controller: The target state controller conforming to
     /// `AKPlayerStateControllerProtocol`.
     public func change(_ controller: AKPlayerStateControllerProtocol) {
-        // ✅ Dispatch to next runloop tick so the previous state's stack frame can exit and dealloc
-        
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.controller = controller
+        if isTransitioning {
+            pendingController = controller
+            return
+        }
+
+        isTransitioning = true
+        defer { isTransitioning = false }
+
+        var next: AKPlayerStateControllerProtocol? = controller
+        while let current = next {
+            next = nil
+
+            weak var outgoing = _controller as AnyObject   // <-- probe BEFORE swap
+            let outgoingType = _controller.map { type(of: $0) }
+
+            self.controller = current
+
+            if let outgoing {                              // <-- check immediately AFTER swap
+                print("⚠️ \(String(describing: outgoingType)) still alive right after install of \(type(of: current)) — refcount > 0")
+            } else {
+                print("✅ previous controller released cleanly on install of \(type(of: current))")
+            }
+
+            current.processStateChange()
+            processStateChange()
+
+            if let queued = pendingController {
+                pendingController = nil
+                next = queued
+            }
         }
     }
     
@@ -503,7 +534,6 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             }
         }
     }
-    
     
     /// Stops time and rate observers attached to the underlying player
     /// instance.

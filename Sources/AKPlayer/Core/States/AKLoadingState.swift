@@ -133,6 +133,7 @@ public class AKLoadingState: AKBaseState {
                 if isCancelled {
                     return
                 }
+                guard !Task.isCancelled else { return }
                 createPlayerItemFromAsset()
             }
         case .playerItemLoaded:
@@ -186,34 +187,42 @@ public class AKLoadingState: AKBaseState {
     /// Evaluates AVPlayer ready status and transitions state to `AKLoadedState`
     /// upon success.
     private func becameReadyToPlay() {
-        playerController.player.publisher(
-            for: \.status,
-            options: [.initial, .new]
-        )
-        .sink { @MainActor [weak self] status in
-            guard let self else { return }
-            switch status {
-            case .readyToPlay:
-                let controller = AKLoadedState(
-                    playerController: playerController,
-                    autoPlay: autoPlay,
-                    position: position
-                )
-                return change(controller)
-            case .failed:
-                let controller = AKFailedState(
-                    playerController: playerController,
-                    error: .playerCanNoLongerPlay(
-                        error: playerController
-                            .player.error
-                    )
-                )
-                return change(controller)
-            default:
-                break
-            }
+        // Handle "already ready" synchronously without going through Combine.
+        if playerController.player.status == .readyToPlay {
+            return transitionToLoaded()
         }
-        .store(in: &subscriptions)
+        
+        if playerController.player.status == .failed {
+            return transitionToFailed()
+        }
+        
+        playerController.player.publisher(for: \.status, options: [.new])
+            .sink { @MainActor [weak self] status in
+                guard let self else { return }
+                switch status {
+                case .readyToPlay: transitionToLoaded()
+                case .failed: transitionToFailed()
+                default: break
+                }
+            }
+            .store(in: &subscriptions)
+    }
+    
+    private func transitionToLoaded() {
+        let controller = AKLoadedState(
+            playerController: playerController,
+            autoPlay: autoPlay,
+            position: position
+        )
+        change(controller)
+    }
+    
+    private func transitionToFailed() {
+        let controller = AKFailedState(
+            playerController: playerController,
+            error: .playerCanNoLongerPlay(error: playerController.player.error)
+        )
+        change(controller)
     }
     
     /// Aborts tasks and asset loading operations.
@@ -271,7 +280,8 @@ public class AKLoadingState: AKBaseState {
     override public func beforeStateChange() {
         task?.cancel()
         task = nil
-        subscriptions.forEach({ $0.cancel() })
+        let subs = subscriptions
         subscriptions.removeAll()
+        subs.forEach { $0.cancel() }
     }
 }
