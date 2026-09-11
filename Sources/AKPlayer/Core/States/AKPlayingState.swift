@@ -61,13 +61,13 @@ public class AKPlayingState: AKBaseState {
     override public func processStateChange() {
         startObservingPlayerItemNotifications()
         
-        hasStartedPlaying = (playerController.player.timeControlStatus == .playing || playerController.player.timeControlStatus == .waitingToPlayAtSpecifiedRate)
-        
         if let rate, playerController.player.rate != rate.rate {
             play(at: rate)
         } else {
             playerController.performPlay()
         }
+        
+        hasStartedPlaying = true
     }
     
     /// Cleans up Combine observation pipelines before transitioning to another

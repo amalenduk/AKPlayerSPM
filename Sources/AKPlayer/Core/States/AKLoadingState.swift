@@ -18,7 +18,7 @@ public class AKLoadingState: AKBaseState {
     // MARK: - Properties
     
     /// The media item being loaded into the player pipeline.
-    private let media: any AKPlayable
+    private unowned let media: any AKPlayable
     
     /// Indicates whether playback should automatically start once loading
     /// completes.
@@ -69,7 +69,6 @@ public class AKLoadingState: AKBaseState {
     }
     
     deinit {
-        task?.cancel()
         defer {
             AKLogger.logDeinit(
                 String(describing: Self.self),
@@ -197,7 +196,7 @@ public class AKLoadingState: AKBaseState {
         }
         
         playerController.player.publisher(for: \.status, options: [.new])
-            .sink { @MainActor [weak self] status in
+            .sink { [weak self] status in
                 guard let self else { return }
                 switch status {
                 case .readyToPlay: transitionToLoaded()
@@ -214,7 +213,7 @@ public class AKLoadingState: AKBaseState {
             autoPlay: autoPlay,
             position: position
         )
-        change(controller)
+        return change(controller)
     }
     
     private func transitionToFailed() {
@@ -222,12 +221,13 @@ public class AKLoadingState: AKBaseState {
             playerController: playerController,
             error: .playerCanNoLongerPlay(error: playerController.player.error)
         )
-        change(controller)
+        return change(controller)
     }
     
     /// Aborts tasks and asset loading operations.
     private func abortAssetInitialization() {
         task?.cancel()
+        task = nil
         isCancelled = true
         subscriptions.forEach({ $0.cancel() })
         subscriptions.removeAll()

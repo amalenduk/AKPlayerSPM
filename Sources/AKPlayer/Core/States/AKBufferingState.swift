@@ -33,14 +33,6 @@ public class AKBufferingState: AKBaseState {
     /// buffering.
     private var targetSeek: AKSeek?
     
-    /// Flag indicating whether the buffering state lifecycle has become fully
-    /// active after initialization.
-    private var isActiveState = false
-    
-    /// Guard flag to prevent duplicate state transitions during asynchronous
-    /// completion steps.
-    private var hasTransitioned = false
-    
     /// Task tracking the active buffering timeout countdown loop.
     private var timeoutTask: Task<Void, Never>?
     
@@ -97,8 +89,7 @@ public class AKBufferingState: AKBaseState {
             stop()
             return
         }
-        
-        isActiveState = true
+        super.processStateChange()
         
         if !playerController.player.timeControlStatus.isPaused && !autoPlay {
             playerController.performPause()
@@ -270,9 +261,7 @@ public class AKBufferingState: AKBaseState {
     // MARK: - Additional Helper Functions
     
     public override func handlePlayerStatusChange(_ status: AVPlayer.Status) {
-        guard !hasTransitioned, status == .failed
-        else { return }
-        hasTransitioned = true
+        guard status == .failed else { return }
         let controller = AKFailedState(
             playerController: playerController,
             error: .playerCanNoLongerPlay(
@@ -285,6 +274,10 @@ public class AKBufferingState: AKBaseState {
     
     public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
         switch status {
+        case .playing:
+            play()
+        case .paused:
+            pause()
         case .waitingToPlayAtSpecifiedRate:
             guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
             switch reasonForWaitingToPlay {
@@ -308,16 +301,13 @@ public class AKBufferingState: AKBaseState {
             for: .AVPlayerItemFailedToPlayToEndTime,
             object: playerItem
         )
-        .receive(on: DispatchQueue.main)
         .sink { [weak self] notification in
-            guard let self, !self.hasTransitioned,
-                  let error = notification
+            guard let self, let error = notification
                 .userInfo?[
                     AVPlayerItemFailedToPlayToEndTimeErrorKey
                 ] as? NSError
             else { return }
             
-            hasTransitioned = true
             guard error is URLError else {
                 let controller = AKFailedState(
                     playerController: playerController,
@@ -356,8 +346,8 @@ public class AKBufferingState: AKBaseState {
                 options: [.initial, .new]
             )
         )
-        .sink { @MainActor [weak self] isPlaybackBufferFull, isPlaybackLikelyToKeepUp in
-            guard let self, !self.hasTransitioned else { return }
+        .sink { [weak self] isPlaybackBufferFull, isPlaybackLikelyToKeepUp in
+            guard let self else { return }
             guard isPlaybackBufferFull && isPlaybackLikelyToKeepUp else {
                 return
             }
@@ -369,20 +359,16 @@ public class AKBufferingState: AKBaseState {
     /// Starts a recurring timer task to monitor whether buffering is taking
     /// longer than configured limits.
     private func startBufferTimeoutWatcher() {
-        timeoutTask?.cancel()
         
         let timeout = playerController.configuration.bufferObservingTimeout
-        let interval = playerController.configuration
-            .bufferObservingTimeInterval
+        let interval = playerController.configuration.bufferObservingTimeInterval
         let totalSteps = Int(timeout / interval)
         
-        timeoutTask = Task { @MainActor [weak self] in
+        timeoutTask = Task { [weak self] in
             for _ in 0 ..< totalSteps {
                 try? await Task
                     .sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                guard let self, !Task.isCancelled,
-                      !self.hasTransitioned
-                else { return }
+                guard let self, !Task.isCancelled else { return }
                 
                 if canPlay() {
                     if autoPlay {
@@ -394,10 +380,8 @@ public class AKBufferingState: AKBaseState {
                 }
             }
             
-            guard let self, !Task.isCancelled,
-                  !self.hasTransitioned
-            else { return }
-            hasTransitioned = true
+            guard let self, !Task.isCancelled else { return }
+            
             let controller = AKWaitingForNetworkState(
                 playerController: playerController,
                 autoPlay: autoPlay,
@@ -411,21 +395,20 @@ public class AKBufferingState: AKBaseState {
     
     /// Cancels and restarts the buffer timeout watcher task.
     private func restartBufferTimeoutWatcher() {
+        timeoutTask?.cancel()
         startBufferTimeoutWatcher()
     }
     
     /// Transitions back to the designated state prior to buffering if autoplay
     /// is not requested.
     private func changeToPreviousState() {
-        guard !hasTransitioned,
-              let playerItem = playerController.currentMedia?.playerItem,
+        guard let playerItem = playerController.currentMedia?.playerItem,
               !playerController.isSeeking,
               playerItem.isPlaybackBufferFull
                 && playerItem
             .isPlaybackLikelyToKeepUp
         else { return }
         
-        hasTransitioned = true
         switch stateToNavigateAfterBuffering {
         case .loaded:
             let controller = AKLoadedState(
@@ -433,11 +416,9 @@ public class AKBufferingState: AKBaseState {
                 rate: rate
             )
             change(controller)
-        case .paused:
+        default:
             let controller = AKPausedState(playerController: playerController)
             change(controller)
-        default:
-            hasTransitioned = false
         }
     }
     
@@ -458,8 +439,8 @@ public class AKBufferingState: AKBaseState {
     /// Checks buffer availability and transitions into `AKPlayingState` if
     /// ready.
     private func startPlayingIfPossible() {
-        guard !hasTransitioned, canPlay() else { return }
-        hasTransitioned = true
+        guard canPlay() else { return }
+        
         let controller = AKPlayingState(
             playerController: playerController,
             rate: rate
@@ -471,11 +452,10 @@ public class AKBufferingState: AKBaseState {
     /// state if connectivity fails.
     private func observeNetworkChanges() {
         observeNetworkStatus(in: &subscriptions) { [weak self] status in
-            guard let self, !self.hasTransitioned,
+            guard let self,
                   status != .satisfied
             else { return }
             
-            hasTransitioned = true
             let controller = AKWaitingForNetworkState(
                 playerController: playerController,
                 autoPlay: autoPlay,
@@ -498,7 +478,6 @@ public class AKBufferingState: AKBaseState {
     /// Called immediately before transitioning out of this state to cancel
     /// tasks and clear subscriptions.
     override public func beforeStateChange() {
-        hasTransitioned = true
         subscriptions.forEach({ $0.cancel() })
         subscriptions.removeAll()
         timeoutTask?.cancel()

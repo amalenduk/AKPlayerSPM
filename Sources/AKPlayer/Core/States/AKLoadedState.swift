@@ -177,6 +177,8 @@ public class AKLoadedState: AKBaseState {
     
     public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
         switch status {
+        case .playing:
+            play()
         case .waitingToPlayAtSpecifiedRate:
             guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
             switch reasonForWaitingToPlay {

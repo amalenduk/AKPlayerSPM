@@ -129,9 +129,6 @@ public class AKPlayerController: AKPlayerControllerProtocol {
             eventBroadcaster.send(.stateDidChange(newValue.state))
         }
     }
-
-    private var isTransitioning = false
-    private var pendingController: AKPlayerStateControllerProtocol?
     
     private var _controller: AKPlayerStateControllerProtocol?
     
@@ -227,7 +224,7 @@ public class AKPlayerController: AKPlayerControllerProtocol {
         autoPlay: Bool,
         at position: AKSeekTarget?
     ) {
-        if !state.isAny(of: [.idle, .stopped]) {
+        if !state.isAny(of: [.idle, .stopped, .failed]) {
             stop()
         }
         
@@ -395,37 +392,9 @@ public class AKPlayerController: AKPlayerControllerProtocol {
     /// - Parameter controller: The target state controller conforming to
     /// `AKPlayerStateControllerProtocol`.
     public func change(_ controller: AKPlayerStateControllerProtocol) {
-        if isTransitioning {
-            pendingController = controller
-            return
-        }
-
-        isTransitioning = true
-        defer { isTransitioning = false }
-
-        var next: AKPlayerStateControllerProtocol? = controller
-        while let current = next {
-            next = nil
-
-            weak var outgoing = _controller as AnyObject   // <-- probe BEFORE swap
-            let outgoingType = _controller.map { type(of: $0) }
-
-            self.controller = current
-
-            if let outgoing {                              // <-- check immediately AFTER swap
-                print("⚠️ \(String(describing: outgoingType)) still alive right after install of \(type(of: current)) — refcount > 0")
-            } else {
-                print("✅ previous controller released cleanly on install of \(type(of: current))")
-            }
-
-            current.processStateChange()
-            processStateChange()
-
-            if let queued = pendingController {
-                pendingController = nil
-                next = queued
-            }
-        }
+        self.controller = controller
+        controller.processStateChange()
+        processStateChange()
     }
     
     /// Hook called whenever state changes to execute custom side effects based

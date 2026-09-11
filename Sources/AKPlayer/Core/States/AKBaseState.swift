@@ -41,6 +41,10 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// The explicit player state represented by this class instance.
     public let state: AKPlayerState
     
+    public private(set) var hasTransitioned = false
+    
+    public private(set) var isActiveState = false
+    
     // MARK: - Initialization
     
     /// Initializes a base state instance associated with a specific player
@@ -63,7 +67,7 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// Called when the player transitions into this state. Concrete state
     /// subclasses override to perform setup.
     public func processStateChange() {
-        // Default no-op; internal state implementations may override
+        isActiveState = true
     }
     
     // MARK: - Commands
@@ -371,6 +375,9 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// Transitions the state machine context to a new target state instance.
     /// - Parameter controller: The target state controller to activate.
     public func change(_ controller: AKPlayerStateControllerProtocol) {
+        guard !hasTransitioned else { return }
+        isActiveState = false
+        hasTransitioned = true
         beforeStateChange()
         playerController.change(controller)
     }
