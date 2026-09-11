@@ -89,11 +89,8 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// Commands the player to begin media playback.
     public func play() {
         performIfAllowed(
-            check: { [unowned self] in
-                availability(for: .play)
-            },
-            action: { [weak self] in
-                guard let self else { return }
+            check: { availability(for: .play) },
+            action: {
                 let controller = AKBufferingState(
                     playerController: playerController,
                     autoPlay: true
@@ -113,11 +110,10 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// - Parameter rate: The targeted playback rate.
     public func play(at rate: AKPlaybackRate) {
         performIfAllowed(
-            check: { [unowned self] in
+            check: {
                 availability(for: .play)
             },
-            action: { [weak self] in
-                guard let self else { return }
+            action: {
                 let controller = AKBufferingState(
                     playerController: playerController,
                     autoPlay: true,
@@ -136,13 +132,9 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// Commands the player to pause active media playback.
     public func pause() {
         performIfAllowed(
-            check: { [unowned self] in
-                availability(for: .pause)
-            },
-            action: { [weak self] in
-                guard let self else { return }
-                let controller =
-                AKPausedState(playerController: playerController)
+            check: { availability(for: .pause) },
+            action: {
+                let controller = AKPausedState(playerController: playerController)
                 change(controller)
             },
             blocked: { [weak self] reason in
@@ -166,14 +158,10 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
     /// Stops playback and tears down active player pipeline.
     public func stop() {
         performIfAllowed(
-            check: { [unowned self] in
-                availability(for: .stop)
-            },
-            action: { [weak self] in
-                guard let self else { return }
+            check: { availability(for: .stop) },
+            action: {
                 beforeStop()
-                let controller =
-                AKStoppedState(playerController: playerController)
+                let controller = AKStoppedState(playerController: playerController)
                 change(controller)
             },
             blocked: { [weak self] reason in
@@ -199,7 +187,6 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
             seek(
                 to: target
             ) { finished in
-                print("Seek finished")
                 con.resume(returning: finished)
             }
         }
@@ -259,14 +246,10 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         completionHandler: @escaping @Sendable (Bool) -> Void
     ) {
         performIfAllowed(
-            check: { [unowned self] in
+            check: {
                 availability(for: .seek(to: target))
             },
-            action: { [weak self] in
-                guard let s = self else {
-                    completionHandler(false)
-                    return
-                }
+            action: {
                 
                 let seekToken = AKSeek(
                     target: target,
@@ -274,12 +257,12 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
                 )
                 
                 let controller = AKBufferingState(
-                    playerController: s.playerController,
-                    autoPlay: s.state.isPlaying || s.autoPlay,
+                    playerController: playerController,
+                    autoPlay: state.isPlaying || autoPlay,
                     targetSeek: seekToken
                 )
                 
-                s.change(controller)
+                change(controller)
             },
             blocked: { [weak self] reason in
                 completionHandler(false)
@@ -307,15 +290,10 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         completionHandler: @Sendable @escaping (Bool) -> Void
     ) {
         performIfAllowed(
-            check: { [unowned self] in
+            check: {
                 availability(for: .seek(to: target))
             },
-            action: { [weak self] in
-                guard let s = self else {
-                    completionHandler(false)
-                    return
-                }
-                
+            action: {
                 let seekToken = AKSeek(
                     target: target,
                     toleranceBefore: toleranceBefore,
@@ -324,12 +302,12 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
                 )
                 
                 let controller = AKBufferingState(
-                    playerController: s.playerController,
-                    autoPlay: s.state.isPlaying || s.autoPlay,
+                    playerController: playerController,
+                    autoPlay: state.isPlaying || autoPlay,
                     targetSeek: seekToken
                 )
                 
-                s.change(controller)
+                change(controller)
             },
             blocked: { [weak self] reason in
                 completionHandler(false)
@@ -427,23 +405,20 @@ public class AKBaseState: AKPlayerStateControllerProtocol {
         return await action()
     }
     
-    /// Validates an action requirement and executes a synchronous task if
-    /// permission check succeeds.
+    
+    
+    /// Validates an action requirement and executes a synchronous task if permission check succeeds.
     /// - Parameters:
-    ///   - check: Preflight verification closure evaluating action permission
-    /// and returning blocking reasons on failure.
-    ///   - action: Synchronous operation closure executed if permission check
-    /// succeeds.
-    ///   - blocked: Closure called on preflight failure with the associated
-    /// reason.
-    ///   - fallback: Fallback value returned when action execution is blocked
-    /// or prohibited.
+    ///   - check: Preflight verification closure evaluating action permission and returning blocking reasons on failure.
+    ///   - action: Synchronous operation closure executed if permission check succeeds.
+    ///   - blocked: Closure called on preflight failure with the associated reason.
+    ///   - fallback: Fallback value returned when action execution is blocked or prohibited.
     /// - Returns: The result of `action` if allowed; otherwise, `fallback`.
     @discardableResult
-    public func performIfAllowed<T: Sendable>(
-        check: @MainActor () -> (Bool, AKPlayerUnavailableCommandReason?),
-        action: @MainActor () -> T,
-        blocked: (@MainActor (AKPlayerUnavailableCommandReason) -> Void)? = nil,
+    public func performIfAllowed<T>(
+        check: () -> (allowed: Bool, reason: AKPlayerUnavailableCommandReason?),
+        action: () -> T,
+        blocked: ((AKPlayerUnavailableCommandReason) -> Void)? = nil,
         fallback: T
     ) -> T {
         let (allowed, reason) = check()

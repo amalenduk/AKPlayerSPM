@@ -86,7 +86,6 @@ public class AKLoadingState: AKBaseState {
         playerController.emit(.mediaDidChange(media))
         
         media.statePublisher
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 guard let self else { return }
                 hanldeChangeInMedia(state)
@@ -200,7 +199,7 @@ public class AKLoadingState: AKBaseState {
                     autoPlay: autoPlay,
                     position: position
                 )
-                change(controller)
+                return change(controller)
             case .failed:
                 let controller = AKFailedState(
                     playerController: playerController,
@@ -209,7 +208,7 @@ public class AKLoadingState: AKBaseState {
                             .player.error
                     )
                 )
-                change(controller)
+                return change(controller)
             default:
                 break
             }

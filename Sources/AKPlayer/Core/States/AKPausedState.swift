@@ -171,7 +171,6 @@ public class AKPausedState: AKBaseState {
                 guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
                 switch reasonForWaitingToPlay {
                 case .evaluatingBufferingRate, .interstitialEvent, .toMinimizeStalls, .waitingForCoordinatedPlayback:
-                    print("How many time will i get called", #file)
                     play()
                 case .noItemToPlay:
                     Task { @MainActor [weak self] in

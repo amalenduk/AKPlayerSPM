@@ -123,8 +123,8 @@ public class AKPlayingState: AKBaseState {
                       let currentItem = playerController.currentItem else { return }
                 switch reasonForWaitingToPlay {
                 case .evaluatingBufferingRate, .toMinimizeStalls, .waitingForCoordinatedPlayback:
-                    guard let currentItem = playerController.currentItem,
-                          currentItem.isPlaybackBufferFull && currentItem.isPlaybackLikelyToKeepUp else {
+                    guard let currentItem = playerController.currentItem else { return }
+                    guard currentItem.isPlaybackBufferFull && currentItem.isPlaybackLikelyToKeepUp else {
                         
                         let controller = AKBufferingState(
                             playerController: playerController,
@@ -144,6 +144,7 @@ public class AKPlayingState: AKBaseState {
             }
         case .paused:
             guard hasStartedPlaying else { return }
+            print("hasStartedPlaying")
             pause()
         default:
             break

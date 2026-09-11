@@ -358,7 +358,7 @@ public class AKBufferingState: AKBaseState {
         )
         .sink { @MainActor [weak self] isPlaybackBufferFull, isPlaybackLikelyToKeepUp in
             guard let self, !self.hasTransitioned else { return }
-            guard isPlaybackBufferFull || isPlaybackLikelyToKeepUp else {
+            guard isPlaybackBufferFull && isPlaybackLikelyToKeepUp else {
                 return
             }
             autoPlay ? startPlayingIfPossible() : changeToPreviousState()
@@ -421,7 +421,7 @@ public class AKBufferingState: AKBaseState {
               let playerItem = playerController.currentMedia?.playerItem,
               !playerController.isSeeking,
               playerItem.isPlaybackBufferFull
-                || playerItem
+                && playerItem
             .isPlaybackLikelyToKeepUp
         else { return }
         
@@ -434,7 +434,6 @@ public class AKBufferingState: AKBaseState {
             )
             change(controller)
         case .paused:
-            print("Bufferng paused")
             let controller = AKPausedState(playerController: playerController)
             change(controller)
         default:
@@ -450,7 +449,7 @@ public class AKBufferingState: AKBaseState {
         guard let playerItem = playerController.currentMedia?.playerItem,
               !playerController.isSeeking,
               playerItem.isPlaybackBufferFull
-                || playerItem
+                && playerItem
             .isPlaybackLikelyToKeepUp
         else { return false }
         return true
