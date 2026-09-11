@@ -279,10 +279,6 @@ public class AKBufferingState: AKBaseState {
     
     public override func handleTimeControlStatusChange(_ status: AVPlayer.TimeControlStatus) {
         switch status {
-        case .playing:
-            play()
-        case .paused:
-            pause()
         case .waitingToPlayAtSpecifiedRate:
             guard let reasonForWaitingToPlay = playerController.player.reasonForWaitingToPlay else { return }
             switch reasonForWaitingToPlay {
